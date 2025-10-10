@@ -10,8 +10,8 @@
           "usage_days": "Initial number of days' usage to download"
         },
         "data_description": {
-          "email": "Your Contact Energy account email address<br><br>",
-          "password": "Your Contact Energy account password<br><br>",
+          "email": "Your Contact Energy account email address\n\n",
+          "password": "Your Contact Energy account password\n\n",
           "usage_days": "Number of days of historical data to download initially (1-100)"
         }
       },

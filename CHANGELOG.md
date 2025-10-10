@@ -1,3 +1,8 @@
+## v0.0.6 - 2025-10-10
+Translation Fix
+
+- Fixed HTML tags in form descriptions causing translation errors\n- Proper spacing now uses newline characters instead of HTML tags\n- Resolved UNCLOSED_TAG errors in setup form
+
 ## v0.0.5 - 2025-10-10
 
 UI/UX Improvements

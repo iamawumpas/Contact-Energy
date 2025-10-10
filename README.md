@@ -1,6 +1,6 @@
 # Contact Energy Integration for Home Assistant
 
-**Version:** 0.0.5
+**Version:** 0.0.6
 
 A streamlined, memory-efficient Home Assistant integration for Contact Energy (New Zealand) that downloads your electricity usage and account data for use with the Energy Dashboard and ApexCharts.
 
