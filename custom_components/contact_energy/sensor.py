@@ -122,7 +122,7 @@ async def async_setup_entry(
             statistics_type="cost",
             unit="NZD",
             device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
+            state_class=SensorStateClass.TOTAL,
         ),
         ContactEnergyUsageSensor(
             coordinator=coordinator,
@@ -185,14 +185,15 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
             return None
 
         account_data = self.coordinator.data["account"]
-        
-        # Extract value from nested account structure
         try:
             account_detail = account_data.get("accountDetail", {})
-            
-            # Handle different value paths
             if self._value_key == "accountBalance":
-                return account_detail.get("accountBalance")
+                # If the value is a dict, extract the numeric balance
+                balance = account_detail.get("accountBalance")
+                if isinstance(balance, dict):
+                    # Try 'currentBalance' first, fallback to 0
+                    return balance.get("currentBalance", 0)
+                return balance
             elif self._value_key in ["nextBillAmount", "paymentDue"]:
                 billing = account_detail.get("billing", {})
                 return billing.get(self._value_key)
@@ -209,9 +210,7 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
                         if registers:
                             date_str = registers[0].get(self._value_key)
                             return self._parse_date(date_str)
-            
             return None
-            
         except (KeyError, TypeError, IndexError):
             return None
 
