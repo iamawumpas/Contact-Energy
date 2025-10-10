@@ -1,22 +1,34 @@
 ## v0.0.5 - 2025-10-10
-Version 0.0.5 - Minor update
 
-- Version bump and maintenance updates
+UI/UX Improvements
+
+- **Improved Config Flow**: Removed continue button, entity creation happens immediately on Submit
+- **Better Form Spacing**: Added spacing between form fields for better readability
+- **Clearer Labels**: Changed "Initial download days" to "Initial number of days' usage to download"
+- **Streamlined Setup**: Simplified setup process with immediate entity creation
 
 ## v0.0.4 - 2025-10-10
-Version 0.0.4 - Minor update
 
-- Version bump and maintenance updates
+Config Flow Enhancements
+
+- **Required Days Field**: Removed checkbox from days slider, made field required
+- **User Guidance**: Added informational message about data availability delays
+- **Improved UX**: Enhanced config flow with better user expectations
 
 ## v0.0.3 - 2025-10-10
-Version 0.0.3 - Minor update
 
-- Version bump and maintenance updates
+Bug Fixes
+
+- **Sensor Fixes**: Fixed monetary sensor state class compatibility
+- **Balance Sensor**: Fixed account balance sensor to return numeric values instead of dict
+- **Error Resolution**: Resolved "coroutine was never awaited" warnings
 
 ## v0.0.2 - 2025-10-10
-Version 0.0.2 - Minor update
 
-- Version bump and maintenance updates
+Config Flow Fixes
+
+- **Async Fix**: Fixed unawaited coroutine in config flow `_create_entry` method
+- **Stability**: Improved integration startup reliability
 
 # Changelog
 
@@ -53,12 +65,14 @@ Initial release of the streamlined Contact Energy integration
 ### Sensors
 
 #### Account Sensors
+
 - Account Balance (NZD)
 - Next Bill Amount & Date
 - Payment Due Amount & Date
 - Previous/Next Reading Dates
 
 #### Usage Sensors (Statistics)
+
 - Energy Consumption (kWh) - Energy Dashboard compatible
 - Energy Cost (NZD) - Cost tracking
 - Free Energy Consumption (kWh) - Free electricity plans
