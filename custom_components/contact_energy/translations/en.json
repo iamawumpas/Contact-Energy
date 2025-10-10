@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Contact Energy Setup",
+        "description": "Configure your Contact Energy integration",
+        "data": {
+          "email": "Email address",
+          "password": "Password", 
+          "usage_days": "Initial download days"
+        },
+        "data_description": {
+          "email": "Your Contact Energy account email address",
+          "password": "Your Contact Energy account password",
+          "usage_days": "Number of days of historical data to download initially (1-100)"
+        }
+      },
+      "contract": {
+        "title": "Select Contract",
+        "description": "Choose which electricity contract to monitor",
+        "data": {
+          "contract_id": "Electricity Contract"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Cannot connect to Contact Energy",
+      "no_accounts": "No accounts found",
+      "no_electricity_contracts": "No electricity contracts found",
+      "invalid_contract": "Invalid contract selection",
+      "unknown": "Unknown error occurred"
+    },
+    "abort": {
+      "already_configured": "Integration already configured for this contract"
+    }
+  }
+}

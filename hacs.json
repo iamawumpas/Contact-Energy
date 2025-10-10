@@ -1,0 +1,16 @@
+{
+  "name": "Contact Energy",
+  "hacs": "1.32.0",
+  "domains": ["contact_energy"],
+  "iot_class": "cloud_polling",
+  "homeassistant": "2023.1.0",
+  "version": "0.0.1",
+  "country": "NZ",
+  "render_readme": true,
+  "ignore": [
+    "release.sh",
+    "RELEASE_NOTES.txt",
+    ".git",
+    ".github"
+  ]
+}
