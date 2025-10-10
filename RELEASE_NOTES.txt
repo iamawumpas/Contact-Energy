@@ -1,5 +1,5 @@
-## v0.0.1 - 2025-10-10
-Version 0.0.1 - Initial release
+## v0.0.2 - 2025-10-10
+Version 0.0.2 - Minor update
 
-- First release of Contact Energy integration
+- Version bump and maintenance updates
 

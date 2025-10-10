@@ -68,7 +68,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         elif len(self._contracts) == 1:
                             # Only one contract, create entry directly
                             contract = self._contracts[0]
-                            return self._create_entry(
+                            return await self._create_entry(
                                 account_detail["id"],
                                 contract["id"], 
                                 contract["icp"],
@@ -131,7 +131,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 account_data = await api.get_accounts()
                 account_id = account_data["accountDetail"]["id"]
                 
-                return self._create_entry(
+                return await self._create_entry(
                     account_id,
                     selected_contract["id"],
                     selected_contract["icp"], 
