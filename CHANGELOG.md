@@ -1,3 +1,8 @@
+## v0.0.7 - 2025-10-10
+UI Message Positioning
+
+- Moved informational message from top description to appear above submit button\n- Removed problematic newline characters causing translation errors\n- Cleaner form layout with message positioned after all form fields
+
 ## v0.0.6 - 2025-10-10
 Translation Fix
 
