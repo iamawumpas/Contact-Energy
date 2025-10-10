@@ -4,7 +4,7 @@
   "domains": ["contact_energy"],
   "iot_class": "cloud_polling",
   "homeassistant": "2023.1.0",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "country": "NZ",
   "render_readme": true,
   "ignore": [

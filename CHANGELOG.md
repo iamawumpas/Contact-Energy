@@ -1,3 +1,8 @@
+## v0.0.4 - 2025-10-10
+Version 0.0.4 - Minor update
+
+- Version bump and maintenance updates
+
 ## v0.0.3 - 2025-10-10
 Version 0.0.3 - Minor update
 

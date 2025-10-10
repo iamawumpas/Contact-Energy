@@ -21,6 +21,13 @@
         "data": {
           "contract_id": "Electricity Contract"
         }
+      },
+      "progress": {
+        "title": "Creating Entity",
+        "description": "Creating entity. Please wait while this completes. Be aware that Contact Energy can take 24-72 hours to display the most recent energy usage data. Also, it may take several hours before historical data is scraped and displayed in Home Assistant.\n\nThis message will disappear when the integration is created.",
+        "data": {
+          "continue": "Continue"
+        }
       }
     },
     "error": {

@@ -25,6 +25,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._user_input = {}
         self._contracts = []
+        self._selected_contract = {}
 
     async def async_step_user(
         self, user_input: Dict[str, Any] | None = None
@@ -66,14 +67,15 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         if not self._contracts:
                             errors["base"] = "no_electricity_contracts"
                         elif len(self._contracts) == 1:
-                            # Only one contract, create entry directly
+                            # Only one contract, show progress and create entry
                             contract = self._contracts[0]
-                            return await self._create_entry(
-                                account_detail["id"],
-                                contract["id"], 
-                                contract["icp"],
-                                contract["address"]
-                            )
+                            self._selected_contract = {
+                                "account_id": account_detail["id"],
+                                "contract_id": contract["id"],
+                                "icp": contract["icp"],
+                                "address": contract["address"]
+                            }
+                            return await self.async_step_progress()
                         else:
                             # Multiple contracts, show selection
                             return await self.async_step_contract()
@@ -91,7 +93,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({
                 vol.Required(CONF_EMAIL): cv.string,
                 vol.Required(CONF_PASSWORD): cv.string,
-                vol.Optional(CONF_USAGE_DAYS, default=30): vol.All(
+                vol.Required(CONF_USAGE_DAYS, default=30): vol.All(
                     cv.positive_int, vol.Range(min=1, max=100)
                 ),
             }),
@@ -131,12 +133,14 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 account_data = await api.get_accounts()
                 account_id = account_data["accountDetail"]["id"]
                 
-                return await self._create_entry(
-                    account_id,
-                    selected_contract["id"],
-                    selected_contract["icp"], 
-                    selected_contract["address"]
-                )
+                # Store selected contract info and show progress
+                self._selected_contract = {
+                    "account_id": account_id,
+                    "contract_id": selected_contract["id"],
+                    "icp": selected_contract["icp"],
+                    "address": selected_contract["address"]
+                }
+                return await self.async_step_progress()
             else:
                 errors["base"] = "invalid_contract"
 
@@ -152,6 +156,30 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("contract_id"): vol.In(contract_options),
             }),
             errors=errors,
+        )
+
+    async def async_step_progress(
+        self, user_input: Dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show progress message and create the entry."""
+        if user_input is not None:
+            # Form was submitted, create the entry
+            return await self._create_entry(
+                self._selected_contract["account_id"],
+                self._selected_contract["contract_id"],
+                self._selected_contract["icp"],
+                self._selected_contract["address"]
+            )
+        
+        # Show the progress message form
+        return self.async_show_form(
+            step_id="progress",
+            data_schema=vol.Schema({
+                vol.Optional("continue", default=True): bool,
+            }),
+            description_placeholders={
+                "progress_message": "Creating entity. Please wait while this completes. Be aware that Contact Energy can take 24-72 hours to display the most recent energy usage data. Also, it may take several hours before historical data is scraped and displayed in Home Assistant. This message will disappear when the integration is created."
+            }
         )
 
     async def _create_entry(self, account_id: str, contract_id: str, icp: str, address: str) -> FlowResult:
