@@ -4,9 +4,14 @@
 # Automated version bumping and release preparation
 # 
 # Usage:
-#   ./release.sh                           # Auto-increment patch version, auto-generate changelog
-#   ./release.sh 0.3.13                   # Use specific version, auto-generate changelog  
-#   ./release.sh 0.3.13 "Title" "Desc"    # Fully automated with version and changelog
+#   ./release.sh                                    # Auto-increment patch version, prompt for changelog
+#   ./release.sh 0.3.13                           # Use specific version, prompt for changelog  
+#   ./release.sh 0.3.13 "UI Improvements" "- Fixed form spacing\n- Updated labels"    # Fully automated with version and changelog
+#
+# Examples:
+#   ./release.sh 0.1.0 "Initial Release" "- First public release\n- Basic functionality"
+#   ./release.sh 0.1.1 "Bug Fixes" "- Fixed sensor errors\n- Improved config flow"
+#   ./release.sh 0.2.0 "New Features" "- Added statistics support\n- Energy dashboard integration"
 
 set -e
 
@@ -85,25 +90,52 @@ if [ "$AUTO_MODE" = false ]; then
     read -p "Title: " CHANGELOG_TITLE
     read -p "Description: " CHANGELOG_DESC
 elif [ -z "$CHANGELOG_TITLE" ]; then
-    # Auto mode but no changelog provided - generate automatically
-    echo -e "${YELLOW}Generating automatic changelog for v${NEW_VERSION}${NC}"
-    
-    # Get recent commits since last tag to auto-generate changelog
-    LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-    if [ -n "$LAST_TAG" ]; then
-        # Get commits since last tag
-        RECENT_COMMITS=$(git log --oneline "${LAST_TAG}..HEAD" --no-merges | head -5)
-        if [ -n "$RECENT_COMMITS" ]; then
-            CHANGELOG_TITLE="Version ${NEW_VERSION} - Bug fixes and improvements"
-            CHANGELOG_DESC="Recent changes:
-$(echo "$RECENT_COMMITS" | sed 's/^[a-f0-9]* /- /')"
-        else
-            CHANGELOG_TITLE="Version ${NEW_VERSION} - Minor update"
+    # Auto mode but no changelog provided - prompt for meaningful changelog
+    echo -e "${YELLOW}Generating changelog for v${NEW_VERSION}${NC}"
+    echo -e "${RED}Warning: Auto-generated changelogs are generic. Consider providing meaningful entries.${NC}"
+    echo -e "${YELLOW}Would you like to provide a custom changelog? (y/N):${NC}"
+    read -p "" -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
+        read -p "Title (e.g., 'Bug Fixes', 'New Features', 'UI Improvements'): " CHANGELOG_TITLE
+        echo -e "${YELLOW}Enter description (use '-' for bullet points, press Enter twice when done):${NC}"
+        CHANGELOG_DESC=""
+        while IFS= read -r line; do
+            if [ -z "$line" ] && [ -n "$CHANGELOG_DESC" ]; then
+                break
+            fi
+            if [ -n "$CHANGELOG_DESC" ]; then
+                CHANGELOG_DESC="$CHANGELOG_DESC"$'\n'"$line"
+            else
+                CHANGELOG_DESC="$line"
+            fi
+        done
+        
+        if [ -z "$CHANGELOG_TITLE" ]; then
+            CHANGELOG_TITLE="Version ${NEW_VERSION} - Update"
+        fi
+        if [ -z "$CHANGELOG_DESC" ]; then
             CHANGELOG_DESC="- Version bump and maintenance updates"
         fi
     else
-        CHANGELOG_TITLE="Version ${NEW_VERSION} - Initial release"
-        CHANGELOG_DESC="- First release of Contact Energy integration"
+        # Get recent commits since last tag to auto-generate changelog
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+            # Get commits since last tag
+            RECENT_COMMITS=$(git log --oneline "${LAST_TAG}..HEAD" --no-merges | head -5)
+            if [ -n "$RECENT_COMMITS" ]; then
+                CHANGELOG_TITLE="Version ${NEW_VERSION} - Bug fixes and improvements"
+                CHANGELOG_DESC="Recent changes:
+$(echo "$RECENT_COMMITS" | sed 's/^[a-f0-9]* /- /')"
+            else
+                CHANGELOG_TITLE="Version ${NEW_VERSION} - Minor update"
+                CHANGELOG_DESC="- Version bump and maintenance updates"
+            fi
+        else
+            CHANGELOG_TITLE="Version ${NEW_VERSION} - Initial release"
+            CHANGELOG_DESC="- First release of Contact Energy integration"
+        fi
     fi
     
     echo -e "${GREEN}Auto-generated changelog:${NC}"
@@ -112,6 +144,9 @@ $(echo "$RECENT_COMMITS" | sed 's/^[a-f0-9]* /- /')"
     echo "$CHANGELOG_DESC"
 else
     echo -e "${YELLOW}Using provided changelog for v${NEW_VERSION}${NC}"
+    echo -e "${YELLOW}Title:${NC} $CHANGELOG_TITLE"
+    echo -e "${YELLOW}Description:${NC}"
+    echo "$CHANGELOG_DESC"
 fi
 
 # Update CHANGELOG.md
