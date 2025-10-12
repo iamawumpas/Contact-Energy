@@ -33,29 +33,63 @@ class ContactEnergyApi:
 			headers["session"] = self._api_token
 		return headers
 
-	async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-		try:
-			async with async_timeout.timeout(30):
-				async with self._session.request(method, url, **kwargs) as resp:
-					_LOGGER.debug("%s %s -> %s", method, url, resp.status)
-					if resp.status == 200:
-						ct = resp.headers.get("content-type", "")
-						if "application/json" in ct:
-							return await resp.json()
-						return await resp.text()
-					if resp.status == 401:
-						raise InvalidAuth("Unauthorized (401)")
-					text = await resp.text()
-					raise CannotConnect(f"Unexpected status {resp.status}: {text}")
-		except asyncio.TimeoutError as e:
-			_LOGGER.error("Timeout calling %s: %s", url, e)
-			raise CannotConnect("Timeout") from e
-		except aiohttp.ClientError as e:
-			_LOGGER.error("Client error calling %s: %s", url, e)
-			raise CannotConnect("Client error") from e
-		except Exception as e:  # noqa: BLE001
-			_LOGGER.exception("Unexpected error calling %s: %s", url, e)
-			raise UnknownError("Unexpected error") from e
+		async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+			"""HTTP request with retry/backoff for 5xx and robust error mapping."""
+			max_retries = kwargs.pop("_retries", 2)
+			backoff = 1
+			attempt = 0
+			while True:
+				attempt += 1
+				try:
+					async with async_timeout.timeout(30):
+						async with self._session.request(method, url, **kwargs) as resp:
+							_LOGGER.debug("%s %s -> %s", method, url, resp.status)
+							if resp.status == 200:
+								ct = resp.headers.get("content-type", "")
+								if "application/json" in ct:
+									return await resp.json()
+								return await resp.text()
+							if resp.status == 401:
+								raise InvalidAuth("Unauthorized (401)")
+							text = await resp.text()
+							# Retry on server errors
+							if 500 <= resp.status <= 599 and attempt <= (max_retries + 1):
+								_LOGGER.warning(
+									"Server error %s on %s; retrying in %ss (attempt %s/%s)",
+									resp.status,
+									url,
+									backoff,
+									attempt,
+									max_retries + 1,
+								)
+								await asyncio.sleep(backoff)
+								backoff *= 2
+								continue
+							raise CannotConnect(f"Unexpected status {resp.status}: {text}")
+				except asyncio.TimeoutError as e:
+					_LOGGER.error("Timeout calling %s: %s", url, e)
+					if attempt <= (max_retries + 1):
+						await asyncio.sleep(backoff)
+						backoff *= 2
+						continue
+					raise CannotConnect("Timeout") from e
+				except aiohttp.ClientError as e:
+					_LOGGER.error("Client error calling %s: %s", url, e)
+					if attempt <= (max_retries + 1):
+						await asyncio.sleep(backoff)
+						backoff *= 2
+						continue
+					raise CannotConnect("Client error") from e
+				except InvalidAuth:
+					# Do not retry invalid auth
+					raise
+				except Exception as e:  # noqa: BLE001
+					_LOGGER.exception("Unexpected error calling %s: %s", url, e)
+					if attempt <= (max_retries + 1):
+						await asyncio.sleep(backoff)
+						backoff *= 2
+						continue
+					raise UnknownError("Unexpected error") from e
 
 	async def async_login(self) -> bool:
 		"""Login and store token."""
