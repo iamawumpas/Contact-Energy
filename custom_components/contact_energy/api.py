@@ -33,7 +33,7 @@ class ContactEnergyApi:
 			headers["session"] = self._api_token
 		return headers
 
-		async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+	async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
 			"""HTTP request with retry/backoff for 5xx and robust error mapping."""
 			max_retries = kwargs.pop("_retries", 2)
 			backoff = 1
