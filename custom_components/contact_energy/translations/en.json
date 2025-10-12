@@ -1,0 +1,23 @@
+{
+	"config": {
+		"step": {
+			"user": {
+				"title": "Connect to Contact Energy",
+				"description": "Enter your Contact Energy account details. Usage days determines how much historical data to fetch. Minimum is 1 day and maximum is 100 days.",
+				"data": {
+					"email": "Email address",
+					"password": "Password",
+					"usage_days": "Usage days (1–100)"
+				},
+				"data_description": {
+					"usage_days": "Slide from 1 day (left) to 100 days (right)."
+				}
+			}
+		},
+		"error": {
+			"invalid_auth": "Invalid email or password.",
+			"unknown": "Unexpected error occurred. Check logs for details."
+		},
+		"title": "Contact Energy"
+	}
+}
