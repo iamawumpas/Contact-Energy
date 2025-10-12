@@ -1,18 +1,49 @@
+# Changelog
+
 ## 0.0.3 (2025-10-12)
+
+Summary:
+- Config flow and validation UI improvements
+- API client updates (auth/validation, retries/backoff, error mapping)
+- Metadata updates (manifest/hacs, iot_class)
+- Documentation updates
 
 - Updated: CHANGELOG.md,README.md,custom_components/contact_energy/api.py,custom_components/contact_energy/config_flow.py,custom_components/contact_energy/manifest.json,hacs.json,
 
 Commit details:
 - Release 0.0.3 (d6aae04)
 
+
 ## 0.0.2 (2025-10-12)
+
+Summary:
+- Config flow and validation UI improvements
+- API client updates (auth/validation, retries/backoff, error mapping)
+- Integration setup/unload adjustments
+- Constants updated (domain/settings)
+- Metadata updates (manifest/hacs, iot_class)
+- Translations and UI strings updated
+- Documentation updates
 
 - Updated: CHANGELOG.md,README.md,custom_components/contact_energy/__init__.py,custom_components/contact_energy/api.py,custom_components/contact_energy/config_flow.py,custom_components/contact_energy/const.py,custom_components/contact_energy/manifest.json,custom_components/contact_energy/strings.json,custom_components/contact_energy/translations/en.json,hacs.json,
 
 Commit details:
 - Release 0.0.2 (eae721b)
 
+
 ## 0.0.1 (2025-10-12)
+
+Summary:
+- Config flow and validation UI improvements
+- API client updates (auth/validation, retries/backoff, error mapping)
+- Integration setup/unload adjustments
+- Constants updated (domain/settings)
+- Metadata updates (manifest/hacs, iot_class)
+- Translations and UI strings updated
+- Documentation updates
+- Sensor platform changes
+- DataUpdateCoordinator scaffolding/changes
+- Services definition updates
 
 - Added: CHANGELOG.md,README.md,custom_components/contact_energy/__init__.py,custom_components/contact_energy/api.py,custom_components/contact_energy/config_flow.py,custom_components/contact_energy/const.py,custom_components/contact_energy/coordinator.py,custom_components/contact_energy/manifest.json,custom_components/contact_energy/sensor.py,custom_components/contact_energy/services.yaml,custom_components/contact_energy/strings.json,custom_components/contact_energy/translations/en.json,hacs.json,
 
@@ -26,5 +57,4 @@ Commit details:
 - Release 0.0.1 (1d15ea2)
 - Initial commit (cef2939)
 
-# Changelog
 
