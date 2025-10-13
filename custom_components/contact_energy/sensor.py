@@ -236,36 +236,39 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             return
 
         # Main electricity consumption for Energy Dashboard
+        kwh_stat_id = f"sensor.contact_energy_{self._contract_icp}_energy".lower().replace("-", "_")
         kwh_metadata = StatisticMetaData(
             has_mean=False,
             has_sum=True,
             name=f"Contact Energy - Electricity ({self._contract_icp})",
             source=DOMAIN,
-            statistic_id=f"{DOMAIN}:energy_consumption_{self._contract_icp}",
+            statistic_id=kwh_stat_id,
             unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         )
         async_add_external_statistics(self.hass, kwh_metadata, kwh_stats)
 
         # Electricity cost
         if dollar_stats:
+            dollar_stat_id = f"sensor.contact_energy_{self._contract_icp}_cost".lower().replace("-", "_")
             dollar_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,
                 name=f"Contact Energy - Electricity Cost ({self._contract_icp})",
                 source=DOMAIN,
-                statistic_id=f"{DOMAIN}:energy_cost_{self._contract_icp}",
+                statistic_id=dollar_stat_id,
                 unit_of_measurement=currency,
             )
             async_add_external_statistics(self.hass, dollar_metadata, dollar_stats)
 
         # Free electricity (if any)
         if free_kwh_stats and any(stat.sum > 0 for stat in free_kwh_stats):
+            free_stat_id = f"sensor.contact_energy_{self._contract_icp}_free_energy".lower().replace("-", "_")
             free_kwh_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,
                 name=f"Contact Energy - Free Electricity ({self._contract_icp})",
                 source=DOMAIN,
-                statistic_id=f"{DOMAIN}:free_energy_consumption_{self._contract_icp}",
+                statistic_id=free_stat_id,
                 unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             )
             async_add_external_statistics(self.hass, free_kwh_metadata, free_kwh_stats)
