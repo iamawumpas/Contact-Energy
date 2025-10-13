@@ -242,7 +242,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             safe_icp = f"icp_{safe_icp}"
 
         # Main electricity consumption for Energy Dashboard
-        kwh_stat_id = f"sensor.contact_energy_{safe_icp}_energy"
+        kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
         kwh_metadata = StatisticMetaData(
             has_mean=False,
             has_sum=True,
@@ -255,7 +255,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Electricity cost
         if dollar_stats:
-            dollar_stat_id = f"sensor.contact_energy_{safe_icp}_cost"
+            dollar_stat_id = f"{DOMAIN}:cost_{safe_icp}"
             dollar_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,
@@ -268,7 +268,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Free electricity (if any)
         if free_kwh_stats and any(stat.sum > 0 for stat in free_kwh_stats):
-            free_stat_id = f"sensor.contact_energy_{safe_icp}_free_energy"
+            free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
             free_kwh_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,

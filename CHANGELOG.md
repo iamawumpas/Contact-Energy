@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.11
+
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.1.10
 
 
