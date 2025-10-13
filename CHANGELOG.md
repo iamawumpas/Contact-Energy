@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0 (2025-10-13)
+
+No relevant changes.
+
+
 ## 0.0.4 (2025-10-12)
 
 Summary:
