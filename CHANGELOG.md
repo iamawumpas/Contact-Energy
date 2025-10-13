@@ -42,7 +42,6 @@
 
 ## 0.1.2
 
--from .api import ContactEnergyApi, CannotConnect, InvalidAuth, UnknownError
 ### Changes
 
 • Fixed critical config flow registration bug (changed DOMAIN class attribute to domain)
@@ -141,12 +140,10 @@
 
 • Release 0.0.4 (b7ace34)
 • chore: rebuild changelog and release notes (4610db2)
-• chore: rebuild changelog and release notes (61cecc1)
 
 
 ## 0.0.3
 
--from .api import ContactEnergyApi
 ### Changes
 
 • Removed duplicate import statements in config flow
@@ -228,12 +225,6 @@
 ### Commits
 
 • Release 0.0.1 (3739439)
-• Release 0.0.1 (37c6cce)
-• Release 0.0.1 (b9646ef)
-• Release 0.0.1 (d5f8dd1)
-• Release 0.0.1 (9ca99a9)
-• Release 0.0.1 (769f621)
-• Release 0.0.1 (1d15ea2)
 • Initial commit (cef2939)
 
 
