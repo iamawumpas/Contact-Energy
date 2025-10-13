@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.2 (2025-10-13)
+
+Summary:
+- Documentation updates
+
+- Updated: CHANGELOG.md,
+
+Commit details:
+- chore: rebuild changelog and release notes (2825f9e)
+
+
 ## 0.1.1 (2025-10-13)
 
 Summary:

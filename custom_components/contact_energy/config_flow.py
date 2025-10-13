@@ -22,7 +22,6 @@ from .const import (
     USAGE_DAYS_MIN, 
     USAGE_DAYS_MAX
 )
-from .api import ContactEnergyApi, CannotConnect, InvalidAuth, UnknownError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
-    DOMAIN = DOMAIN
+    domain = DOMAIN
 
     def __init__(self) -> None:
         """Initialize config flow."""
