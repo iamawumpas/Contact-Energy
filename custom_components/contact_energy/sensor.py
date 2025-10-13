@@ -235,8 +235,11 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             _LOGGER.debug("No statistics to add")
             return
 
+
         import re
         safe_icp = re.sub(r'[^a-z0-9_]', '_', self._contract_icp.lower())
+        if re.match(r'^[0-9]', safe_icp):
+            safe_icp = f"icp_{safe_icp}"
 
         # Main electricity consumption for Energy Dashboard
         kwh_stat_id = f"sensor.contact_energy_{safe_icp}_energy"
