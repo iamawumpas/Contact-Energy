@@ -7,7 +7,6 @@ from typing import Any
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import selector as sel
@@ -44,68 +43,6 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 ),
         }
     )
-
-
-async def _validate_input(self) -> dict[str, Any]:
-		"""Validate account data and return info for entry creation."""
-		api = ContactEnergyApi(self.hass, self._email, self._password)
-
-		# Login and validate
-		try:
-			if not await api.async_login():
-				raise InvalidAuth("Invalid credentials")
-		except Exception as exc:
-			_LOGGER.exception("Validation failed with exception")
-			raise UnknownError("Connection failed") from exc
-
-		# Get account data to extract IDs and contracts
-		try:
-			account_data = await api._request(
-				"GET",
-				f"{api._url_base}/accounts/v2",
-				headers=api._headers(),
-			)
-			if not isinstance(account_data, dict) or not account_data.get("accountDetail"):
-				raise UnknownError("Unable to access account")
-			
-			# Extract account and contract information
-			account_summary = account_data.get("accountsSummary", [{}])[0]
-			account_detail = account_data.get("accountDetail", {})
-			
-			account_id = account_summary.get("id")
-			contracts = account_summary.get("contracts", [])
-			
-			if not account_id or not contracts:
-				raise UnknownError("No electricity contracts found")
-			
-			# Get first electricity contract
-			contract = contracts[0]
-			contract_id = contract.get("contractId")
-			premise_id = contract.get("premiseId")
-			
-			# Get ICP from detailed contract info
-			detail_contracts = account_detail.get("contracts", [])
-			icp = detail_contracts[0].get("icp") if detail_contracts else None
-			
-			if not contract_id or not icp:
-				raise UnknownError("Unable to extract contract information")
-			
-			_LOGGER.debug("Successfully validated account: account_id=%s, contract_id=%s, icp=%s", 
-						account_id, contract_id, icp)
-			
-			return {
-				"title": f"Contact Energy ({self._email})",
-				"account_id": account_id,
-				"contract_id": contract_id,
-				"contract_icp": icp,
-				"premise_id": premise_id,
-			}
-			
-		except InvalidAuth:
-			raise InvalidAuth("Invalid credentials")
-		except Exception as exc:
-			_LOGGER.exception("Account validation failed with exception")
-			raise CannotConnect("Unable to connect") from exc
 
 
 class ContactEnergyConfigFlow(config_entries.ConfigFlow):
@@ -167,4 +104,69 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow):
             data_schema=_user_schema(user_input),
             errors=errors,
         )
+
+    async def _validate_input(self) -> dict[str, Any]:
+        """Validate account data and return info for entry creation."""
+        api = ContactEnergyApi(self.hass, self._email, self._password)
+
+        # Login and validate
+        try:
+            if not await api.async_login():
+                raise InvalidAuth("Invalid credentials")
+        except Exception as exc:
+            _LOGGER.exception("Validation failed with exception")
+            raise UnknownError("Connection failed") from exc
+
+        # Get account data to extract IDs and contracts
+        try:
+            account_data = await api._request(
+                "GET",
+                f"{api._url_base}/accounts/v2",
+                headers=api._headers(),
+            )
+            if not isinstance(account_data, dict) or not account_data.get("accountDetail"):
+                raise UnknownError("Unable to access account")
+
+            # Extract account and contract information
+            account_summary = account_data.get("accountsSummary", [{}])[0]
+            account_detail = account_data.get("accountDetail", {})
+
+            account_id = account_summary.get("id")
+            contracts = account_summary.get("contracts", [])
+
+            if not account_id or not contracts:
+                raise UnknownError("No electricity contracts found")
+
+            # Get first electricity contract
+            contract = contracts[0]
+            contract_id = contract.get("contractId")
+            premise_id = contract.get("premiseId")
+
+            # Get ICP from detailed contract info
+            detail_contracts = account_detail.get("contracts", [])
+            icp = detail_contracts[0].get("icp") if detail_contracts else None
+
+            if not contract_id or not icp:
+                raise UnknownError("Unable to extract contract information")
+
+            _LOGGER.debug(
+                "Successfully validated account: account_id=%s, contract_id=%s, icp=%s",
+                account_id,
+                contract_id,
+                icp,
+            )
+
+            return {
+                "title": f"Contact Energy ({self._email})",
+                "account_id": account_id,
+                "contract_id": contract_id,
+                "contract_icp": icp,
+                "premise_id": premise_id,
+            }
+
+        except InvalidAuth:
+            raise InvalidAuth("Invalid credentials")
+        except Exception as exc:
+            _LOGGER.exception("Account validation failed with exception")
+            raise CannotConnect("Unable to connect") from exc
 
