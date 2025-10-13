@@ -2,7 +2,16 @@
 
 ## 0.1.0 (2025-10-13)
 
-No relevant changes.
+**Major milestone: Initial HACS-ready release**
+
+This version marks the completion of the core integration setup and is ready for installation via HACS. The integration now provides a complete config flow with robust error handling and API validation, though sensor/entity creation is planned for the next development phase.
+
+Key features in this release:
+- Complete HACS integration structure and metadata
+- Working config flow with email/password authentication and usage days selection
+- Robust API client with retry logic and comprehensive error mapping
+- User-friendly setup experience with proper translations
+- No sensor platforms yet (planned for 0.2.x series)
 
 
 ## 0.0.4 (2025-10-12)
