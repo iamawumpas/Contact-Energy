@@ -3,20 +3,26 @@
 		"step": {
 			"user": {
 				"title": "Connect to Contact Energy",
-				"description": "Enter your Contact Energy account details. Usage days determines how much historical data to fetch. Minimum is 1 day and maximum is 100 days.",
+				"description": "Configure your Contact Energy account to download usage data for the Energy Dashboard. The integration will poll for new data every 8 hours.",
 				"data": {
 					"email": "Email address",
 					"password": "Password",
 					"usage_days": "Usage days (1–100)"
 				},
 				"data_description": {
-					"usage_days": "Slide from 1 day (left) to 100 days (right)."
+					"email": "Your Contact Energy account email address",
+					"password": "Your Contact Energy account password", 
+					"usage_days": "Number of days of historical usage data to download. More days = longer initial setup time."
 				}
 			}
 		},
 		"error": {
-			"invalid_auth": "Invalid email or password.",
-			"unknown": "Unexpected error occurred. Check logs for details."
+			"invalid_auth": "Invalid email or password. Please check your Contact Energy credentials.",
+			"cannot_connect": "Unable to connect to Contact Energy servers. Please check your internet connection.",
+			"unknown": "An unexpected error occurred. Please try again."
+		},
+		"abort": {
+			"already_configured": "Contact Energy is already configured for this account."
 		},
 		"title": "Contact Energy"
 	}

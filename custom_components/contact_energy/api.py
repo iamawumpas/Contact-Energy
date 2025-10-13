@@ -136,6 +136,39 @@ class ContactEnergyApi:
 				return await self.async_validate_account()
 			return False
 
+	async def async_get_usage(self, year: str, month: str, day: str, account_id: str, contract_id: str) -> Any:
+		"""Get usage data for a specific date using the correct endpoint pattern."""
+		if not self._api_token:
+			ok = await self.async_login()
+			if not ok:
+				return None
+
+		date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+		url = f"{self._url_base}/usage/v2/{contract_id}?ba={account_id}&interval=hourly&from={date_str}&to={date_str}"
+		
+		_LOGGER.debug("Getting usage data for %s using correct endpoint", date_str)
+		
+		try:
+			data = await self._request(
+				"POST",
+				url,
+				headers=self._headers(),
+			)
+			if data:
+				_LOGGER.debug("Successfully fetched usage data for %s: %d data points", date_str, len(data) if isinstance(data, list) else 1)
+				return data
+			_LOGGER.debug("No usage data available for %s", date_str)
+			return None
+		except InvalidAuth:
+			_LOGGER.debug("Token expired during usage fetch, attempting to login again")
+			if await self.async_login():
+				# Retry the request with new token
+				return await self.async_get_usage(year, month, day, account_id, contract_id)
+			return None
+		except Exception as error:
+			_LOGGER.error("Failed to fetch usage data for %s: %s", date_str, error)
+			return None
+
 
 class InvalidAuth(Exception):
 	"""Invalid authentication error."""

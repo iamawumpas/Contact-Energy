@@ -12,7 +12,16 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import selector as sel
 
-from .const import DOMAIN, CONF_USAGE_DAYS, USAGE_DAYS_MIN, USAGE_DAYS_MAX
+from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
+from .const import (
+    DOMAIN, 
+    CONF_USAGE_DAYS, 
+    CONF_ACCOUNT_ID,
+    CONF_CONTRACT_ID,
+    CONF_CONTRACT_ICP,
+    USAGE_DAYS_MIN, 
+    USAGE_DAYS_MAX
+)
 from .api import ContactEnergyApi, CannotConnect, InvalidAuth, UnknownError
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,34 +47,106 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    _LOGGER.debug(
-        "Validating Contact Energy credentials for %s with %s days",
-        data.get(CONF_EMAIL),
-        data.get(CONF_USAGE_DAYS),
-    )
-    api = ContactEnergyApi(hass, data[CONF_EMAIL], data[CONF_PASSWORD])
-    ok = await api.async_validate_account()
-    if not ok:
-        raise ValueError("invalid_auth")
-    return {"title": f"Contact Energy ({data[CONF_EMAIL]})"}
+async def _validate_input(self) -> dict[str, Any]:
+		"""Validate account data and return info for entry creation."""
+		api = ContactEnergyApi(self.hass, self._email, self._password)
+
+		# Login and validate
+		try:
+			if not await api.async_login():
+				raise InvalidAuth("Invalid credentials")
+		except Exception as exc:
+			_LOGGER.exception("Validation failed with exception")
+			raise UnknownError("Connection failed") from exc
+
+		# Get account data to extract IDs and contracts
+		try:
+			account_data = await api._request(
+				"GET",
+				f"{api._url_base}/accounts/v2",
+				headers=api._headers(),
+			)
+			if not isinstance(account_data, dict) or not account_data.get("accountDetail"):
+				raise UnknownError("Unable to access account")
+			
+			# Extract account and contract information
+			account_summary = account_data.get("accountsSummary", [{}])[0]
+			account_detail = account_data.get("accountDetail", {})
+			
+			account_id = account_summary.get("id")
+			contracts = account_summary.get("contracts", [])
+			
+			if not account_id or not contracts:
+				raise UnknownError("No electricity contracts found")
+			
+			# Get first electricity contract
+			contract = contracts[0]
+			contract_id = contract.get("contractId")
+			premise_id = contract.get("premiseId")
+			
+			# Get ICP from detailed contract info
+			detail_contracts = account_detail.get("contracts", [])
+			icp = detail_contracts[0].get("icp") if detail_contracts else None
+			
+			if not contract_id or not icp:
+				raise UnknownError("Unable to extract contract information")
+			
+			_LOGGER.debug("Successfully validated account: account_id=%s, contract_id=%s, icp=%s", 
+						account_id, contract_id, icp)
+			
+			return {
+				"title": f"Contact Energy ({self._email})",
+				"account_id": account_id,
+				"contract_id": contract_id,
+				"contract_icp": icp,
+				"premise_id": premise_id,
+			}
+			
+		except InvalidAuth:
+			raise InvalidAuth("Invalid credentials")
+		except Exception as exc:
+			_LOGGER.exception("Account validation failed with exception")
+			raise CannotConnect("Unable to connect") from exc
 
 
-class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ContactEnergyConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
+    DOMAIN = DOMAIN
+
+    def __init__(self) -> None:
+        """Initialize config flow."""
+        self._email: str = ""
+        self._password: str = ""
+        self._usage_days: int = 30
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            # Store input for validation
+            self._email = user_input[CONF_EMAIL]
+            self._password = user_input[CONF_PASSWORD]
+            self._usage_days = user_input[CONF_USAGE_DAYS]
+
             try:
-                info = await _validate_input(self.hass, user_input)
+                info = await self._validate_input()
                 # Use email as unique id to prevent duplicates per account
                 await self.async_set_unique_id(user_input[CONF_EMAIL].lower())
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=user_input)
+                
+                # Create entry with all the extracted data
+                entry_data = {
+                    CONF_EMAIL: user_input[CONF_EMAIL],
+                    CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    CONF_USAGE_DAYS: user_input[CONF_USAGE_DAYS],
+                    CONF_ACCOUNT_ID: info["account_id"],
+                    CONF_CONTRACT_ID: info["contract_id"],
+                    CONF_CONTRACT_ICP: info["contract_icp"],
+                }
+                
+                return self.async_create_entry(title=info["title"], data=entry_data)
             except ValueError as e:
                 # Validation returned a known code string
                 if str(e) == "invalid_auth":

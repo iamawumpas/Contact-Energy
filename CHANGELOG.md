@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 (2025-10-13)
+
+Summary:
+- Documentation updates
+
+- Updated: CHANGELOG.md,
+
+Commit details:
+- docs: improve 0.1.0 changelog with milestone details (a6c2caa)
+
+
 ## 0.1.0 (2025-10-13)
 
 **Major milestone: Initial HACS-ready release**
