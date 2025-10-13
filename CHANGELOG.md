@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.7
+
+### Changes
+
+• Updated config flow validation schema and UI selectors
+
+### Modified Files:
+• custom_components/contact_energy/config_flow.py
+
+### Commits
+
+• fix(config_flow): add explicit handler registration decorator for HA discovery (71e7c63)
+
+
 ## 0.1.6
 
 ### Changes
