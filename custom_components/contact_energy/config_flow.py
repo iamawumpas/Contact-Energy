@@ -62,6 +62,7 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
+@config_entries.HANDLERS.register(DOMAIN)
 class ConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Contact Energy."""
 
