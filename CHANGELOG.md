@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+### Changes
+
+• version bump to 0.2.0
+• integration is now able to download energy usage data without errors and the Energy Dashboard can now display the energy usage and free energy usage
+
+
 ## 0.1.12
 
 
