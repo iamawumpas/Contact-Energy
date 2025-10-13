@@ -3,41 +3,51 @@
 ## 0.1.1 (2025-10-13)
 
 Summary:
+- Config flow and validation UI improvements
+- API client updates (auth/validation, retries/backoff, error mapping)
+- Integration setup/unload adjustments
+- Constants updated (domain/settings)
+- Metadata updates (manifest/hacs, iot_class)
+- Translations and UI strings updated
 - Documentation updates
+- Sensor platform changes
+- DataUpdateCoordinator scaffolding/changes
 
-- Updated: CHANGELOG.md,
+- Updated: CHANGELOG.md,README.md,custom_components/contact_energy/__init__.py,custom_components/contact_energy/api.py,custom_components/contact_energy/config_flow.py,custom_components/contact_energy/const.py,custom_components/contact_energy/coordinator.py,custom_components/contact_energy/manifest.json,custom_components/contact_energy/sensor.py,custom_components/contact_energy/strings.json,custom_components/contact_energy/translations/en.json,hacs.json,
 
 Commit details:
+- Release 0.1.1 (2e974b5)
 - docs: improve 0.1.0 changelog with milestone details (a6c2caa)
 
 
 ## 0.1.0 (2025-10-13)
 
-**Major milestone: Initial HACS-ready release**
-
-This version marks the completion of the core integration setup and is ready for installation via HACS. The integration now provides a complete config flow with robust error handling and API validation, though sensor/entity creation is planned for the next development phase.
-
-Key features in this release:
-- Complete HACS integration structure and metadata
-- Working config flow with email/password authentication and usage days selection
-- Robust API client with retry logic and comprehensive error mapping
-- User-friendly setup experience with proper translations
-- No sensor platforms yet (planned for 0.2.x series)
-
-
-## 0.0.4 (2025-10-12)
-
 Summary:
+- Metadata updates (manifest/hacs, iot_class)
 - Documentation updates
 
-- Updated: CHANGELOG.md,
+- Updated: CHANGELOG.md,README.md,custom_components/contact_energy/manifest.json,hacs.json,
 
 Commit details:
+- Release 0.1.0 (ffa2ee3)
+
+
+## 0.0.4 (2025-10-13)
+
+Summary:
+- API client updates (auth/validation, retries/backoff, error mapping)
+- Metadata updates (manifest/hacs, iot_class)
+- Documentation updates
+
+- Updated: CHANGELOG.md,README.md,custom_components/contact_energy/api.py,custom_components/contact_energy/manifest.json,hacs.json,
+
+Commit details:
+- Release 0.0.4 (b7ace34)
 - chore: rebuild changelog and release notes (4610db2)
 - chore: rebuild changelog and release notes (61cecc1)
 
 
-## 0.0.3 (2025-10-12)
+## 0.0.3 (2025-10-13)
 
 Summary:
 - Config flow and validation UI improvements
@@ -51,7 +61,7 @@ Commit details:
 - Release 0.0.3 (d6aae04)
 
 
-## 0.0.2 (2025-10-12)
+## 0.0.2 (2025-10-13)
 
 Summary:
 - Config flow and validation UI improvements
@@ -68,7 +78,7 @@ Commit details:
 - Release 0.0.2 (eae721b)
 
 
-## 0.0.1 (2025-10-12)
+## 0.0.1 (2025-10-13)
 
 Summary:
 - Config flow and validation UI improvements
