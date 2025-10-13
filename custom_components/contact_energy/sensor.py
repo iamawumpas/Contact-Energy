@@ -213,7 +213,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 await asyncio.sleep(0.5)
 
             # Update Home Assistant statistics
-            await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
+            await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency, free_kwh_running_sum)
             
             # Update sensor state to latest total
             self._state = kwh_running_sum
@@ -228,7 +228,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         kwh_stats: list, 
         dollar_stats: list, 
         free_kwh_stats: list, 
-        currency: str
+        currency: str,
+        free_kwh_total: float = 0
     ) -> None:
         """Add statistics to Home Assistant."""
         if not kwh_stats:
@@ -266,8 +267,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             )
             async_add_external_statistics(self.hass, dollar_metadata, dollar_stats)
 
-        # Free electricity (if any)
-        if free_kwh_stats and any(stat.sum > 0 for stat in free_kwh_stats):
+        # Free electricity (if any) - only add if we have meaningful data
+        if free_kwh_stats and free_kwh_total > 0:
             free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
             free_kwh_metadata = StatisticMetaData(
                 has_mean=False,
