@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.5
+
+### Changes
+
+• Updated config flow validation schema and UI selectors
+• Enhanced error handling and user-friendly error messages
+
+### Modified Files:
+• custom_components/contact_energy/config_flow.py
+
+### Commits
+
+• fix(config_flow): register handler correctly and move validation into class; set domain attribute (1fc037d)
+
+
 ## 0.1.4
 
 ### Changes
