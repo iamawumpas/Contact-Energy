@@ -9,7 +9,13 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.helpers import selector as sel
+
+try:
+    from homeassistant.helpers import selector as sel
+    USE_SELECTOR = True
+except Exception:
+    sel = None
+    USE_SELECTOR = False
 
 from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
 from .const import (
@@ -27,25 +33,32 @@ _LOGGER = logging.getLogger(__name__)
 
 def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     defaults = defaults or {}
+    
+    if USE_SELECTOR:
+        usage_days_field = sel.NumberSelector(
+            sel.NumberSelectorConfig(
+                min=USAGE_DAYS_MIN,
+                max=USAGE_DAYS_MAX,
+                step=1,
+                mode=sel.NumberSelectorMode.SLIDER,
+            )
+        )
+    else:
+        usage_days_field = vol.All(
+            cv.positive_int, 
+            vol.Range(min=USAGE_DAYS_MIN, max=USAGE_DAYS_MAX)
+        )
+    
     return vol.Schema(
         {
             vol.Required(CONF_EMAIL, default=defaults.get(CONF_EMAIL, "")): cv.string,
             vol.Required(CONF_PASSWORD, default=defaults.get(CONF_PASSWORD, "")): cv.string,
-            # Slider selector for usage days 1-100
-            vol.Required(CONF_USAGE_DAYS, default=defaults.get(CONF_USAGE_DAYS, 10)):
-                sel.NumberSelector(
-                    sel.NumberSelectorConfig(
-                        min=USAGE_DAYS_MIN,
-                        max=USAGE_DAYS_MAX,
-                        step=1,
-                        mode=sel.NumberSelectorMode.SLIDER,
-                    )
-                ),
+            vol.Required(CONF_USAGE_DAYS, default=defaults.get(CONF_USAGE_DAYS, 10)): usage_days_field,
         }
     )
 
 
-class ContactEnergyConfigFlow(config_entries.ConfigFlow):
+class ConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
@@ -169,4 +182,8 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow):
         except Exception as exc:
             _LOGGER.exception("Account validation failed with exception")
             raise CannotConnect("Unable to connect") from exc
+
+
+# Backwards compatibility alias
+ContactEnergyConfigFlow = ConfigFlow
 
