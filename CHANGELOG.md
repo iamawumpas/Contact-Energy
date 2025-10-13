@@ -3,11 +3,14 @@
 ## 0.1.2 (2025-10-13)
 
 Summary:
+- Config flow and validation UI improvements
+- Metadata updates (manifest/hacs, iot_class)
 - Documentation updates
 
-- Updated: CHANGELOG.md,
+- Updated: CHANGELOG.md,README.md,custom_components/contact_energy/config_flow.py,custom_components/contact_energy/manifest.json,hacs.json,
 
 Commit details:
+- Release 0.1.2 (80a5e4e)
 - chore: rebuild changelog and release notes (2825f9e)
 
 
