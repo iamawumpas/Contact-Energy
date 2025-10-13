@@ -15,3 +15,4 @@ USAGE_DAYS_MAX = 100
 
 # Default scan interval - 8 hours as requested
 DEFAULT_SCAN_INTERVAL = 28800  # 8 hours in seconds
+# Test comment
