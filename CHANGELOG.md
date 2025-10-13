@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.6
+
+### Changes
+
+• Updated config flow validation schema and UI selectors
+• Enhanced error handling and user-friendly error messages
+
+### Modified Files:
+• custom_components/contact_energy/config_flow.py
+
+### Commits
+
+• debug: add logging to trace config flow module loading (aab8572)
+• fix(config_flow): use canonical ConfigFlow class name and add selector compatibility fallback (bd2545d)
+
+
 ## 0.1.5
 
 ### Changes
