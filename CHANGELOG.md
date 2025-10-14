@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.3
+
+### Changes
+
+Fixed sensor data access issues that were causing "Unknown" values and implemented smart jitter for multiple accounts.
+
+Key improvements:
+• Fixed coordinator data structure mismatch - sensors were looking for 'account_details' but coordinator returned 'account_data'
+• Properly extract 'accountDetail' from Contact Energy API response structure
+• Added comprehensive debug logging to diagnose sensor data access issues
+• Implemented ICP-hash-based jitter system to spread API calls across multiple contracts/accounts
+• Usage sensors: 0-3 second base delay + 0.5-2 second random jitter based on contract ICP
+• Convenience sensors: 0-2 second base delay + 0.1-1.5 second random jitter based on contract ICP
+• Enhanced missing-days-only download logic with proper cumulative sum continuation from last statistics
+• Improved error handling and logging throughout sensor platform
+
+This release should resolve the widespread "Unknown" sensor values and provide better performance for users with multiple Contact Energy contracts.
+
+
 ## 0.2.2
 
 ### Changes

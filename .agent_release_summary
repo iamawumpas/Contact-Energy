@@ -1,7 +1,15 @@
 ### Changes
 
-• Patch release 0.2.1 correcting versioning and introducing additional sensors incrementally.
-• Added account info sensors: balance, customer name, account number, service address, plan name, next bill date, estimated next bill, meter serial, next/last read dates, rate info (daily charge, peak/off-peak, free hours), and last payment details.
-• Added convenience usage/cost sensors: today, yesterday, last 7/30 days, current/last month, and free usage (today/yesterday).
-• Enhanced API and coordinator to fetch detailed account data; Energy Dashboard statistics unaffected.
-• No breaking changes; 8-hour refresh interval maintained.
+Fixed sensor data access issues that were causing "Unknown" values and implemented smart jitter for multiple accounts.
+
+Key improvements:
+• Fixed coordinator data structure mismatch - sensors were looking for 'account_details' but coordinator returned 'account_data'
+• Properly extract 'accountDetail' from Contact Energy API response structure
+• Added comprehensive debug logging to diagnose sensor data access issues
+• Implemented ICP-hash-based jitter system to spread API calls across multiple contracts/accounts
+• Usage sensors: 0-3 second base delay + 0.5-2 second random jitter based on contract ICP
+• Convenience sensors: 0-2 second base delay + 0.1-1.5 second random jitter based on contract ICP
+• Enhanced missing-days-only download logic with proper cumulative sum continuation from last statistics
+• Improved error handling and logging throughout sensor platform
+
+This release should resolve the widespread "Unknown" sensor values and provide better performance for users with multiple Contact Energy contracts.

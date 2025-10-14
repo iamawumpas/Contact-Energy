@@ -62,10 +62,15 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("Failed to fetch account data")
 
             _LOGGER.debug("Successfully fetched account data")
+            _LOGGER.debug("Account data keys: %s", list(account_data.keys()) if isinstance(account_data, dict) else "Not a dict")
             
-            # Return data structure for coordinator
+            # Extract accountDetail from response (API returns {'accountDetail': {...}})
+            account_details = account_data.get("accountDetail", {})
+            _LOGGER.debug("Account details keys: %s", list(account_details.keys()) if isinstance(account_details, dict) else "Not a dict")
+            
+            # Return data structure for coordinator (match what sensors expect)
             return {
-                "account_data": account_data,
+                "account_details": account_details,
                 "last_update": datetime.now(),
                 "account_id": self.account_id,
                 "contract_id": self.contract_id,

@@ -16,8 +16,9 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics
+from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics
 from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
+import random
 
 from .const import DOMAIN, CONF_ACCOUNT_ID, CONF_CONTRACT_ID, CONF_CONTRACT_ICP, CONF_USAGE_DAYS
 from .coordinator import ContactEnergyCoordinator
@@ -144,15 +145,25 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         await super().async_added_to_hass()
 
         async def _kickoff_download(_event=None) -> None:
-            _LOGGER.info("Starting initial usage data download for %s days", self._usage_days)
+            # Add randomized jitter based on contract ICP to spread out multiple accounts/contracts
+            # Use hash of ICP to generate consistent but distributed delays
+            import hashlib
+            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
+            base_delay = (icp_hash % 30) / 10.0  # 0-3 seconds based on ICP
+            jitter = random.uniform(0.5, 2.0)  # Additional random jitter
+            total_delay = base_delay + jitter
+            
+            try:
+                await asyncio.sleep(total_delay)
+            except Exception:  # noqa: BLE001
+                pass
+            _LOGGER.info("Starting initial usage data download for %s (delay: %.1fs)", self._contract_icp, total_delay)
             self._download_task = self.hass.async_create_task(self._download_usage_data())
 
-        # Defer heavy work until HA has fully started to avoid blocking bootstrap
         if getattr(self.hass, "is_running", False):
             await _kickoff_download()
         else:
             self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _kickoff_download)
-
     async def async_will_remove_from_hass(self) -> None:
         """Called when entity is about to be removed from Home Assistant."""
         if self._download_task and not self._download_task.done():
@@ -180,22 +191,70 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
     async def _download_usage_data(self) -> None:
         """Download usage data and update Home Assistant statistics."""
         try:
-            _LOGGER.info("Starting usage data download for %s days", self._usage_days)
-            
-            # Calculate date range
+            _LOGGER.info("Starting usage data download for up to %s days (missing only)", self._usage_days)
+
+            # Calculate default date range
             today = datetime.now().date()
             start_date = today - timedelta(days=self._usage_days - 1)
             end_date = today
-            
+
+            # Build statistic IDs and determine last recorded entries
+            import re as _re
+            safe_icp = _re.sub(r'[^a-z0-9_]', '_', self._contract_icp.lower())
+            if _re.match(r'^[0-9]', safe_icp):
+                safe_icp = f"icp_{safe_icp}"
+            kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
+            dollar_stat_id = f"{DOMAIN}:cost_{safe_icp}"
+            free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
+
+            base_kwh_sum = 0.0
+            base_dollar_sum = 0.0
+            base_free_sum = 0.0
+
+            try:
+                # get_last_statistics is synchronous; run in executor
+                last_stats = await self.hass.async_add_executor_job(
+                    get_last_statistics, self.hass, 1, [kwh_stat_id, dollar_stat_id, free_stat_id]
+                )
+                # Determine the next start date from kWh series (canonical)
+                if isinstance(last_stats, dict) and kwh_stat_id in last_stats and last_stats[kwh_stat_id]:
+                    last_entry = last_stats[kwh_stat_id][0]
+                    last_start = last_entry.get("start")
+                    if isinstance(last_start, datetime):
+                        candidate = last_start.date() + timedelta(days=1)
+                        if candidate > start_date:
+                            start_date = candidate
+                    try:
+                        base_kwh_sum = float(last_entry.get("sum") or 0.0)
+                    except (TypeError, ValueError):
+                        base_kwh_sum = 0.0
+                if isinstance(last_stats, dict) and dollar_stat_id in last_stats and last_stats[dollar_stat_id]:
+                    try:
+                        base_dollar_sum = float(last_stats[dollar_stat_id][0].get("sum") or 0.0)
+                    except (TypeError, ValueError):
+                        base_dollar_sum = 0.0
+                if isinstance(last_stats, dict) and free_stat_id in last_stats and last_stats[free_stat_id]:
+                    try:
+                        base_free_sum = float(last_stats[free_stat_id][0].get("sum") or 0.0)
+                    except (TypeError, ValueError):
+                        base_free_sum = 0.0
+            except Exception as e:  # noqa: BLE001
+                _LOGGER.debug("Could not determine last statistics entries: %s", e)
+
+            # If nothing to do (already up to date), exit early
+            if start_date > end_date:
+                _LOGGER.info("Statistics already up to date through %s; no download needed", end_date)
+                return
+
             # Initialize statistics lists
             kwh_statistics = []
             dollar_statistics = []
             free_kwh_statistics = []
             
             # Running totals for cumulative statistics
-            kwh_running_sum = 0
-            dollar_running_sum = 0
-            free_kwh_running_sum = 0
+            kwh_running_sum = base_kwh_sum
+            dollar_running_sum = base_dollar_sum
+            free_kwh_running_sum = base_free_sum
             currency = 'NZD'
             
             # Download data day by day
@@ -253,7 +312,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 # Small delay between requests to be nice to the API
                 await asyncio.sleep(0.5)
 
-            # Update Home Assistant statistics
+            # Update Home Assistant statistics for missing period
             await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency, free_kwh_running_sum)
             
             # Update sensor state to latest total
@@ -358,13 +417,25 @@ class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
 
     def _get_account_data(self) -> dict[str, Any]:
         data = getattr(self.coordinator, "data", None) or {}
-        return data.get("account_details", {}) if isinstance(data, dict) else {}
+        account_details = data.get("account_details", {}) if isinstance(data, dict) else {}
+        if not account_details:
+            _LOGGER.debug("No account_details found in coordinator data for %s. Data keys: %s", 
+                         self._contract_icp, list(data.keys()) if isinstance(data, dict) else "Not a dict")
+        return account_details
 
     def _get_contract_data(self) -> dict[str, Any]:
         account = self._get_account_data()
-        for c in account.get("contracts", []) or []:
-            if c.get("icp") == self._contract_icp:
+        contracts = account.get("contracts", []) or []
+        _LOGGER.debug("Found %d contracts in account data for %s", len(contracts), self._contract_icp)
+        
+        for c in contracts:
+            contract_icp = c.get("icp")
+            _LOGGER.debug("Checking contract with ICP: %s (looking for %s)", contract_icp, self._contract_icp)
+            if contract_icp == self._contract_icp:
+                _LOGGER.debug("Found matching contract for %s with keys: %s", self._contract_icp, list(c.keys()))
                 return c
+        
+        _LOGGER.debug("No matching contract found for ICP %s", self._contract_icp)
         return {}
 
 
@@ -379,10 +450,14 @@ class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> float | None:
-        bal = self._get_account_data().get("accountBalance")
+        account_data = self._get_account_data()
+        bal = account_data.get("accountBalance")
+        _LOGGER.debug("Account balance sensor for %s: raw value=%s, account_data_keys=%s", 
+                     self._contract_icp, bal, list(account_data.keys()) if account_data else "No data")
         try:
             return float(bal) if bal is not None else None
         except (ValueError, TypeError):
+            _LOGGER.debug("Failed to convert account balance to float: %s", bal)
             return None
 
 
@@ -408,7 +483,10 @@ class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_account_data().get("customerName")
+        account_data = self._get_account_data()
+        name = account_data.get("customerName")
+        _LOGGER.debug("Customer name sensor for %s: value=%s", self._contract_icp, name)
+        return name
 
 
 class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
@@ -643,8 +721,20 @@ class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        # initial compute after HA start
-        self.hass.async_create_task(self._recompute())
+        # initial compute after HA start (with ICP-based jitter to spread API calls across accounts)
+        async def _delayed_recompute():
+            import hashlib
+            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
+            base_delay = (icp_hash % 20) / 10.0  # 0-2 seconds based on ICP
+            jitter = random.uniform(0.1, 1.5)  # Additional random jitter
+            total_delay = base_delay + jitter
+            
+            try:
+                await asyncio.sleep(total_delay)
+            except Exception:  # noqa: BLE001
+                pass
+            await self._recompute()
+        self.hass.async_create_task(_delayed_recompute())
 
     async def _recompute(self) -> None:
         start, end = self._date_range()
