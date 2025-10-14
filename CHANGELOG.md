@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+## Version 0.3.0
+
+### Changes
+
+• Account information sensors now contain data formatted correctly
+• Convenience sensors implemented with proper data formatting
+• Fixed data presentation and formatting issues in sensor entities
+• Enhanced account details display for better user experience
+
+### Reason for Release
+
+Account information sensors, and convenience sensors now contain data formatted correctly.
+
+
 ## 0.2.8
 
 ### Changes
