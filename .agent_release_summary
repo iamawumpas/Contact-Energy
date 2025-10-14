@@ -1,15 +1,13 @@
 ### Changes
 
-Fixed sensor data access issues that were causing "Unknown" values and implemented smart jitter for multiple accounts.
+Critical bug fixes for duplicate entities and API timeout handling.
 
-Key improvements:
-• Fixed coordinator data structure mismatch - sensors were looking for 'account_details' but coordinator returned 'account_data'
-• Properly extract 'accountDetail' from Contact Energy API response structure
-• Added comprehensive debug logging to diagnose sensor data access issues
-• Implemented ICP-hash-based jitter system to spread API calls across multiple contracts/accounts
-• Usage sensors: 0-3 second base delay + 0.5-2 second random jitter based on contract ICP
-• Convenience sensors: 0-2 second base delay + 0.1-1.5 second random jitter based on contract ICP
-• Enhanced missing-days-only download logic with proper cumulative sum continuation from last statistics
-• Improved error handling and logging throughout sensor platform
+Urgent fixes:
+• Fixed critical duplicate entity registration bug causing "cannot be added a second time" errors during integration setup
+• Consolidated entity registration into single async_add_entities call to prevent conflicts
+• Increased API timeout from 30s to 60s for usage data requests to handle slow Contact Energy servers
+• Enhanced error handling for API timeouts and 504 Gateway Timeout errors with better logging
+• Added graceful degradation - continue processing even if some days fail to download
+• Improved statistics handling to save partial data when some API calls timeout
 
-This release should resolve the widespread "Unknown" sensor values and provide better performance for users with multiple Contact Energy contracts.
+This release resolves the integration setup failures and provides better resilience against Contact Energy's API performance issues.

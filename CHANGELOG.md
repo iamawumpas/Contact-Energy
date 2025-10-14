@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.4
+
+### Changes
+
+Critical bug fixes for duplicate entities and API timeout handling.
+
+Urgent fixes:
+• Fixed critical duplicate entity registration bug causing "cannot be added a second time" errors during integration setup
+• Consolidated entity registration into single async_add_entities call to prevent conflicts
+• Increased API timeout from 30s to 60s for usage data requests to handle slow Contact Energy servers
+• Enhanced error handling for API timeouts and 504 Gateway Timeout errors with better logging
+• Added graceful degradation - continue processing even if some days fail to download
+• Improved statistics handling to save partial data when some API calls timeout
+
+This release resolves the integration setup failures and provides better resilience against Contact Energy's API performance issues.
+
+
 ## 0.2.3
 
 ### Changes

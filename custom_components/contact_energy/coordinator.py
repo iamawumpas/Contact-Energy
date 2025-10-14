@@ -52,11 +52,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
 
             # Fetch account data (for billing, balance, etc.)
             async with self._account_lock:
-                account_data = await self.api._request(
-                    "GET",
-                    f"{self.api._url_base}/accounts/v2",
-                    headers=self.api._headers(),
-                )
+                account_data = await self.api.async_get_account_details()
                 
             if not account_data or not isinstance(account_data, dict):
                 raise UpdateFailed("Failed to fetch account data")
@@ -64,9 +60,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Successfully fetched account data")
             _LOGGER.debug("Account data keys: %s", list(account_data.keys()) if isinstance(account_data, dict) else "Not a dict")
             
+            # Log full structure for debugging
+            _LOGGER.info("Full account data structure for debugging: %s", account_data)
+            
             # Extract accountDetail from response (API returns {'accountDetail': {...}})
             account_details = account_data.get("accountDetail", {})
             _LOGGER.debug("Account details keys: %s", list(account_details.keys()) if isinstance(account_details, dict) else "Not a dict")
+            
+            # If accountDetail is empty, maybe the structure is different
+            if not account_details:
+                _LOGGER.warning("No 'accountDetail' found in API response. Full response: %s", account_data)
             
             # Return data structure for coordinator (match what sensors expect)
             return {

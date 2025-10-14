@@ -68,10 +68,8 @@ async def async_setup_entry(
         ContactEnergyEstimatedNextBillSensor(coordinator, contract_icp),
     ])
 
-    async_add_entities(entities, False)
-
-    # Convenience usage/cost sensors
-    entities.extend([
+    # Add convenience usage/cost sensors
+    convenience_entities = [
         ContactEnergyTodayUsageSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyYesterdayUsageSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyLast7DaysUsageSensor(coordinator, account_id, contract_id, contract_icp),
@@ -84,9 +82,11 @@ async def async_setup_entry(
         ContactEnergyLastMonthCostSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyTodayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyYesterdayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
-    ])
+    ]
 
-    async_add_entities(entities, False)
+    # Register all entities in a single call
+    all_entities = entities + convenience_entities
+    async_add_entities(all_entities, False)
 
 
 class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
@@ -304,7 +304,14 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                         _LOGGER.debug("No data available for %s", date_str)
 
                 except Exception as error:
-                    _LOGGER.warning("Failed to fetch data for %s: %s", current_date.strftime("%Y-%m-%d"), error)
+                    error_type = type(error).__name__
+                    if "timeout" in str(error).lower() or "504" in str(error):
+                        _LOGGER.warning("API timeout for %s - Contact Energy servers may be slow: %s", 
+                                      current_date.strftime("%Y-%m-%d"), error)
+                    else:
+                        _LOGGER.warning("Failed to fetch data for %s (%s): %s", 
+                                      current_date.strftime("%Y-%m-%d"), error_type, error)
+                    # Continue with next date even if this one failed
 
                 # Move to next date
                 current_date += timedelta(days=1)
@@ -312,13 +319,16 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 # Small delay between requests to be nice to the API
                 await asyncio.sleep(0.5)
 
-            # Update Home Assistant statistics for missing period
-            await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency, free_kwh_running_sum)
+            # Update Home Assistant statistics for missing period (even if partial)
+            if kwh_statistics:
+                await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency, free_kwh_running_sum)
+                _LOGGER.info("Usage data download completed. Added %d statistics entries, Total kWh: %.2f", 
+                           len(kwh_statistics), kwh_running_sum)
+            else:
+                _LOGGER.warning("No usage data retrieved - all API requests may have failed")
             
             # Update sensor state to latest total
             self._state = kwh_running_sum
-            
-            _LOGGER.info("Usage data download completed. Total kWh: %.2f", kwh_running_sum)
 
         except Exception as error:
             _LOGGER.exception("Usage data download failed: %s", error)
@@ -419,8 +429,11 @@ class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
         data = getattr(self.coordinator, "data", None) or {}
         account_details = data.get("account_details", {}) if isinstance(data, dict) else {}
         if not account_details:
-            _LOGGER.debug("No account_details found in coordinator data for %s. Data keys: %s", 
-                         self._contract_icp, list(data.keys()) if isinstance(data, dict) else "Not a dict")
+            _LOGGER.warning("No account_details found in coordinator data for %s. Coordinator data keys: %s", 
+                           self._contract_icp, list(data.keys()) if isinstance(data, dict) else "Not a dict")
+            _LOGGER.warning("Full coordinator data for %s: %s", self._contract_icp, data)
+        else:
+            _LOGGER.debug("Found account_details for %s with keys: %s", self._contract_icp, list(account_details.keys()))
         return account_details
 
     def _get_contract_data(self) -> dict[str, Any]:

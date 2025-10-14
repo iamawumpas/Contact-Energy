@@ -41,7 +41,9 @@ class ContactEnergyApi:
 			while True:
 				attempt += 1
 				try:
-					async with async_timeout.timeout(30):
+					# Use longer timeout for usage requests which can be slow
+					timeout_duration = 60 if "/usage/" in url else 30
+					async with async_timeout.timeout(timeout_duration):
 						async with self._session.request(method, url, **kwargs) as resp:
 							_LOGGER.debug("%s %s -> %s", method, url, resp.status)
 							if resp.status == 200:
@@ -167,6 +169,31 @@ class ContactEnergyApi:
 			return None
 		except Exception as error:
 			_LOGGER.error("Failed to fetch usage data for %s: %s", date_str, error)
+			return None
+
+	async def async_get_account_details(self) -> Any:
+		"""Get account details from the accounts/v2 endpoint."""
+		if not self._api_token:
+			ok = await self.async_login()
+			if not ok:
+				return None
+
+		try:
+			data = await self._request(
+				"GET",
+				f"{self._url_base}/accounts/v2",
+				headers=self._headers(),
+			)
+			_LOGGER.warning("Account details API response for debugging: %s", data)
+			return data
+		except InvalidAuth:
+			_LOGGER.debug("Token expired during account fetch, attempting to login again")
+			if await self.async_login():
+				# Retry the request with new token
+				return await self.async_get_account_details()
+			return None
+		except Exception as error:
+			_LOGGER.error("Failed to fetch account details: %s", error)
 			return None
 
 
