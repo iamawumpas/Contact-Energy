@@ -1,19 +1,13 @@
 ### Changes
 
-Fixed sensor data access by mapping to correct Contact Energy API response structure.
+Critical hotfix for coordinator data flow issue preventing sensors from receiving API data.
 
-Critical fixes:
-• Fixed coordinator data flow - sensors were receiving empty data despite successful API calls
-• Mapped all sensors to correct Contact Energy API response fields based on actual API structure
-• Account Balance: accountDetail.accountBalance.currentBalance  
-• Customer Name: accountDetail.nickname
-• Account Number: accountDetail.id
-• Service Address: contracts[].premise.supplyAddress.shortForm
-• Meter Serial: contracts[].devices[0].serialNumber
-• Next Read Date: contracts[].devices[0].nextMeterReadDate
-• Last Read Date: contracts[].devices[0].registers[0].previousMeterReadingDate
-• Next Bill: accountDetail.nextBill.amount and .date
-• Last Payment: accountDetail.payments[0].amount (with $ parsing)
-• Enhanced debugging and error handling throughout data access paths
+Urgent coordinator fixes:
+• Enhanced coordinator debugging to track data flow from API to sensors
+• Fixed coordinator exception handling that was silently failing and returning empty data
+• Changed datetime.now() to datetime.utcnow() to avoid potential timezone issues
+• Added comprehensive error logging throughout coordinator execution path
+• Made coordinator more robust by continuing even if account details are missing
+• Elevated debug messages to warnings/errors for better visibility during troubleshooting
 
-This release should resolve the "Unknown" values in account information sensors by properly accessing the Contact Energy API response structure.
+This hotfix addresses the core issue where API calls succeed but sensors receive empty coordinator data, causing persistent "Unknown" values despite successful API responses.

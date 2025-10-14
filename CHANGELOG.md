@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.6
+
+### Changes
+
+Critical hotfix for coordinator data flow issue preventing sensors from receiving API data.
+
+Urgent coordinator fixes:
+• Enhanced coordinator debugging to track data flow from API to sensors
+• Fixed coordinator exception handling that was silently failing and returning empty data
+• Changed datetime.now() to datetime.utcnow() to avoid potential timezone issues
+• Added comprehensive error logging throughout coordinator execution path
+• Made coordinator more robust by continuing even if account details are missing
+• Elevated debug messages to warnings/errors for better visibility during troubleshooting
+
+This hotfix addresses the core issue where API calls succeed but sensors receive empty coordinator data, causing persistent "Unknown" values despite successful API responses.
+
+
 ## 0.2.5
 
 ### Changes
