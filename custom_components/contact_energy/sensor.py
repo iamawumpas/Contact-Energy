@@ -490,7 +490,17 @@ class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
         account_data = self._get_account_data()
         # API structure: accountDetail.nextBill.date
         next_bill = account_data.get("nextBill", {})
-        return next_bill.get("date")
+        date_str = next_bill.get("date")
+        if date_str:
+            try:
+                # Convert "20 Oct 2025" to "2025-10-20" format for HA
+                from datetime import datetime
+                parsed_date = datetime.strptime(date_str, "%d %b %Y")
+                return parsed_date.strftime("%Y-%m-%d")
+            except (ValueError, TypeError):
+                _LOGGER.warning("Could not parse next bill date: %s", date_str)
+                return None
+        return None
 
 
 class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
@@ -588,7 +598,16 @@ class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
         # API structure: contracts[].devices[0].nextMeterReadDate
         devices = contract.get("devices", [])
         if devices:
-            return devices[0].get("nextMeterReadDate")
+            date_str = devices[0].get("nextMeterReadDate")
+            if date_str:
+                try:
+                    # Convert "17 Oct 2025" to "2025-10-17" format for HA
+                    from datetime import datetime
+                    parsed_date = datetime.strptime(date_str, "%d %b %Y")
+                    return parsed_date.strftime("%Y-%m-%d")
+                except (ValueError, TypeError):
+                    _LOGGER.warning("Could not parse next read date: %s", date_str)
+                    return None
         return None
 
 
@@ -608,7 +627,16 @@ class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
         if devices and devices[0].get("registers"):
             registers = devices[0].get("registers", [])
             if registers:
-                return registers[0].get("previousMeterReadingDate")
+                date_str = registers[0].get("previousMeterReadingDate")
+                if date_str and date_str != "Invalid date":
+                    try:
+                        # Convert "19 Sep 2025" to "2025-09-19" format for HA
+                        from datetime import datetime
+                        parsed_date = datetime.strptime(date_str, "%d %b %Y")
+                        return parsed_date.strftime("%Y-%m-%d")
+                    except (ValueError, TypeError):
+                        _LOGGER.warning("Could not parse last read date: %s", date_str)
+                        return None
         return None
 
 

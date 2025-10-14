@@ -1,13 +1,13 @@
 ### Changes
 
-Critical hotfix for coordinator data flow issue preventing sensors from receiving API data.
+Critical fix for date sensor format error that was preventing coordinator from completing successfully.
 
-Urgent coordinator fixes:
-• Enhanced coordinator debugging to track data flow from API to sensors
-• Fixed coordinator exception handling that was silently failing and returning empty data
-• Changed datetime.now() to datetime.utcnow() to avoid potential timezone issues
-• Added comprehensive error logging throughout coordinator execution path
-• Made coordinator more robust by continuing even if account details are missing
-• Elevated debug messages to warnings/errors for better visibility during troubleshooting
+Urgent date format fixes:
+• Fixed ValueError in date sensors causing coordinator to fail silently
+• Next Bill Date sensor now properly converts "20 Oct 2025" to "2025-10-20" format
+• Next Read Date sensor now properly converts "17 Oct 2025" to "2025-10-17" format  
+• Last Read Date sensor now properly converts "19 Sep 2025" to "2025-09-19" format
+• Added error handling for unparseable dates with warning logs
+• Fixed Home Assistant date device class compatibility (isoformat requirement)
 
-This hotfix addresses the core issue where API calls succeed but sensors receive empty coordinator data, causing persistent "Unknown" values despite successful API responses.
+This release resolves the coordinator data flow issue - the coordinator was working correctly but failing due to date format errors, preventing sensors from receiving the successfully fetched API data.

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.7
+
+### Changes
+
+Critical fix for date sensor format error that was preventing coordinator from completing successfully.
+
+Urgent date format fixes:
+• Fixed ValueError in date sensors causing coordinator to fail silently
+• Next Bill Date sensor now properly converts "20 Oct 2025" to "2025-10-20" format
+• Next Read Date sensor now properly converts "17 Oct 2025" to "2025-10-17" format  
+• Last Read Date sensor now properly converts "19 Sep 2025" to "2025-09-19" format
+• Added error handling for unparseable dates with warning logs
+• Fixed Home Assistant date device class compatibility (isoformat requirement)
+
+This release resolves the coordinator data flow issue - the coordinator was working correctly but failing due to date format errors, preventing sensors from receiving the successfully fetched API data.
+
+
 ## 0.2.6
 
 ### Changes
