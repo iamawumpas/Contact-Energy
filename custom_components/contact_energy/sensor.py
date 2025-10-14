@@ -17,7 +17,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics
-from homeassistant.const import UnitOfEnergy
+from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
 
 from .const import DOMAIN, CONF_ACCOUNT_ID, CONF_CONTRACT_ID, CONF_CONTRACT_ICP, CONF_USAGE_DAYS
 from .coordinator import ContactEnergyCoordinator
@@ -48,7 +48,44 @@ async def async_setup_entry(
         )
     ]
 
-    async_add_entities(entities, True)
+    # Add account information sensors (read from coordinator account_details)
+    entities.extend([
+        ContactEnergyAccountBalanceSensor(coordinator, contract_icp),
+        ContactEnergyNextBillDateSensor(coordinator, contract_icp),
+        ContactEnergyCustomerNameSensor(coordinator, contract_icp),
+        ContactEnergyPlanNameSensor(coordinator, contract_icp),
+        ContactEnergyAccountNumberSensor(coordinator, contract_icp),
+        ContactEnergyServiceAddressSensor(coordinator, contract_icp),
+        ContactEnergyMeterSerialSensor(coordinator, contract_icp),
+        ContactEnergyNextReadDateSensor(coordinator, contract_icp),
+        ContactEnergyLastReadDateSensor(coordinator, contract_icp),
+        ContactEnergyDailyChargeRateSensor(coordinator, contract_icp),
+        ContactEnergyPeakRateSensor(coordinator, contract_icp),
+        ContactEnergyOffPeakRateSensor(coordinator, contract_icp),
+        ContactEnergyFreeHoursSensor(coordinator, contract_icp),
+        ContactEnergyLastPaymentSensor(coordinator, contract_icp),
+        ContactEnergyEstimatedNextBillSensor(coordinator, contract_icp),
+    ])
+
+    async_add_entities(entities, False)
+
+    # Convenience usage/cost sensors
+    entities.extend([
+        ContactEnergyTodayUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyYesterdayUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyLast7DaysUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyLast30DaysUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyCurrentMonthUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyLastMonthUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyTodayCostSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyYesterdayCostSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyCurrentMonthCostSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyLastMonthCostSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyTodayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyYesterdayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
+    ])
+
+    async_add_entities(entities, False)
 
 
 class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
@@ -105,12 +142,16 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to Home Assistant."""
         await super().async_added_to_hass()
-        
-        # Start initial data download
-        _LOGGER.info("Starting initial usage data download for %s days", self._usage_days)
-        self._download_task = self.hass.async_create_task(
-            self._download_usage_data()
-        )
+
+        async def _kickoff_download(_event=None) -> None:
+            _LOGGER.info("Starting initial usage data download for %s days", self._usage_days)
+            self._download_task = self.hass.async_create_task(self._download_usage_data())
+
+        # Defer heavy work until HA has fully started to avoid blocking bootstrap
+        if getattr(self.hass, "is_running", False):
+            await _kickoff_download()
+        else:
+            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _kickoff_download)
 
     async def async_will_remove_from_hass(self) -> None:
         """Called when entity is about to be removed from Home Assistant."""
@@ -289,3 +330,632 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             return float(value) if value is not None else 0.0
         except (TypeError, ValueError):
             return 0.0
+
+
+# -----------------------------
+# Account information sensors
+# -----------------------------
+
+class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
+    """Base for account info sensors that read from coordinator data."""
+
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator)
+        self._contract_icp = contract_icp
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    def _get_account_data(self) -> dict[str, Any]:
+        data = getattr(self.coordinator, "data", None) or {}
+        return data.get("account_details", {}) if isinstance(data, dict) else {}
+
+    def _get_contract_data(self) -> dict[str, Any]:
+        account = self._get_account_data()
+        for c in account.get("contracts", []) or []:
+            if c.get("icp") == self._contract_icp:
+                return c
+        return {}
+
+
+class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Account Balance ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_balance"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    @property
+    def native_value(self) -> float | None:
+        bal = self._get_account_data().get("accountBalance")
+        try:
+            return float(bal) if bal is not None else None
+        except (ValueError, TypeError):
+            return None
+
+
+class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Next Bill Date ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_bill_date"
+        self._attr_device_class = SensorDeviceClass.DATE
+        self._attr_icon = "mdi:calendar-clock"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_account_data().get("nextBillDate")
+
+
+class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Customer Name ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_customer_name"
+        self._attr_icon = "mdi:account"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_account_data().get("customerName")
+
+
+class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Plan Name ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_plan_name"
+        self._attr_icon = "mdi:lightning-bolt"
+
+    @property
+    def native_value(self) -> str | None:
+        val = self._get_account_data().get("planName")
+        if not val:
+            val = self._get_contract_data().get("planDetails", {}).get("planName")
+        return val
+
+
+class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Account Number ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_account_number"
+        self._attr_icon = "mdi:identifier"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_account_data().get("accountNumber")
+
+
+class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Service Address ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_service_address"
+        self._attr_icon = "mdi:home"
+
+    @property
+    def native_value(self) -> str | None:
+        c = self._get_contract_data().get("serviceAddress")
+        return c or self._get_account_data().get("serviceAddress")
+
+
+class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Meter Serial ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_meter_serial"
+        self._attr_icon = "mdi:counter"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_contract_data().get("meterSerial")
+
+
+class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Next Read Date ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_read_date"
+        self._attr_device_class = SensorDeviceClass.DATE
+        self._attr_icon = "mdi:calendar-arrow-right"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_contract_data().get("nextReadDate")
+
+
+class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Last Read Date ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_read_date"
+        self._attr_device_class = SensorDeviceClass.DATE
+        self._attr_icon = "mdi:calendar-check"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_contract_data().get("lastReadDate")
+
+
+class ContactEnergyDailyChargeRateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Daily Charge Rate ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_daily_charge_rate"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    @property
+    def native_value(self) -> float | None:
+        daily = self._get_contract_data().get("planDetails", {}).get("dailyCharge")
+        try:
+            return float(daily) if daily is not None else None
+        except (ValueError, TypeError):
+            return None
+
+
+class ContactEnergyPeakRateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Peak Rate ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_peak_rate"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD/kWh"
+        self._attr_icon = "mdi:trending-up"
+
+    @property
+    def native_value(self) -> float | None:
+        peak = self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("peak")
+        try:
+            return float(peak) if peak is not None else None
+        except (ValueError, TypeError):
+            return None
+
+
+class ContactEnergyOffPeakRateSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Off Peak Rate ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_off_peak_rate"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD/kWh"
+        self._attr_icon = "mdi:trending-down"
+
+    @property
+    def native_value(self) -> float | None:
+        offp = self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("offPeak")
+        try:
+            return float(offp) if offp is not None else None
+        except (ValueError, TypeError):
+            return None
+
+
+class ContactEnergyFreeHoursSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Free Hours ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_free_hours"
+        self._attr_icon = "mdi:clock-time-eight"
+
+    @property
+    def native_value(self) -> str | None:
+        return self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("freeHours")
+
+
+class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Last Payment ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_payment"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:credit-card"
+
+    @property
+    def native_value(self) -> float | None:
+        payments = self._get_account_data().get("recentPayments", []) or []
+        if payments:
+            amt = payments[0].get("amount")
+            try:
+                return float(amt) if amt is not None else None
+            except (ValueError, TypeError):
+                return None
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        payments = self._get_account_data().get("recentPayments", []) or []
+        if payments:
+            return {
+                "date": payments[0].get("date"),
+                "method": payments[0].get("method"),
+            }
+        return {}
+
+
+class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Estimated Next Bill ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_estimated_next_bill"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:receipt"
+
+    @property
+    def native_value(self) -> float | None:
+        bills = self._get_account_data().get("upcomingBills", []) or []
+        if bills:
+            amt = bills[0].get("estimatedAmount")
+            try:
+                return float(amt) if amt is not None else None
+            except (ValueError, TypeError):
+                return None
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        bills = self._get_account_data().get("upcomingBills", []) or []
+        if bills:
+            return {"bill_date": bills[0].get("billDate")}
+        return {}
+
+
+# -----------------------------------------
+# Convenience usage and cost sensors
+# -----------------------------------------
+
+class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
+    """Base for convenience sensors that recompute on coordinator updates."""
+
+    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
+        super().__init__(coordinator)
+        self._account_id = account_id
+        self._contract_id = contract_id
+        self._contract_icp = contract_icp
+        self._state = 0.0
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # initial compute after HA start
+        self.hass.async_create_task(self._recompute())
+
+    async def _recompute(self) -> None:
+        start, end = self._date_range()
+        kwh, cost, free_kwh = await self._get_usage_for_date_range(start, end)
+        self._apply_values(kwh, cost, free_kwh)
+        self.async_write_ha_state()
+
+    def _apply_values(self, kwh: float, cost: float, free_kwh: float) -> None:
+        # To be implemented by subclasses depending on metric
+        pass
+
+    def _date_range(self) -> tuple[date, date]:
+        # To be implemented by subclasses
+        return (datetime.now().date(), datetime.now().date())
+
+    async def _get_usage_for_date_range(self, start_date: date, end_date: date) -> tuple[float, float, float]:
+        total_kwh = 0.0
+        total_cost = 0.0
+        total_free_kwh = 0.0
+        current = start_date
+        while current <= end_date:
+            try:
+                resp = await self.coordinator.api.async_get_usage(
+                    str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
+                )
+                if isinstance(resp, list):
+                    for p in resp:
+                        val = ContactEnergyUsageSensor._safe_float(p.get("value"))
+                        cost = ContactEnergyUsageSensor._safe_float(p.get("dollarValue"))
+                        off = str(p.get("offpeakValue", "0.00"))
+                        if off == "0.00":
+                            total_kwh += val
+                            total_cost += cost
+                        else:
+                            total_free_kwh += val
+            except Exception as e:  # noqa: BLE001
+                _LOGGER.debug("Convenience fetch failed for %s: %s", current, e)
+            current += timedelta(days=1)
+            await asyncio.sleep(0)
+        return total_kwh, total_cost, total_free_kwh
+
+    def _handle_coordinator_update(self) -> None:
+        # Recompute on coordinator refresh
+        self.hass.async_create_task(self._recompute())
+
+
+class ContactEnergyTodayUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Today Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar-today"
+
+    def _date_range(self) -> tuple[date, date]:
+        today = datetime.now().date()
+        return today, today
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyYesterdayUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Yesterday Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar-minus"
+
+    def _date_range(self) -> tuple[date, date]:
+        y = datetime.now().date() - timedelta(days=1)
+        return y, y
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyLast7DaysUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Last 7 Days Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_7_days_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar-week"
+
+    def _date_range(self) -> tuple[date, date]:
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=6)
+        return start, end
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyLast30DaysUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Last 30 Days Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_30_days_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar-month"
+
+    def _date_range(self) -> tuple[date, date]:
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=29)
+        return start, end
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyCurrentMonthUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Current Month Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_current_month_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar"
+
+    def _date_range(self) -> tuple[date, date]:
+        today = datetime.now().date()
+        start = today.replace(day=1)
+        return start, today
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyLastMonthUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Last Month Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_month_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:calendar-arrow-left"
+
+    def _date_range(self) -> tuple[date, date]:
+        today = datetime.now().date()
+        first_current = today.replace(day=1)
+        last_prev = first_current - timedelta(days=1)
+        first_prev = last_prev.replace(day=1)
+        return first_prev, last_prev
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyTodayCostSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Today Cost ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_cost"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    def _date_range(self) -> tuple[date, date]:
+        t = datetime.now().date()
+        return t, t
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = cost
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyYesterdayCostSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Yesterday Cost ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_cost"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    def _date_range(self) -> tuple[date, date]:
+        y = datetime.now().date() - timedelta(days=1)
+        return y, y
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = cost
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyCurrentMonthCostSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Current Month Cost ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_current_month_cost"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    def _date_range(self) -> tuple[date, date]:
+        today = datetime.now().date()
+        start = today.replace(day=1)
+        return start, today
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = cost
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyLastMonthCostSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Last Month Cost ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_month_cost"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD"
+        self._attr_icon = "mdi:currency-usd"
+
+    def _date_range(self) -> tuple[date, date]:
+        today = datetime.now().date()
+        first_current = today.replace(day=1)
+        last_prev = first_current - timedelta(days=1)
+        first_prev = last_prev.replace(day=1)
+        return first_prev, last_prev
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = cost
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyTodayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Today Free Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_free_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:gift"
+
+    def _date_range(self) -> tuple[date, date]:
+        t = datetime.now().date()
+        return t, t
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = free_kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+
+class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Yesterday Free Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_free_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:gift"
+
+    def _date_range(self) -> tuple[date, date]:
+        y = datetime.now().date() - timedelta(days=1)
+        return y, y
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = free_kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state

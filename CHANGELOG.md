@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2
+
+### Changes
+
+• Patch release 0.2.1 correcting versioning and introducing additional sensors incrementally.
+• Added account info sensors: balance, customer name, account number, service address, plan name, next bill date, estimated next bill, meter serial, next/last read dates, rate info (daily charge, peak/off-peak, free hours), and last payment details.
+• Added convenience usage/cost sensors: today, yesterday, last 7/30 days, current/last month, and free usage (today/yesterday).
+• Enhanced API and coordinator to fetch detailed account data; Energy Dashboard statistics unaffected.
+• No breaking changes; 8-hour refresh interval maintained.
+
+
 ## 0.2.1
 
 ### Changes

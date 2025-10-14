@@ -46,8 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         usage_days,
     )
 
-    # Perform initial data fetch
-    await coordinator.async_config_entry_first_refresh()
+    # Perform initial data fetch without blocking setup
+    hass.async_create_task(coordinator.async_config_entry_first_refresh())
 
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
