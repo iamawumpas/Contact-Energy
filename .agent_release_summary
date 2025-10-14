@@ -1,13 +1,19 @@
 ### Changes
 
-Critical bug fixes for duplicate entities and API timeout handling.
+Fixed sensor data access by mapping to correct Contact Energy API response structure.
 
-Urgent fixes:
-• Fixed critical duplicate entity registration bug causing "cannot be added a second time" errors during integration setup
-• Consolidated entity registration into single async_add_entities call to prevent conflicts
-• Increased API timeout from 30s to 60s for usage data requests to handle slow Contact Energy servers
-• Enhanced error handling for API timeouts and 504 Gateway Timeout errors with better logging
-• Added graceful degradation - continue processing even if some days fail to download
-• Improved statistics handling to save partial data when some API calls timeout
+Critical fixes:
+• Fixed coordinator data flow - sensors were receiving empty data despite successful API calls
+• Mapped all sensors to correct Contact Energy API response fields based on actual API structure
+• Account Balance: accountDetail.accountBalance.currentBalance  
+• Customer Name: accountDetail.nickname
+• Account Number: accountDetail.id
+• Service Address: contracts[].premise.supplyAddress.shortForm
+• Meter Serial: contracts[].devices[0].serialNumber
+• Next Read Date: contracts[].devices[0].nextMeterReadDate
+• Last Read Date: contracts[].devices[0].registers[0].previousMeterReadingDate
+• Next Bill: accountDetail.nextBill.amount and .date
+• Last Payment: accountDetail.payments[0].amount (with $ parsing)
+• Enhanced debugging and error handling throughout data access paths
 
-This release resolves the integration setup failures and provides better resilience against Contact Energy's API performance issues.
+This release should resolve the "Unknown" values in account information sensors by properly accessing the Contact Energy API response structure.

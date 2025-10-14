@@ -448,7 +448,8 @@ class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
                 _LOGGER.debug("Found matching contract for %s with keys: %s", self._contract_icp, list(c.keys()))
                 return c
         
-        _LOGGER.debug("No matching contract found for ICP %s", self._contract_icp)
+        _LOGGER.warning("No matching contract found for ICP %s. Available contracts: %s", 
+                       self._contract_icp, [c.get("icp") for c in contracts])
         return {}
 
 
@@ -464,7 +465,9 @@ class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
     @property
     def native_value(self) -> float | None:
         account_data = self._get_account_data()
-        bal = account_data.get("accountBalance")
+        # API structure: accountDetail.accountBalance.currentBalance
+        account_balance = account_data.get("accountBalance", {})
+        bal = account_balance.get("currentBalance")
         _LOGGER.debug("Account balance sensor for %s: raw value=%s, account_data_keys=%s", 
                      self._contract_icp, bal, list(account_data.keys()) if account_data else "No data")
         try:
@@ -484,7 +487,10 @@ class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_account_data().get("nextBillDate")
+        account_data = self._get_account_data()
+        # API structure: accountDetail.nextBill.date
+        next_bill = account_data.get("nextBill", {})
+        return next_bill.get("date")
 
 
 class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
@@ -497,7 +503,8 @@ class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
     @property
     def native_value(self) -> str | None:
         account_data = self._get_account_data()
-        name = account_data.get("customerName")
+        # API structure: accountDetail.nickname (seems to be the account name)
+        name = account_data.get("nickname")
         _LOGGER.debug("Customer name sensor for %s: value=%s", self._contract_icp, name)
         return name
 
@@ -511,10 +518,13 @@ class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        val = self._get_account_data().get("planName")
-        if not val:
-            val = self._get_contract_data().get("planDetails", {}).get("planName")
-        return val
+        # Plan details don't seem to be in the basic account response
+        # May need a separate API call or different endpoint
+        contract = self._get_contract_data()
+        contract_type = contract.get("contractTypeLabel")  # "Electricity"
+        if contract_type:
+            return f"{contract_type} Contract"
+        return None
 
 
 class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
@@ -526,7 +536,9 @@ class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_account_data().get("accountNumber")
+        account_data = self._get_account_data()
+        # API structure: accountDetail.id (this is the account number)
+        return account_data.get("id")
 
 
 class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
@@ -538,8 +550,11 @@ class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        c = self._get_contract_data().get("serviceAddress")
-        return c or self._get_account_data().get("serviceAddress")
+        contract = self._get_contract_data()
+        # API structure: contracts[].premise.supplyAddress.shortForm
+        premise = contract.get("premise", {})
+        supply_address = premise.get("supplyAddress", {})
+        return supply_address.get("shortForm")
 
 
 class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
@@ -551,7 +566,12 @@ class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_contract_data().get("meterSerial")
+        contract = self._get_contract_data()
+        # API structure: contracts[].devices[0].serialNumber
+        devices = contract.get("devices", [])
+        if devices:
+            return devices[0].get("serialNumber")
+        return None
 
 
 class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
@@ -564,7 +584,12 @@ class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_contract_data().get("nextReadDate")
+        contract = self._get_contract_data()
+        # API structure: contracts[].devices[0].nextMeterReadDate
+        devices = contract.get("devices", [])
+        if devices:
+            return devices[0].get("nextMeterReadDate")
+        return None
 
 
 class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
@@ -577,7 +602,14 @@ class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        return self._get_contract_data().get("lastReadDate")
+        contract = self._get_contract_data()
+        # API structure: contracts[].devices[0].registers[0].previousMeterReadingDate
+        devices = contract.get("devices", [])
+        if devices and devices[0].get("registers"):
+            registers = devices[0].get("registers", [])
+            if registers:
+                return registers[0].get("previousMeterReadingDate")
+        return None
 
 
 class ContactEnergyDailyChargeRateSensor(ContactEnergyAccountSensorBase):
@@ -657,22 +689,27 @@ class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> float | None:
-        payments = self._get_account_data().get("recentPayments", []) or []
+        account_data = self._get_account_data()
+        # API structure: accountDetail.payments[0].amount (but it's a string like "$379.18")
+        payments = account_data.get("payments", []) or []
         if payments:
-            amt = payments[0].get("amount")
+            amt_str = payments[0].get("amount", "")
+            # Remove $ and convert to float
             try:
-                return float(amt) if amt is not None else None
+                amt_clean = amt_str.replace("$", "").replace(",", "")
+                return float(amt_clean) if amt_clean else None
             except (ValueError, TypeError):
                 return None
         return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        payments = self._get_account_data().get("recentPayments", []) or []
+        account_data = self._get_account_data()
+        payments = account_data.get("payments", []) or []
         if payments:
             return {
                 "date": payments[0].get("date"),
-                "method": payments[0].get("method"),
+                "payment_method": account_data.get("paymentMethod"),
             }
         return {}
 
@@ -688,20 +725,21 @@ class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> float | None:
-        bills = self._get_account_data().get("upcomingBills", []) or []
-        if bills:
-            amt = bills[0].get("estimatedAmount")
-            try:
-                return float(amt) if amt is not None else None
-            except (ValueError, TypeError):
-                return None
-        return None
+        account_data = self._get_account_data()
+        # API structure: accountDetail.nextBill.amount
+        next_bill = account_data.get("nextBill", {})
+        amt = next_bill.get("amount")
+        try:
+            return float(amt) if amt is not None else None
+        except (ValueError, TypeError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        bills = self._get_account_data().get("upcomingBills", []) or []
-        if bills:
-            return {"bill_date": bills[0].get("billDate")}
+        account_data = self._get_account_data()
+        next_bill = account_data.get("nextBill", {})
+        if next_bill:
+            return {"bill_date": next_bill.get("date")}
         return {}
 
 

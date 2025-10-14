@@ -72,13 +72,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning("No 'accountDetail' found in API response. Full response: %s", account_data)
             
             # Return data structure for coordinator (match what sensors expect)
-            return {
+            coordinator_data = {
                 "account_details": account_details,
                 "last_update": datetime.now(),
                 "account_id": self.account_id,
                 "contract_id": self.contract_id,
                 "contract_icp": self.contract_icp,
             }
+            _LOGGER.warning("Coordinator returning data with keys: %s", list(coordinator_data.keys()))
+            _LOGGER.warning("Account details has %d keys: %s", len(account_details), list(account_details.keys()) if account_details else "Empty")
+            return coordinator_data
 
         except InvalidAuth as err:
             raise UpdateFailed(f"Authentication failed: {err}") from err

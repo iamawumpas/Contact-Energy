@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.5
+
+### Changes
+
+Fixed sensor data access by mapping to correct Contact Energy API response structure.
+
+Critical fixes:
+• Fixed coordinator data flow - sensors were receiving empty data despite successful API calls
+• Mapped all sensors to correct Contact Energy API response fields based on actual API structure
+• Account Balance: accountDetail.accountBalance.currentBalance  
+• Customer Name: accountDetail.nickname
+• Account Number: accountDetail.id
+• Service Address: contracts[].premise.supplyAddress.shortForm
+• Meter Serial: contracts[].devices[0].serialNumber
+• Next Read Date: contracts[].devices[0].nextMeterReadDate
+• Last Read Date: contracts[].devices[0].registers[0].previousMeterReadingDate
+• Next Bill: accountDetail.nextBill.amount and .date
+• Last Payment: accountDetail.payments[0].amount (with $ parsing)
+• Enhanced debugging and error handling throughout data access paths
+
+This release should resolve the "Unknown" values in account information sensors by properly accessing the Contact Energy API response structure.
+
+
 ## 0.2.4
 
 ### Changes
