@@ -69,38 +69,42 @@ class ContactEnergyApi:
 								await asyncio.sleep(backoff)
 								backoff *= 2
 								continue
-							# If we had server errors and exhausted retries, log warning
+							# If we had server errors and exhausted retries, log at debug level
+							# The calling code will handle logging appropriately
 							if last_server_error:
-								_LOGGER.warning(
+								_LOGGER.debug(
 									"Contact Energy API returned server error %s after %s retries for %s",
 									last_server_error[0],
 									max_retries,
 									last_server_error[1],
 								)
-							raise CannotConnect(f"Unexpected status {resp.status}: {text}")
+							raise CannotConnect(f"Server error {resp.status}" if last_server_error else f"Unexpected status {resp.status}")
 				except asyncio.TimeoutError as e:
-					_LOGGER.error("Timeout calling %s: %s", url, e)
+					_LOGGER.debug("Timeout calling %s (attempt %s/%s)", url, attempt, max_retries + 1)
 					if attempt <= (max_retries + 1):
 						await asyncio.sleep(backoff)
 						backoff *= 2
 						continue
+					_LOGGER.warning("Timeout calling %s after %s retries", url, max_retries)
 					raise CannotConnect("Timeout") from e
 				except aiohttp.ClientError as e:
-					_LOGGER.error("Client error calling %s: %s", url, e)
+					_LOGGER.debug("Client error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
 					if attempt <= (max_retries + 1):
 						await asyncio.sleep(backoff)
 						backoff *= 2
 						continue
+					_LOGGER.warning("Client error calling %s after %s retries: %s", url, max_retries, e)
 					raise CannotConnect("Client error") from e
 				except InvalidAuth:
 					# Do not retry invalid auth
 					raise
 				except Exception as e:  # noqa: BLE001
-					_LOGGER.exception("Unexpected error calling %s: %s", url, e)
+					_LOGGER.debug("Unexpected error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
 					if attempt <= (max_retries + 1):
 						await asyncio.sleep(backoff)
 						backoff *= 2
 						continue
+					_LOGGER.warning("Unexpected error calling %s after %s retries: %s", url, max_retries, e)
 					raise UnknownError("Unexpected error") from e
 
 	async def async_login(self) -> bool:
@@ -177,8 +181,12 @@ class ContactEnergyApi:
 				# Retry the request with new token
 				return await self.async_get_usage(year, month, day, account_id, contract_id)
 			return None
+		except CannotConnect as error:
+			# Log server errors at debug level to reduce log spam - they're already logged in _request
+			_LOGGER.debug("Could not fetch usage data for %s: %s", date_str, error)
+			return None
 		except Exception as error:
-			_LOGGER.error("Failed to fetch usage data for %s: %s", date_str, error)
+			_LOGGER.warning("Unexpected error fetching usage data for %s: %s", date_str, error)
 			return None
 
 	async def async_get_account_details(self) -> Any:

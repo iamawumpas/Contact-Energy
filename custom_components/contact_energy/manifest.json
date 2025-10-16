@@ -1,12 +1,11 @@
 {
   "domain": "contact_energy",
   "name": "Contact Energy",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "documentation": "https://github.com/iamawumpas/Contact-Energy",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@iamawumpas"],
   "config_flow": true,
-  "iot_class": "cloud_polling",
-  "platforms": ["sensor", "sensor_usage"]
+  "iot_class": "cloud_polling"
 }

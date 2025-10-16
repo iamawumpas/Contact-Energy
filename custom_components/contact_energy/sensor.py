@@ -16,9 +16,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics
+from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics, statistics_during_period
 from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
 import random
+import re
 
 from .const import DOMAIN, CONF_ACCOUNT_ID, CONF_CONTRACT_ID, CONF_CONTRACT_ICP, CONF_USAGE_DAYS
 from .coordinator import ContactEnergyCoordinator
@@ -84,8 +85,20 @@ async def async_setup_entry(
         ContactEnergyYesterdayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
     ]
 
+    # Add charting sensors for ApexCharts
+    # Build statistic ID from contract_icp
+    safe_icp = re.sub(r'[^a-z0-9_]', '_', contract_icp.lower())
+    if re.match(r'^[0-9]', safe_icp):
+        safe_icp = f"icp_{safe_icp}"
+    kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
+    
+    chart_entities = [
+        ContactEnergyChartHourlySensor(hass, kwh_stat_id, contract_icp),
+        ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
+    ]
+
     # Register all entities in a single call
-    all_entities = entities + convenience_entities
+    all_entities = entities + convenience_entities + chart_entities
     async_add_entities(all_entities, False)
 
 
@@ -1107,6 +1120,135 @@ class ContactEnergyTodayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
     def native_value(self) -> float:
         return self._state
 
+
+# -----------------------------------------
+# Charting sensors for ApexCharts
+# -----------------------------------------
+
+class ContactEnergyChartHourlySensor(SensorEntity):
+    """Sensor exposing hourly usage data for ApexCharts."""
+    
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Hourly ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_hourly"
+        self._attr_icon = "mdi:chart-bar"
+        self._hourly_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent hour's usage
+        if self._hourly_data:
+            latest = max(self._hourly_data.keys())
+            return self._hourly_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "hourly_data": self._hourly_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 30 days of hourly statistics from the database
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=30)
+        stats = await self.hass.async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "hour",
+            None,
+            {"sum"}
+        )
+        self._hourly_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                dt = entry.get("start")
+                val = entry.get("sum")
+                if dt and val is not None:
+                    # Store as ISO string for ApexCharts
+                    self._hourly_data[dt.isoformat()] = float(val)
+        self._last_update = datetime.now()
+
+
+class ContactEnergyChartDailySensor(SensorEntity):
+    """Sensor exposing daily usage data for ApexCharts."""
+    
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Daily ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_daily"
+        self._attr_icon = "mdi:calendar"
+        self._daily_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent day's usage
+        if self._daily_data:
+            latest = max(self._daily_data.keys())
+            return self._daily_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "daily_data": self._daily_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 90 days of daily statistics from the database
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=90)
+        stats = await self.hass.async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "day",
+            None,
+            {"sum"}
+        )
+        self._daily_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                dt = entry.get("start")
+                val = entry.get("sum")
+                if dt and val is not None:
+                    # Store as ISO date string for ApexCharts
+                    self._daily_data[dt.date().isoformat()] = float(val)
+        self._last_update = datetime.now()
 
 class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
     def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
