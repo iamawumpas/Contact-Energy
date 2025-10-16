@@ -302,15 +302,6 @@ build_changelog_from_working_changes() {
     entry+="$detailed_changes\n"
   fi
 
-  # Append commit summaries from git history
-  local commits
-  # Deduplicate by commit subject to keep the first instance
-  commits=$(git log --pretty=format:'%s|%h' $range 2>/dev/null | awk -F'|' '!seen[$1]++ {print "• " $1 " (" $2 ")"}' || true)
-  if [[ -n "$commits" ]]; then
-    entry+=$'### Commits\n\n'
-    entry+="$commits\n"
-  fi
-
   # Add note about uncommitted changes if any
   if git status --porcelain | grep -q .; then
     entry+=$'\n**Note**: This release includes uncommitted changes from the working directory.\n'
