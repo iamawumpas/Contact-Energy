@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.3.3
+
+### Changes
+
+• Documentation and changelog updates
+• Documentation and changelog updates
+• API client enhancements and authentication improvements
+• DataUpdateCoordinator implementation with 8-hour polling
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+
+### Added Files:
+• .changes_summary.md
+• .release_sh_fix_summary.md
+• custom_components/contact_energy/sensor_usage.py
+
+### Modified Files:
+• .allow_release
+• .release_summary_0.3.1
+• .release_summary_0.3.2
+• CHANGELOG.md
+• README.md
+• custom_components/contact_energy/api.py
+• custom_components/contact_energy/coordinator.py
+• custom_components/contact_energy/manifest.json
+• custom_components/contact_energy/sensor.py
+• hacs.json
+
+### Removed Files:
+• .release_summary_0.3.10
+• .release_summary_0.3.11
+• .release_summary_0.3.12
+• .release_summary_0.3.13
+• .release_summary_0.3.14
+• .release_summary_0.3.15
+• .release_summary_0.3.16
+• .release_summary_0.3.17
+• .release_summary_0.3.18
+• .release_summary_0.3.3
+• .release_summary_0.3.4
+• .release_summary_0.3.5
+• .release_summary_0.3.6
+• .release_summary_0.3.7
+• .release_summary_0.3.8
+• .release_summary_0.3.9
+• debug_test.yaml
+• hourly_energy_chart.yaml
+• hourly_sensor_chart.yaml
+• test_hourly_chart.yaml
+• test_hourly_chart_sensors.yaml
+
+### Commits
+
+• Release 0.3.2 (d7dd439)
+• Release 0.3.1 (0fa7e9b)
+• Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.3.2
 
 ### Changes
