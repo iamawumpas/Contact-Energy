@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.4
+## 0.3.5
 
 ### Changes
 
@@ -15,316 +15,288 @@
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
-### Added Files:
-• .changes_summary.md
-• .release_sh_fix_summary.md
-• custom_components/contact_energy/sensor_usage.py
+### Commits
 
-### Modified Files:
-• .allow_release
-• .release_summary_0.3.1
-• .release_summary_0.3.2
-• .release_summary_0.3.3
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/coordinator.py
-• custom_components/contact_energy/manifest.json
-• custom_components/contact_energy/sensor.py
-• hacs.json
+• Release 0.3.5 (29dbaa8)
+• Release 0.3.4 (5b90698)
+• Release 0.3.3 (a8d2825)
+• Release 0.3.2 (9e87d4f)
+• Release 0.3.1 (0536b13)
 
-### Removed Files:
-• .release_summary_0.3.10
-• .release_summary_0.3.11
-• .release_summary_0.3.12
-• .release_summary_0.3.13
-• .release_summary_0.3.14
-• .release_summary_0.3.15
-• .release_summary_0.3.16
-• .release_summary_0.3.17
-• .release_summary_0.3.18
-• .release_summary_0.3.4
-• .release_summary_0.3.5
-• .release_summary_0.3.6
-• .release_summary_0.3.7
-• .release_summary_0.3.8
-• .release_summary_0.3.9
-• debug_test.yaml
-• hourly_energy_chart.yaml
-• hourly_sensor_chart.yaml
-• test_hourly_chart.yaml
-• test_hourly_chart_sensors.yaml
+
+## 0.3.4
+
+### Changes
+
+• Added retry logic and exponential backoff for API requests
+• Implemented working Contact Energy usage data endpoint
+• Added custom exception classes for better error handling
+• Implemented Energy Dashboard integration with Statistics database
+• Enhanced integration setup and unload procedures
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
 ### Commits
 
+• Release 0.3.4 (fc08659)
 • feat: integrate charting sensors and reduce API error log spam (98eab8e)
 • Release 0.3.3 (b359402)
+
+
+## 0.3.3
+
+### Changes
+
+• Enhanced integration setup and unload procedures
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.3.3 (ed64865)
 • Release 0.3.2 (d7dd439)
+
+
+## 0.3.2
+
+### Changes
+
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.3.2 (1c2b7dc)
+
+
+## 0.3.1
+
+### Changes
+
+• Added retry logic and exponential backoff for API requests
+• Added custom exception classes for better error handling
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
 • Release 0.3.1 (0fa7e9b)
 • Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
 
 
-## Version 0.3.3 - Charting Sensor Integration & Cleanup
-
-### Added
-- New charting sensors for ApexCharts in `sensor_usage.py`:
-  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
-  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
-- Integration now loads `sensor_usage` platform and exposes sensors for charting
-
-### Changed
-- Updated `manifest.json` to include `sensor_usage` platform
-- Improved changelog and release summary formatting for clarity
-
-### Removed
-- All obsolete `.release_summary*.*` files and test YAMLs
-
-### Technical Changes
-- Sensors use only Home Assistant statistics database (no API calls)
-- Sensors provide attributes for easy charting and handle delayed/missing data gracefully
-
-### User Impact
-- New sensors available for ApexCharts and dashboard charting
-- Cleaner release history and changelog
-
-### Commits
-- Release 0.3.3 (ed64865)
-
-**Note**: This release focuses on new charting sensors and workspace cleanup.
-**Note**: This release includes uncommitted changes from the working directory.
-
-
-## 0.3.2
-### Changes
-
-• Documentation and changelog updates
-• API client enhancements and authentication improvements
-• Integration metadata and version updates
-• Energy Dashboard sensor implementation and statistics integration
-### Added Files:
-
-
-- Added new charting sensors for ApexCharts in `sensor_usage.py`:
-  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
-  - No API calls are made by these sensors; all data is sourced from Home Assistant statistics
-  - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
-
-### Added Files
-- custom_components/contact_energy/sensor_usage.py
-
-### Modified Files
-- CHANGELOG.md
-
-### Commits
-- Release 0.3.2 (amended)
-
-**Note**: This release focuses on new charting sensors and integration improvements for ApexCharts compatibility.
-- **502 Error Handling**: Improved API retry logging
-  - Retry attempts now logged at DEBUG level instead of WARNING
-  - Only logs WARNING after all retries are exhausted
-  - Results in much cleaner logs during temporary API issues
-
-### Technical Changes
-- Sensors wait for `async_config_entry_first_refresh()` before computing values
-- Added `last_update_success` checks throughout sensor code
-- Changed retry logging from WARNING to DEBUG in `_request()` method
-- Removed numerous debug/info logs that cluttered Home Assistant logs
-
-### User Impact
-- Cleaner logs with only relevant error messages
-- No more "No account_details found" or "No matching contract found" errors on startup
-- Sensors briefly show "Unavailable" on startup, then populate normally
-- 502 API errors only show warnings after retries fail (not on every attempt)
-
-
 ## 0.3.0
 
-## Version 0.3.0
-
 ### Changes
 
-• Account information sensors now contain data formatted correctly
-• Convenience sensors implemented with proper data formatting
-• Fixed data presentation and formatting issues in sensor entities
-• Enhanced account details display for better user experience
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-### Reason for Release
+### Commits
 
-Account information sensors, and convenience sensors now contain data formatted correctly.
+• Release 0.3.0 (cd3580b)
 
 
 ## 0.2.8
 
 ### Changes
 
-Critical fix for date sensor format error that was preventing coordinator from completing successfully.
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Urgent date format fixes:
-• Fixed ValueError in date sensors causing coordinator to fail silently
-• Next Bill Date sensor now properly converts "20 Oct 2025" to "2025-10-20" format
-• Next Read Date sensor now properly converts "17 Oct 2025" to "2025-10-17" format  
-• Last Read Date sensor now properly converts "19 Sep 2025" to "2025-09-19" format
-• Added error handling for unparseable dates with warning logs
-• Fixed Home Assistant date device class compatibility (isoformat requirement)
+### Commits
 
-This release resolves the coordinator data flow issue - the coordinator was working correctly but failing due to date format errors, preventing sensors from receiving the successfully fetched API data.
+• Release 0.2.8 (a5d210f)
 
 
 ## 0.2.7
 
 ### Changes
 
-Critical fix for date sensor format error that was preventing coordinator from completing successfully.
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Urgent date format fixes:
-• Fixed ValueError in date sensors causing coordinator to fail silently
-• Next Bill Date sensor now properly converts "20 Oct 2025" to "2025-10-20" format
-• Next Read Date sensor now properly converts "17 Oct 2025" to "2025-10-17" format  
-• Last Read Date sensor now properly converts "19 Sep 2025" to "2025-09-19" format
-• Added error handling for unparseable dates with warning logs
-• Fixed Home Assistant date device class compatibility (isoformat requirement)
+### Commits
 
-This release resolves the coordinator data flow issue - the coordinator was working correctly but failing due to date format errors, preventing sensors from receiving the successfully fetched API data.
+• Release 0.2.7 (4f68a04)
 
 
 ## 0.2.6
 
 ### Changes
 
-Critical hotfix for coordinator data flow issue preventing sensors from receiving API data.
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Urgent coordinator fixes:
-• Enhanced coordinator debugging to track data flow from API to sensors
-• Fixed coordinator exception handling that was silently failing and returning empty data
-• Changed datetime.now() to datetime.utcnow() to avoid potential timezone issues
-• Added comprehensive error logging throughout coordinator execution path
-• Made coordinator more robust by continuing even if account details are missing
-• Elevated debug messages to warnings/errors for better visibility during troubleshooting
+### Commits
 
-This hotfix addresses the core issue where API calls succeed but sensors receive empty coordinator data, causing persistent "Unknown" values despite successful API responses.
+• Release 0.2.6 (332aab2)
 
 
 ## 0.2.5
 
 ### Changes
 
-Fixed sensor data access by mapping to correct Contact Energy API response structure.
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Critical fixes:
-• Fixed coordinator data flow - sensors were receiving empty data despite successful API calls
-• Mapped all sensors to correct Contact Energy API response fields based on actual API structure
-• Account Balance: accountDetail.accountBalance.currentBalance  
-• Customer Name: accountDetail.nickname
-• Account Number: accountDetail.id
-• Service Address: contracts[].premise.supplyAddress.shortForm
-• Meter Serial: contracts[].devices[0].serialNumber
-• Next Read Date: contracts[].devices[0].nextMeterReadDate
-• Last Read Date: contracts[].devices[0].registers[0].previousMeterReadingDate
-• Next Bill: accountDetail.nextBill.amount and .date
-• Last Payment: accountDetail.payments[0].amount (with $ parsing)
-• Enhanced debugging and error handling throughout data access paths
+### Commits
 
-This release should resolve the "Unknown" values in account information sensors by properly accessing the Contact Energy API response structure.
+• Release 0.2.5 (7dad28f)
 
 
 ## 0.2.4
 
 ### Changes
 
-Critical bug fixes for duplicate entities and API timeout handling.
+• Added custom exception classes for better error handling
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Urgent fixes:
-• Fixed critical duplicate entity registration bug causing "cannot be added a second time" errors during integration setup
-• Consolidated entity registration into single async_add_entities call to prevent conflicts
-• Increased API timeout from 30s to 60s for usage data requests to handle slow Contact Energy servers
-• Enhanced error handling for API timeouts and 504 Gateway Timeout errors with better logging
-• Added graceful degradation - continue processing even if some days fail to download
-• Improved statistics handling to save partial data when some API calls timeout
+### Commits
 
-This release resolves the integration setup failures and provides better resilience against Contact Energy's API performance issues.
+• Release 0.2.4 (3732868)
 
 
 ## 0.2.3
 
 ### Changes
 
-Fixed sensor data access issues that were causing "Unknown" values and implemented smart jitter for multiple accounts.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-Key improvements:
-• Fixed coordinator data structure mismatch - sensors were looking for 'account_details' but coordinator returned 'account_data'
-• Properly extract 'accountDetail' from Contact Energy API response structure
-• Added comprehensive debug logging to diagnose sensor data access issues
-• Implemented ICP-hash-based jitter system to spread API calls across multiple contracts/accounts
-• Usage sensors: 0-3 second base delay + 0.5-2 second random jitter based on contract ICP
-• Convenience sensors: 0-2 second base delay + 0.1-1.5 second random jitter based on contract ICP
-• Enhanced missing-days-only download logic with proper cumulative sum continuation from last statistics
-• Improved error handling and logging throughout sensor platform
+### Commits
 
-This release should resolve the widespread "Unknown" sensor values and provide better performance for users with multiple Contact Energy contracts.
+• Release 0.2.3 (cb9839a)
 
 
 ## 0.2.2
 
 ### Changes
 
-• Patch release 0.2.1 correcting versioning and introducing additional sensors incrementally.
-• Added account info sensors: balance, customer name, account number, service address, plan name, next bill date, estimated next bill, meter serial, next/last read dates, rate info (daily charge, peak/off-peak, free hours), and last payment details.
-• Added convenience usage/cost sensors: today, yesterday, last 7/30 days, current/last month, and free usage (today/yesterday).
-• Enhanced API and coordinator to fetch detailed account data; Energy Dashboard statistics unaffected.
-• No breaking changes; 8-hour refresh interval maintained.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Enhanced integration setup and unload procedures
+• Implemented proper coordinator and platform initialization
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.2.2 (6c20cc2)
 
 
 ## 0.2.1
 
 ### Changes
 
-• Patch release 0.2.1 correcting versioning and introducing additional sensors incrementally.
-• Added account info sensors: balance, customer name, account number, service address, plan name, next bill date, estimated next bill, meter serial, next/last read dates, rate info (daily charge, peak/off-peak, free hours), and last payment details.
-• Added convenience usage/cost sensors: today, yesterday, last 7/30 days, current/last month, and free usage (today/yesterday).
-• Enhanced API and coordinator to fetch detailed account data; Energy Dashboard statistics unaffected.
-• No breaking changes; 8-hour refresh interval maintained.
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.2.1 (7696f70)
 
 
 ## 0.2.0
 
 ### Changes
 
-• version bump to 0.2.0
-• integration is now able to download energy usage data without errors and the Energy Dashboard can now display the energy usage and free energy usage
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.2.0 (cc4db5b)
 
 
 ## 0.1.12
 
+### Changes
 
-**Note**: This release includes uncommitted changes from the working directory.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.1.12 (5fbd6c9)
 
 
 ## 0.1.11
 
+### Changes
 
-**Note**: This release includes uncommitted changes from the working directory.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
-### New Charting Sensors
+### Commits
 
-- Added `sensor_usage.py` with new sensors for ApexCharts charting:
-  - `ContactEnergyChartHourlySensor`: exposes hourly usage data from the Home Assistant statistics database
-  - `ContactEnergyChartDailySensor`: exposes daily usage data from the statistics database
-  - No API calls are made; all data is sourced from Home Assistant statistics
-  - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
+• Release 0.1.11 (9bb7ab5)
 
-### Added Files:
-- custom_components/contact_energy/sensor_usage.py
+
+## 0.1.10
+
+### Changes
+
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.1.10 (bc8a638)
+
 
 ## 0.1.9
 
+### Changes
 
-**Note**: This release includes uncommitted changes from the working directory.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.1.9 (15cfb3b)
 
 
 ## 0.1.8
 
+### Changes
 
-**Note**: This release includes uncommitted changes from the working directory.
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Commits
+
+• Release 0.1.8 (fbdc51c)
 
 
 ## 0.1.7
@@ -332,12 +304,12 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 ### Changes
 
 • Updated config flow validation schema and UI selectors
-
-### Modified Files:
-• custom_components/contact_energy/config_flow.py
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
 ### Commits
 
+• Release 0.1.7 (b0a9dae)
 • fix(config_flow): add explicit handler registration decorator for HA discovery (71e7c63)
 
 
@@ -347,12 +319,12 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 • Updated config flow validation schema and UI selectors
 • Enhanced error handling and user-friendly error messages
-
-### Modified Files:
-• custom_components/contact_energy/config_flow.py
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
 ### Commits
 
+• Release 0.1.6 (7a8d5a5)
 • debug: add logging to trace config flow module loading (aab8572)
 • fix(config_flow): use canonical ConfigFlow class name and add selector compatibility fallback (bd2545d)
 
@@ -363,12 +335,12 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 • Updated config flow validation schema and UI selectors
 • Enhanced error handling and user-friendly error messages
-
-### Modified Files:
-• custom_components/contact_energy/config_flow.py
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
 
 ### Commits
 
+• Release 0.1.5 (7522e3b)
 • fix(config_flow): register handler correctly and move validation into class; set domain attribute (1fc037d)
 
 
@@ -379,9 +351,11 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
+### Commits
 
-• Release 0.1.4 (ea72b75)
-• chore: rebuild changelog and release notes (1e234a0)
+• Release 0.1.4 (e816f99)
+• chore: rebuild changelog and release notes (111ed6e)
+• docs(changelog): clean headings and remove artifacts; align with release notes (b99a81f)
 
 
 ## 0.1.3
@@ -390,13 +364,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
-
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/const.py
-• custom_components/contact_energy/manifest.json
-• hacs.json
 
 ### Commits
 
@@ -413,13 +380,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Enhanced error handling and user-friendly error messages
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
-
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/config_flow.py
-• custom_components/contact_energy/manifest.json
-• hacs.json
 
 ### Commits
 
@@ -446,20 +406,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/__init__.py
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/config_flow.py
-• custom_components/contact_energy/const.py
-• custom_components/contact_energy/coordinator.py
-• custom_components/contact_energy/manifest.json
-• custom_components/contact_energy/sensor.py
-• custom_components/contact_energy/strings.json
-• custom_components/contact_energy/translations/en.json
-• hacs.json
-
 ### Commits
 
 • Release 0.1.1 (2e974b5)
@@ -472,12 +418,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
-
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/manifest.json
-• hacs.json
 
 ### Commits
 
@@ -492,13 +432,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Updated authentication headers and session management
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
-
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/manifest.json
-• hacs.json
 
 ### Commits
 
@@ -519,14 +452,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/config_flow.py
-• custom_components/contact_energy/manifest.json
-• hacs.json
-
 ### Commits
 
 • Release 0.0.3 (d6aae04)
@@ -546,18 +471,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/__init__.py
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/config_flow.py
-• custom_components/contact_energy/const.py
-• custom_components/contact_energy/manifest.json
-• custom_components/contact_energy/strings.json
-• custom_components/contact_energy/translations/en.json
-• hacs.json
-
 ### Commits
 
 • Release 0.0.2 (eae721b)
@@ -570,21 +483,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Updated user interface strings and translations
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
-
-### Added Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/__init__.py
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/config_flow.py
-• custom_components/contact_energy/const.py
-• custom_components/contact_energy/coordinator.py
-• custom_components/contact_energy/manifest.json
-• custom_components/contact_energy/sensor.py
-• custom_components/contact_energy/services.yaml
-• custom_components/contact_energy/strings.json
-• custom_components/contact_energy/translations/en.json
-• hacs.json
 
 ### Commits
 

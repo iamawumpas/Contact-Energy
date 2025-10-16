@@ -105,22 +105,6 @@ previous_tag_for_version() {
 # Build detailed changelog entry from a git range (prev..curr) with specific change descriptions
 build_changelog_from_range() {
   local range="$1"
-  local exclude=("release.sh" ".integration-notes.md" ".gitignore")
-
-  local added changed removed status path
-  while IFS=$'\t' read -r status path; do
-    [[ -z "$path" ]] && continue
-    for ex in "${exclude[@]}"; do
-      [[ "$path" == "$ex" ]] && continue 2
-    done
-    case "$status" in
-      A) added+="$path\n";;
-      M) changed+="$path\n";;
-      D) removed+="$path\n";;
-      R*) changed+="$path\n";;
-      *) changed+="$path\n";;
-    esac
-  done < <(git diff --name-status $range)
 
   # Analyze specific changes in key files to generate detailed descriptions
   local detailed_changes=""
@@ -254,51 +238,6 @@ build_changelog_from_range() {
     entry+="$detailed_changes\n"
   fi
 
-  # Prepare trimmed file lists to avoid empty headings
-  local added_list changed_list removed_list
-  added_list=$(echo -e "$added" | sed '/^$/d' | sort -u)
-  changed_list=$(echo -e "$changed" | sed '/^$/d' | sort -u)
-  removed_list=$(echo -e "$removed" | sed '/^$/d' | sort -u)
-
-  if [[ -n "$added_list" ]]; then
-    entry+="### Added Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$added_list"
-  # Generate a detailed summary of code changes
-  local summary=""
-  local files
-  mapfile -t files < <(git diff --name-only $range)
-  for f in "${files[@]}"; do
-    local changes
-    changes=$(git diff --unified=0 $range -- "$f" | grep -E '^[+-][^+-]' | wc -l)
-    if [[ $changes -gt 0 ]]; then
-      summary+="• $f: $changes line(s) changed\n"
-    fi
-  done
-  if [[ -n "$summary" ]]; then
-    summary="#### Detailed code changes\n\n$summary\n"
-  fi
-    entry+="\n"
-  fi
-  if [[ -n "$changed_list" ]]; then
-    entry+="### Modified Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$changed_list"
-    entry+="\n"
-  fi
-  if [[ -n "$removed_list" ]]; then
-    entry+="### Removed Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$removed_list"
-    entry+="\n"
-  fi
-
   # Append commit summaries
   local commits
   # Deduplicate by commit subject to avoid repeated "Release x.y.z" lines while preserving first occurrence
@@ -317,56 +256,17 @@ build_changelog_from_range() {
 # Build detailed changelog entry including uncommitted working directory changes
 build_changelog_from_working_changes() {
   local range="$1"
-  local exclude=("release.sh" ".integration-notes.md" ".gitignore")
-
-  # First, get changes from git history
-  local git_added git_changed git_removed
-  while IFS=$'\t' read -r status path; do
-    [[ -z "$path" ]] && continue
-    for ex in "${exclude[@]}"; do
-      [[ "$path" == "$ex" ]] && continue 2
-    done
-    case "$status" in
-      A) git_added+="$path\n";;
-      M) git_changed+="$path\n";;
-      D) git_removed+="$path\n";;
-      R*) git_changed+="$path\n";;
-      *) git_changed+="$path\n";;
-    esac
-  done < <(git diff --name-status $range 2>/dev/null || true)
-
-  # Then, get uncommitted changes (staged + unstaged)
-  local work_added work_changed work_removed
-  while IFS=$'\t' read -r status path; do
-    [[ -z "$path" ]] && continue
-    for ex in "${exclude[@]}"; do
-      [[ "$path" == "$ex" ]] && continue 2
-    done
-    case "$status" in
-      A) work_added+="$path\n";;
-      M) work_changed+="$path\n";;
-      D) work_removed+="$path\n";;
-      R*) work_changed+="$path\n";;
-      ??) work_added+="$path\n";;
-      *) work_changed+="$path\n";;
-    esac
-  done < <(git status --porcelain)
-
-  # Combine all changes
-  local added changed removed
-  added="${git_added}${work_added}"
-  changed="${git_changed}${work_changed}"
-  removed="${git_removed}${work_removed}"
 
   # Analyze specific changes for detailed descriptions
   local detailed_changes=""
   
   # Analyze both committed and working directory changes
   local all_changed_files
-  mapfile -t all_changed_files < <((echo -e "$changed" | sed '/^$/d' | sort -u))
+  mapfile -t all_changed_files < <(git diff --name-only $range 2>/dev/null; git status --porcelain | awk '{print $2}')
   
   # Check each file type for specific changes
   for file in "${all_changed_files[@]}"; do
+    [[ -z "$file" ]] && continue
     case "$file" in
       custom_components/contact_energy/config_flow.py)
         # Analyze config flow changes
@@ -408,40 +308,6 @@ build_changelog_from_working_changes() {
   if [[ -n "$detailed_changes" ]]; then
     entry+=$'### Changes\n\n'
     entry+="$detailed_changes\n"
-  fi
-  if [[ -n "$summary" ]]; then
-    entry+="$summary"
-  fi
-
-  # Prepare trimmed file lists to avoid empty headings
-  local added_list changed_list removed_list
-  added_list=$(echo -e "$added" | sed '/^$/d' | sort -u)
-  changed_list=$(echo -e "$changed" | sed '/^$/d' | sort -u)
-  removed_list=$(echo -e "$removed" | sed '/^$/d' | sort -u)
-
-  if [[ -n "$added_list" ]]; then
-    entry+="### Added Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$added_list"
-    entry+="\n"
-  fi
-  if [[ -n "$changed_list" ]]; then
-    entry+="### Modified Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$changed_list"
-    entry+="\n"
-  fi
-  if [[ -n "$removed_list" ]]; then
-    entry+="### Removed Files:\n"
-    while read -r file; do
-      [[ -z "$file" ]] && continue
-      entry+="• $file\n"
-    done <<< "$removed_list"
-    entry+="\n"
   fi
 
   # Append commit summaries from git history
