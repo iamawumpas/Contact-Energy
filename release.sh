@@ -238,14 +238,6 @@ build_changelog_from_range() {
     entry+="$detailed_changes\n"
   fi
 
-  # Append commit summaries
-  local commits
-  # Deduplicate by commit subject to avoid repeated "Release x.y.z" lines while preserving first occurrence
-  commits=$(git log --pretty=format:'%s|%h' $range | awk -F'|' '!seen[$1]++ {print "• " $1 " (" $2 ")"}')
-  if [[ -n "$commits" ]]; then
-    entry+=$'### Commits\n\n'
-    entry+="$commits\n"
-  fi
 
   if [[ -z "$entry" ]]; then
     entry="No relevant changes."
