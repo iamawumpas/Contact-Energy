@@ -425,31 +425,34 @@ class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
     def should_poll(self) -> bool:
         return False
 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Entity is only available if coordinator has successfully fetched data at least once
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
     def _get_account_data(self) -> dict[str, Any]:
-        data = getattr(self.coordinator, "data", None) or {}
+        # Only try to access data if coordinator has completed at least one update
+        if not self.coordinator.last_update_success or self.coordinator.data is None:
+            return {}
+        
+        data = self.coordinator.data
         account_details = data.get("account_details", {}) if isinstance(data, dict) else {}
-        if not account_details:
-            _LOGGER.warning("No account_details found in coordinator data for %s. Coordinator data keys: %s", 
-                           self._contract_icp, list(data.keys()) if isinstance(data, dict) else "Not a dict")
-            _LOGGER.warning("Full coordinator data for %s: %s", self._contract_icp, data)
-        else:
-            _LOGGER.debug("Found account_details for %s with keys: %s", self._contract_icp, list(account_details.keys()))
         return account_details
 
     def _get_contract_data(self) -> dict[str, Any]:
         account = self._get_account_data()
         contracts = account.get("contracts", []) or []
-        _LOGGER.debug("Found %d contracts in account data for %s", len(contracts), self._contract_icp)
         
         for c in contracts:
             contract_icp = c.get("icp")
-            _LOGGER.debug("Checking contract with ICP: %s (looking for %s)", contract_icp, self._contract_icp)
             if contract_icp == self._contract_icp:
-                _LOGGER.debug("Found matching contract for %s with keys: %s", self._contract_icp, list(c.keys()))
                 return c
         
-        _LOGGER.warning("No matching contract found for ICP %s. Available contracts: %s", 
-                       self._contract_icp, [c.get("icp") for c in contracts])
+        # Only log warning if we have account data but no matching contract
+        if account:
+            _LOGGER.warning("No matching contract found for ICP %s. Available contracts: %s", 
+                           self._contract_icp, [c.get("icp") for c in contracts])
         return {}
 
 
@@ -468,12 +471,9 @@ class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
         # API structure: accountDetail.accountBalance.currentBalance
         account_balance = account_data.get("accountBalance", {})
         bal = account_balance.get("currentBalance")
-        _LOGGER.debug("Account balance sensor for %s: raw value=%s, account_data_keys=%s", 
-                     self._contract_icp, bal, list(account_data.keys()) if account_data else "No data")
         try:
             return float(bal) if bal is not None else None
         except (ValueError, TypeError):
-            _LOGGER.debug("Failed to convert account balance to float: %s", bal)
             return None
 
 
@@ -511,9 +511,7 @@ class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
     def native_value(self) -> str | None:
         account_data = self._get_account_data()
         # API structure: accountDetail.nickname (seems to be the account name)
-        name = account_data.get("nickname")
-        _LOGGER.debug("Customer name sensor for %s: value=%s", self._contract_icp, name)
-        return name
+        return account_data.get("nickname")
 
 
 class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
@@ -789,10 +787,21 @@ class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
     def should_poll(self) -> bool:
         return False
 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Entity is only available if coordinator has successfully fetched data at least once
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        # initial compute after HA start (with ICP-based jitter to spread API calls across accounts)
+        # initial compute after HA start - but only after coordinator has data
         async def _delayed_recompute():
+            # Wait for coordinator to have data before computing
+            if not self.coordinator.last_update_success or self.coordinator.data is None:
+                # Wait for first coordinator update
+                await self.coordinator.async_config_entry_first_refresh()
+            
             import hashlib
             icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
             base_delay = (icp_hash % 20) / 10.0  # 0-2 seconds based on ICP

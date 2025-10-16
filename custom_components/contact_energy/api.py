@@ -38,6 +38,7 @@ class ContactEnergyApi:
 			max_retries = kwargs.pop("_retries", 2)
 			backoff = 1
 			attempt = 0
+			last_server_error = None
 			while True:
 				attempt += 1
 				try:
@@ -56,7 +57,8 @@ class ContactEnergyApi:
 							text = await resp.text()
 							# Retry on server errors
 							if 500 <= resp.status <= 599 and attempt <= (max_retries + 1):
-								_LOGGER.warning(
+								last_server_error = (resp.status, url)
+								_LOGGER.debug(
 									"Server error %s on %s; retrying in %ss (attempt %s/%s)",
 									resp.status,
 									url,
@@ -67,6 +69,14 @@ class ContactEnergyApi:
 								await asyncio.sleep(backoff)
 								backoff *= 2
 								continue
+							# If we had server errors and exhausted retries, log warning
+							if last_server_error:
+								_LOGGER.warning(
+									"Contact Energy API returned server error %s after %s retries for %s",
+									last_server_error[0],
+									max_retries,
+									last_server_error[1],
+								)
 							raise CannotConnect(f"Unexpected status {resp.status}: {text}")
 				except asyncio.TimeoutError as e:
 					_LOGGER.error("Timeout calling %s: %s", url, e)
@@ -184,7 +194,6 @@ class ContactEnergyApi:
 				f"{self._url_base}/accounts/v2",
 				headers=self._headers(),
 			)
-			_LOGGER.warning("Account details API response for debugging: %s", data)
 			return data
 		except InvalidAuth:
 			_LOGGER.debug("Token expired during account fetch, attempting to login again")

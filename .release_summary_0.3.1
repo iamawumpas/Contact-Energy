@@ -1,0 +1,29 @@
+## Version 0.3.1 - Bug Fixes & Improvements
+
+### Fixed
+- **Race Condition**: Sensors no longer try to read coordinator data before first update completes
+  - Added `available` property to sensor base classes
+  - Sensors report as "unavailable" until coordinator successfully fetches data
+  - Added guard checks in data accessors to prevent KeyError exceptions
+  
+- **Excessive Logging**: Removed unnecessary success/info logging
+  - Coordinator no longer logs normal operations as warnings/errors
+  - Removed debug logs from sensor property getters
+  - Only actual failures are logged now
+
+- **502 Error Handling**: Improved API retry logging
+  - Retry attempts now logged at DEBUG level instead of WARNING
+  - Only logs WARNING after all retries are exhausted
+  - Results in much cleaner logs during temporary API issues
+
+### Technical Changes
+- Sensors wait for `async_config_entry_first_refresh()` before computing values
+- Added `last_update_success` checks throughout sensor code
+- Changed retry logging from WARNING to DEBUG in `_request()` method
+- Removed numerous debug/info logs that cluttered Home Assistant logs
+
+### User Impact
+- Cleaner logs with only relevant error messages
+- No more "No account_details found" or "No matching contract found" errors on startup
+- Sensors briefly show "Unavailable" on startup, then populate normally
+- 502 API errors only show warnings after retries fail (not on every attempt)
