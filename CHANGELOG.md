@@ -13,66 +13,25 @@
 • Integration metadata and version updates
 
 ### Added Files:
-• .changes_summary.md
 
-### Modified Files:
-• .allow_release
-• .release_summary_0.3.1
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/api.py
-• custom_components/contact_energy/coordinator.py
-• custom_components/contact_energy/manifest.json
-• custom_components/contact_energy/sensor.py
-• hacs.json
+### Changes
 
-### Removed Files:
-• .release_summary_0.3.10
-• .release_summary_0.3.11
-• .release_summary_0.3.12
-• .release_summary_0.3.13
-• .release_summary_0.3.14
-• .release_summary_0.3.15
-• .release_summary_0.3.16
-• .release_summary_0.3.17
-• .release_summary_0.3.18
-• .release_summary_0.3.2
-• .release_summary_0.3.3
-• .release_summary_0.3.4
-• .release_summary_0.3.5
-• .release_summary_0.3.6
-• .release_summary_0.3.7
-• .release_summary_0.3.8
-• .release_summary_0.3.9
-• debug_test.yaml
-• hourly_energy_chart.yaml
-• hourly_sensor_chart.yaml
-• test_hourly_chart.yaml
-• test_hourly_chart_sensors.yaml
+- Added new charting sensors for ApexCharts in `sensor_usage.py`:
+  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
+  - No API calls are made by these sensors; all data is sourced from Home Assistant statistics
+  - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
+
+### Added Files
+- custom_components/contact_energy/sensor_usage.py
+
+### Modified Files
+- CHANGELOG.md
 
 ### Commits
+- Release 0.3.2 (amended)
 
-• Release 0.3.1 (0fa7e9b)
-• Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
-
-**Note**: This release includes uncommitted changes from the working directory.
-
-
-## 0.3.1
-
-## Version 0.3.1 - Bug Fixes & Improvements
-
-### Fixed
-- **Race Condition**: Sensors no longer try to read coordinator data before first update completes
-  - Added `available` property to sensor base classes
-  - Sensors report as "unavailable" until coordinator successfully fetches data
-  - Added guard checks in data accessors to prevent KeyError exceptions
-  
-- **Excessive Logging**: Removed unnecessary success/info logging
-  - Coordinator no longer logs normal operations as warnings/errors
-  - Removed debug logs from sensor property getters
-  - Only actual failures are logged now
-
+**Note**: This release focuses on new charting sensors and integration improvements for ApexCharts compatibility.
 - **502 Error Handling**: Improved API retry logging
   - Retry attempts now logged at DEBUG level instead of WARNING
   - Only logs WARNING after all retries are exhausted
@@ -258,12 +217,16 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 **Note**: This release includes uncommitted changes from the working directory.
 
+### New Charting Sensors
 
-## 0.1.10
+- Added `sensor_usage.py` with new sensors for ApexCharts charting:
+  - `ContactEnergyChartHourlySensor`: exposes hourly usage data from the Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: exposes daily usage data from the statistics database
+  - No API calls are made; all data is sourced from Home Assistant statistics
+  - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
 
-
-**Note**: This release includes uncommitted changes from the working directory.
-
+### Added Files:
+- custom_components/contact_energy/sensor_usage.py
 
 ## 0.1.9
 
