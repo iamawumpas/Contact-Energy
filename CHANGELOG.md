@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.8
+
+### Changes
+
+• Documentation and changelog updates
+• Documentation and changelog updates
+• API client enhancements and authentication improvements
+• DataUpdateCoordinator implementation with 8-hour polling
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+
+### Commits
+
+• Release 0.3.7 (fd082c5)
+• Release 0.3.6 (d4f9c29)
+• Release 0.3.5 (08dd21d)
+• fix: remove erroneous 0.3.5 entry from CHANGELOG.md (c22e55c)
+• refactor: remove file lists from changelog and release notes (04c848f)
+• Release 0.3.4 (fc08659)
+• feat: integrate charting sensors and reduce API error log spam (98eab8e)
+• Release 0.3.3 (b359402)
+• Release 0.3.2 (d7dd439)
+• Release 0.3.1 (0fa7e9b)
+• Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.3.7
 
 ### Changes

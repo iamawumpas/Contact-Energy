@@ -157,14 +157,16 @@ class ContactEnergyChartHourlyFreeSensor(SensorEntity):
                 start_ts = entry.get("start")
                 val = entry.get("sum")
                 if start_ts and val is not None:
-                    # Convert timestamp to datetime and store as ISO string for ApexCharts
-                    dt = datetime.fromtimestamp(start_ts)
+                    # Robustly handle both float and datetime
+                    if isinstance(start_ts, (int, float)):
+                        dt = datetime.fromtimestamp(start_ts)
+                    elif isinstance(start_ts, datetime):
+                        dt = start_ts
+                    else:
+                        continue
                     self._hourly_free_data[dt.isoformat()] = float(val)
         self._last_update = datetime.now()
 
-    # Register all entities in a single call
-    all_entities = entities + convenience_entities + chart_entities
-    async_add_entities(all_entities, False)
 
 
 class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
