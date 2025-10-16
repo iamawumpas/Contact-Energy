@@ -1,0 +1,29 @@
+# Release Summary: 0.3.3
+
+## Version 0.3.3 - Charting Sensor Integration & Cleanup
+
+### Added
+- New charting sensors for ApexCharts in `sensor_usage.py`:
+  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
+- Integration now loads `sensor_usage` platform and exposes sensors for charting
+
+### Changed
+- Updated `manifest.json` to include `sensor_usage` platform
+- Improved changelog and release summary formatting for clarity
+
+### Removed
+- All obsolete `.release_summary*.*` files and test YAMLs
+
+### Technical Changes
+- Sensors use only Home Assistant statistics database (no API calls)
+- Sensors provide attributes for easy charting and handle delayed/missing data gracefully
+
+### User Impact
+- New sensors available for ApexCharts and dashboard charting
+- Cleaner release history and changelog
+
+### Commits
+- Release 0.3.3 (ed64865)
+
+**Note**: This release focuses on new charting sensors and workspace cleanup.

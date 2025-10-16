@@ -1,23 +1,46 @@
 # Changelog
 
-## 0.3.2
+## Version 0.3.3 - Charting Sensor Integration & Cleanup
 
+### Added
+- New charting sensors for ApexCharts in `sensor_usage.py`:
+  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
+- Integration now loads `sensor_usage` platform and exposes sensors for charting
+
+### Changed
+- Updated `manifest.json` to include `sensor_usage` platform
+- Improved changelog and release summary formatting for clarity
+
+### Removed
+- All obsolete `.release_summary*.*` files and test YAMLs
+
+### Technical Changes
+- Sensors use only Home Assistant statistics database (no API calls)
+- Sensors provide attributes for easy charting and handle delayed/missing data gracefully
+
+### User Impact
+- New sensors available for ApexCharts and dashboard charting
+- Cleaner release history and changelog
+
+### Commits
+- Release 0.3.3 (ed64865)
+
+**Note**: This release focuses on new charting sensors and workspace cleanup.
+**Note**: This release includes uncommitted changes from the working directory.
+
+
+## 0.3.2
 ### Changes
 
-• Documentation and changelog updates
 • Documentation and changelog updates
 • API client enhancements and authentication improvements
-• DataUpdateCoordinator implementation with 8-hour polling
 • Integration metadata and version updates
 • Energy Dashboard sensor implementation and statistics integration
-• Integration metadata and version updates
-
 ### Added Files:
 
-### Changes
 
 - Added new charting sensors for ApexCharts in `sensor_usage.py`:
-  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
   - `ContactEnergyChartDailySensor`: daily usage data from statistics database
   - No API calls are made by these sensors; all data is sourced from Home Assistant statistics
   - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
@@ -292,14 +315,6 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 • Added cloud_polling IoT class designation
 • Updated integration version metadata
 
-### Modified Files:
-• CHANGELOG.md
-• README.md
-• custom_components/contact_energy/const.py
-• custom_components/contact_energy/manifest.json
-• hacs.json
-
-### Commits
 
 • Release 0.1.4 (ea72b75)
 • chore: rebuild changelog and release notes (1e234a0)

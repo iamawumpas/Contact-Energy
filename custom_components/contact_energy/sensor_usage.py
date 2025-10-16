@@ -1,7 +1,8 @@
+
 """
 Contact Energy Chart Usage Sensors
 
-Exposes hourly, daily, weekly, and monthly usage data for ApexCharts, using only the Home Assistant statistics database.
+Exposes hourly and daily usage data for ApexCharts, using only the Home Assistant statistics database.
 No API calls are made from these sensors.
 """
 from __future__ import annotations
@@ -10,10 +11,12 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.recorder.statistics import statistics_during_period
+from homeassistant.const import CONF_ENTITY_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,13 +24,26 @@ _LOGGER = logging.getLogger(__name__)
 STAT_ID = "contact_energy:energy_chart"
 SENSOR_PREFIX = "contact_energy_chart"
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up chart usage sensors from a config entry."""
+    entities = [
+        ContactEnergyChartHourlySensor(hass),
+        ContactEnergyChartDailySensor(hass),
+    ]
+    async_add_entities(entities, True)
+
 class ContactEnergyChartHourlySensor(SensorEntity):
     """Sensor exposing hourly usage data for ApexCharts."""
     def __init__(self, hass: HomeAssistant, stat_id: str = STAT_ID) -> None:
         self.hass = hass
         self._stat_id = stat_id
-        self._attr_name = f"{SENSOR_PREFIX}_hourly"
+        self._attr_name = "Contact Energy Chart Hourly"
         self._attr_unique_id = f"{SENSOR_PREFIX}_hourly"
+        self._attr_icon = "mdi:chart-bar"
         self._hourly_data: Dict[str, float] = {}
         self._last_update: Optional[datetime] = None
         self._state = None
@@ -76,8 +92,9 @@ class ContactEnergyChartDailySensor(SensorEntity):
     def __init__(self, hass: HomeAssistant, stat_id: str = STAT_ID) -> None:
         self.hass = hass
         self._stat_id = stat_id
-        self._attr_name = f"{SENSOR_PREFIX}_daily"
+        self._attr_name = "Contact Energy Chart Daily"
         self._attr_unique_id = f"{SENSOR_PREFIX}_daily"
+        self._attr_icon = "mdi:calendar"
         self._daily_data: Dict[str, float] = {}
         self._last_update: Optional[datetime] = None
         self._state = None
@@ -120,11 +137,3 @@ class ContactEnergyChartDailySensor(SensorEntity):
                     # Store as ISO date string for ApexCharts
                     self._daily_data[dt.date().isoformat()] = float(val)
         self._last_update = datetime.now()
-
-# You can add similar classes for weekly and monthly sensors if needed
-
-# Example usage in async_setup_entry:
-# async_add_entities([
-#     ContactEnergyChartHourlySensor(hass),
-#     ContactEnergyChartDailySensor(hass),
-# ])
