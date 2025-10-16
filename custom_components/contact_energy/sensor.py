@@ -91,11 +91,76 @@ async def async_setup_entry(
     if re.match(r'^[0-9]', safe_icp):
         safe_icp = f"icp_{safe_icp}"
     kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
-    
+    free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
+
     chart_entities = [
         ContactEnergyChartHourlySensor(hass, kwh_stat_id, contract_icp),
         ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
+        ContactEnergyChartHourlyFreeSensor(hass, free_stat_id, contract_icp),
     ]
+class ContactEnergyChartHourlyFreeSensor(SensorEntity):
+    """Sensor exposing hourly free usage data for ApexCharts."""
+
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Hourly Free ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_hourly_free"
+        self._attr_icon = "mdi:gift"
+        self._hourly_free_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent hour's free usage
+        if self._hourly_free_data:
+            latest = max(self._hourly_free_data.keys())
+            return self._hourly_free_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "hourly_free_data": self._hourly_free_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 30 days of hourly free statistics from the database
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=30)
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "hour",
+            None,
+            {"sum"}
+        )
+        self._hourly_free_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                start_ts = entry.get("start")
+                val = entry.get("sum")
+                if start_ts and val is not None:
+                    # Convert timestamp to datetime and store as ISO string for ApexCharts
+                    dt = datetime.fromtimestamp(start_ts)
+                    self._hourly_free_data[dt.isoformat()] = float(val)
+        self._last_update = datetime.now()
 
     # Register all entities in a single call
     all_entities = entities + convenience_entities + chart_entities
