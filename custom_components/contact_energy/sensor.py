@@ -1167,7 +1167,8 @@ class ContactEnergyChartHourlySensor(SensorEntity):
         # Query last 30 days of hourly statistics from the database
         end_time = datetime.now()
         start_time = end_time - timedelta(days=30)
-        stats = await self.hass.async_add_executor_job(
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
             start_time,
@@ -1231,7 +1232,8 @@ class ContactEnergyChartDailySensor(SensorEntity):
         # Query last 90 days of daily statistics from the database
         end_time = datetime.now()
         start_time = end_time - timedelta(days=90)
-        stats = await self.hass.async_add_executor_job(
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
             start_time,
