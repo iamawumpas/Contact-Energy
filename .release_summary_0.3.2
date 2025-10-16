@@ -1,0 +1,16 @@
+# Release Summary: 0.3.2
+
+## Highlights
+- Added new charting sensors for ApexCharts in `sensor_usage.py`:
+  - `ContactEnergyChartHourlySensor`: hourly usage data from Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: daily usage data from statistics database
+- No API calls are made by these sensors; all data is sourced from Home Assistant statistics
+- Sensors provide attributes for easy charting and handle delayed/missing data gracefully
+
+## Added Files
+- custom_components/contact_energy/sensor_usage.py
+
+## Technical Details
+- Sensors are designed for flexible charting (hourly, daily) and avoid unnecessary API calls
+- Data is exposed as attributes for use in ApexCharts Card
+- Handles missing/delayed data using statistics database queries

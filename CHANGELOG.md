@@ -14,6 +14,8 @@
 
 ### Added Files:
 • .changes_summary.md
+• .release_sh_fix_summary.md
+• custom_components/contact_energy/sensor_usage.py
 
 ### Modified Files:
 • .allow_release
@@ -52,6 +54,7 @@
 
 ### Commits
 
+• Release 0.3.2 (436ebfe)
 • Release 0.3.1 (0fa7e9b)
 • Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
 
@@ -258,12 +261,16 @@ This release should resolve the widespread "Unknown" sensor values and provide b
 
 **Note**: This release includes uncommitted changes from the working directory.
 
+### New Charting Sensors
 
-## 0.1.10
+- Added `sensor_usage.py` with new sensors for ApexCharts charting:
+  - `ContactEnergyChartHourlySensor`: exposes hourly usage data from the Home Assistant statistics database
+  - `ContactEnergyChartDailySensor`: exposes daily usage data from the statistics database
+  - No API calls are made; all data is sourced from Home Assistant statistics
+  - Sensors provide attributes for easy charting and handle delayed/missing data gracefully
 
-
-**Note**: This release includes uncommitted changes from the working directory.
-
+### Added Files:
+- custom_components/contact_energy/sensor_usage.py
 
 ## 0.1.9
 
