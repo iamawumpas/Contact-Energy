@@ -1180,10 +1180,11 @@ class ContactEnergyChartHourlySensor(SensorEntity):
         self._hourly_data = {}
         if self._stat_id in stats:
             for entry in stats[self._stat_id]:
-                dt = entry.get("start")
+                start_ts = entry.get("start")
                 val = entry.get("sum")
-                if dt and val is not None:
-                    # Store as ISO string for ApexCharts
+                if start_ts and val is not None:
+                    # Convert timestamp to datetime and store as ISO string for ApexCharts
+                    dt = datetime.fromtimestamp(start_ts)
                     self._hourly_data[dt.isoformat()] = float(val)
         self._last_update = datetime.now()
 
@@ -1243,10 +1244,11 @@ class ContactEnergyChartDailySensor(SensorEntity):
         self._daily_data = {}
         if self._stat_id in stats:
             for entry in stats[self._stat_id]:
-                dt = entry.get("start")
+                start_ts = entry.get("start")
                 val = entry.get("sum")
-                if dt and val is not None:
-                    # Store as ISO date string for ApexCharts
+                if start_ts and val is not None:
+                    # Convert timestamp to datetime and store as ISO date string for ApexCharts
+                    dt = datetime.fromtimestamp(start_ts)
                     self._daily_data[dt.date().isoformat()] = float(val)
         self._last_update = datetime.now()
 
