@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.3.4
+
+### Changes
+
+• Added retry logic and exponential backoff for API requests
+• Implemented working Contact Energy usage data endpoint
+• Added custom exception classes for better error handling
+• Implemented Energy Dashboard integration with Statistics database
+• Added energy consumption tracking for Home Assistant Energy Dashboard
+• Added cost tracking and energy cost statistics
+• Added free/off-peak energy tracking
+• Implemented 8-hour polling DataUpdateCoordinator
+• Added cloud_polling IoT class designation
+• Updated integration version metadata
+
+### Added Files:
+• .changes_summary.md
+• .release_sh_fix_summary.md
+• custom_components/contact_energy/sensor_usage.py
+
+### Modified Files:
+• .allow_release
+• .release_summary_0.3.1
+• .release_summary_0.3.2
+• .release_summary_0.3.3
+• CHANGELOG.md
+• README.md
+• custom_components/contact_energy/api.py
+• custom_components/contact_energy/coordinator.py
+• custom_components/contact_energy/manifest.json
+• custom_components/contact_energy/sensor.py
+• hacs.json
+
+### Removed Files:
+• .release_summary_0.3.10
+• .release_summary_0.3.11
+• .release_summary_0.3.12
+• .release_summary_0.3.13
+• .release_summary_0.3.14
+• .release_summary_0.3.15
+• .release_summary_0.3.16
+• .release_summary_0.3.17
+• .release_summary_0.3.18
+• .release_summary_0.3.4
+• .release_summary_0.3.5
+• .release_summary_0.3.6
+• .release_summary_0.3.7
+• .release_summary_0.3.8
+• .release_summary_0.3.9
+• debug_test.yaml
+• hourly_energy_chart.yaml
+• hourly_sensor_chart.yaml
+• test_hourly_chart.yaml
+• test_hourly_chart_sensors.yaml
+
+### Commits
+
+• feat: integrate charting sensors and reduce API error log spam (98eab8e)
+• Release 0.3.3 (b359402)
+• Release 0.3.2 (d7dd439)
+• Release 0.3.1 (0fa7e9b)
+• Improve release.sh: Add error handling and GitHub release creation checks (c58bccc)
+
+
 ## Version 0.3.3 - Charting Sensor Integration & Cleanup
 
 ### Added
