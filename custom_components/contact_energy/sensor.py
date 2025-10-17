@@ -1167,9 +1167,9 @@ class ContactEnergyChartHourlySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 30 days of hourly statistics from the database
+        # Query last 7 days of hourly statistics to avoid database attribute size limits
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=30)
+        start_time = end_time - timedelta(days=7)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
@@ -1232,9 +1232,9 @@ class ContactEnergyChartDailySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 90 days of daily statistics from the database
+        # Query last 30 days of daily statistics to avoid database attribute size limits
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=90)
+        start_time = end_time - timedelta(days=30)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
@@ -1297,9 +1297,9 @@ class ContactEnergyChartHourlyFreeSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 30 days of hourly free statistics from the database
+        # Query last 7 days of hourly free statistics to avoid database attribute size limits
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=30)
+        start_time = end_time - timedelta(days=7)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,

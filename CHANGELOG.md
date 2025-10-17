@@ -4,16 +4,22 @@
 
 ### Changes
 
-• Added retry logic and exponential backoff for API requests
-• Implemented working Contact Energy usage data endpoint
-• Added custom exception classes for better error handling
-• Implemented Energy Dashboard integration with Statistics database
-• Added energy consumption tracking for Home Assistant Energy Dashboard
-• Added cost tracking and energy cost statistics
-• Added free/off-peak energy tracking
-• Implemented 8-hour polling DataUpdateCoordinator
-• Added cloud_polling IoT class designation
-• Updated integration version metadata
+• Documentation and changelog updates
+• Documentation and changelog updates
+• API client enhancements and authentication improvements
+• DataUpdateCoordinator implementation with 8-hour polling
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+• Documentation and changelog updates
+• API client enhancements and authentication improvements
+• DataUpdateCoordinator implementation with 8-hour polling
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+
+
+**Note**: This release includes uncommitted changes from the working directory.
 
 
 ## 0.3.9

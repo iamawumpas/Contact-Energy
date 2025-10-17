@@ -202,7 +202,7 @@ class ContactEnergyApi:
 		if not self._api_token:
 			ok = await self.async_login()
 			if not ok:
-				return None
+				raise CannotConnect("Failed to authenticate")
 
 		try:
 			data = await self._request(
@@ -216,10 +216,13 @@ class ContactEnergyApi:
 			if await self.async_login():
 				# Retry the request with new token
 				return await self.async_get_account_details()
-			return None
+			raise InvalidAuth("Failed to re-authenticate")
+		except (CannotConnect, InvalidAuth):
+			# Re-raise these specific errors
+			raise
 		except Exception as error:
 			_LOGGER.error("Failed to fetch account details: %s", error)
-			return None
+			raise UnknownError(f"Failed to fetch account details: {error}") from error
 
 
 class InvalidAuth(Exception):

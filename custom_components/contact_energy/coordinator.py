@@ -53,8 +53,8 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 account_data = await self.api.async_get_account_details()
             
             if not account_data or not isinstance(account_data, dict):
-                _LOGGER.error("Failed to fetch account data: received %s", account_data)
-                raise UpdateFailed("Failed to fetch account data")
+                _LOGGER.error("Failed to fetch account data: received %s (type: %s)", account_data, type(account_data).__name__)
+                raise UpdateFailed(f"Failed to fetch account data: received {type(account_data).__name__}")
             
             # Extract accountDetail from response (API returns {'accountDetail': {...}})
             account_details = account_data.get("accountDetail", {})
