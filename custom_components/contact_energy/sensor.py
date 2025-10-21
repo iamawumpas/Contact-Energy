@@ -1467,8 +1467,8 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    # Store as YYYY-MM format for monthly data
-                    self._monthly_data[dt.strftime("%Y-%m")] = float(val)
+                    # Store as YYYY-MM-15 format for monthly data (mid-month)
+                    self._monthly_data[dt.strftime("%Y-%m-15")] = float(val)
         self._last_update = datetime.now()
 
 
@@ -1538,8 +1538,8 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    # Store as YYYY-MM format for monthly data
-                    self._monthly_free_data[dt.strftime("%Y-%m")] = float(val)
+                    # Store as YYYY-MM-15 format for monthly data (mid-month)
+                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
         self._last_update = datetime.now()
 
 

@@ -1,6 +1,7 @@
 # Contact-Energy
 
-**Version:** 0.3.11
+**Version:** 0.3.12
+
 
 
 

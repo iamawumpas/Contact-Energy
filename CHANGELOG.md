@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.12
+
+### Changes
+
+• Documentation and changelog updates
+• Documentation and changelog updates
+• API client enhancements and authentication improvements
+• DataUpdateCoordinator implementation with 8-hour polling
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+• Documentation and changelog updates
+• Integration metadata and version updates
+• Energy Dashboard sensor implementation and statistics integration
+• Integration metadata and version updates
+
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.3.11
 
 ### Changes

@@ -171,10 +171,8 @@ series:
       let prevSum = 0;
       for (const [monthStr, cumSum] of Object.entries(data).sort()) {
         const monthlyValue = cumSum - prevSum;
-        // Parse YYYY-MM and create date at start of month
-        const [year, month] = monthStr.split('-');
-        const date = new Date(year, month - 1, 1);
-        result.push([date.getTime(), monthlyValue]);
+        // Parse YYYY-MM-15 date string
+        result.push([new Date(monthStr).getTime(), monthlyValue]);
         prevSum = cumSum;
       }
       return result;
@@ -189,10 +187,8 @@ series:
       let prevSum = 0;
       for (const [monthStr, cumSum] of Object.entries(data).sort()) {
         const monthlyValue = cumSum - prevSum;
-        // Parse YYYY-MM and create date at start of month
-        const [year, month] = monthStr.split('-');
-        const date = new Date(year, month - 1, 1);
-        result.push([date.getTime(), monthlyValue]);
+        // Parse YYYY-MM-15 date string
+        result.push([new Date(monthStr).getTime(), monthlyValue]);
         prevSum = cumSum;
       }
       return result;
