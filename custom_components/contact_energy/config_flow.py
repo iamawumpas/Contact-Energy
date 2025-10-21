@@ -69,6 +69,11 @@ class ConfigFlow(config_entries.ConfigFlow):
     VERSION = 1
     domain = DOMAIN
 
+    @staticmethod
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
     def __init__(self) -> None:
         """Initialize config flow."""
         self._email: str = ""
@@ -192,3 +197,56 @@ class ConfigFlow(config_entries.ConfigFlow):
 # Backwards compatibility alias
 ContactEnergyConfigFlow = ConfigFlow
 
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Contact Energy."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Manage the options."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            # Update the config entry with new values
+            updated_data = dict(self.config_entry.data)
+            updated_data[CONF_USAGE_DAYS] = user_input[CONF_USAGE_DAYS]
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=updated_data,
+            )
+            
+            return self.async_create_entry(title="", data={})
+
+        # Create schema with current values
+        current_days = self.config_entry.data.get(CONF_USAGE_DAYS, 30)
+        
+        if USE_SELECTOR:
+            usage_days_field = sel.NumberSelector(
+                sel.NumberSelectorConfig(
+                    min=USAGE_DAYS_MIN,
+                    max=USAGE_DAYS_MAX,
+                    step=1,
+                    mode=sel.NumberSelectorMode.SLIDER,
+                )
+            )
+        else:
+            usage_days_field = vol.All(
+                cv.positive_int, 
+                vol.Range(min=USAGE_DAYS_MIN, max=USAGE_DAYS_MAX)
+            )
+
+        options_schema = vol.Schema(
+            {
+                vol.Required(CONF_USAGE_DAYS, default=current_days): usage_days_field,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            errors=errors,
+        )
