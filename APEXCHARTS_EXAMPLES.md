@@ -5,8 +5,8 @@
 The integration now provides the following chart sensors that expose data in their attributes for easy use with ApexCharts:
 
 ### Hourly Sensors
-- `sensor.contact_energy_chart_hourly_{icp}` - Last 7 days of hourly paid usage
-- `sensor.contact_energy_chart_hourly_free_{icp}` - Last 7 days of hourly free usage
+- `sensor.contact_energy_chart_hourly_{icp}` - Last 14 days of hourly paid usage
+- `sensor.contact_energy_chart_hourly_free_{icp}` - Last 14 days of hourly free usage
 
 ### Daily Sensors
 - `sensor.contact_energy_chart_daily_{icp}` - Last 30 days of daily paid usage
@@ -86,14 +86,14 @@ series:
 
 ## Example 2: Hourly Usage Chart
 
-This shows hourly usage for the last 7 days:
+This shows hourly usage for the last 14 days:
 
 ```yaml
 type: custom:apexcharts-card
 header:
   show: true
-  title: Hourly Energy Usage (Last 7 Days)
-graph_span: 7d
+  title: Hourly Energy Usage (Last 14 Days)
+graph_span: 14d
 apex_config:
   chart:
     type: area

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.15
+
+### Changes
+
+• Hourly chart sensors now fetch the last 14 days of data (previously 7) for better context in charts
+• Updated ApexCharts examples to reflect the 14-day hourly window (graph_span and notes)
+• Integration metadata and version updates
+
+
 ## 0.3.14
 
 ### Changes
