@@ -97,6 +97,9 @@ async def async_setup_entry(
         ContactEnergyChartHourlySensor(hass, kwh_stat_id, contract_icp),
         ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
         ContactEnergyChartHourlyFreeSensor(hass, free_stat_id, contract_icp),
+        ContactEnergyChartDailyFreeSensor(hass, free_stat_id, contract_icp),
+        ContactEnergyChartMonthlySensor(hass, kwh_stat_id, contract_icp),
+        ContactEnergyChartMonthlyFreeSensor(hass, free_stat_id, contract_icp),
     ]
 
     # Register all entities in a single call
@@ -1325,6 +1328,218 @@ class ContactEnergyChartHourlyFreeSensor(SensorEntity):
                     else:
                         continue
                     self._hourly_free_data[dt.isoformat()] = float(val)
+        self._last_update = datetime.now()
+
+
+class ContactEnergyChartDailyFreeSensor(SensorEntity):
+    """Sensor exposing daily free usage data for ApexCharts."""
+
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Daily Free ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_daily_free"
+        self._attr_icon = "mdi:gift"
+        self._daily_free_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent day's free usage
+        if self._daily_free_data:
+            latest = max(self._daily_free_data.keys())
+            return self._daily_free_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "daily_free_data": self._daily_free_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 30 days of daily free statistics to avoid database attribute size limits
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=30)
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "day",
+            None,
+            {"sum"}
+        )
+        self._daily_free_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                start_ts = entry.get("start")
+                val = entry.get("sum")
+                if start_ts and val is not None:
+                    # Robustly handle both float and datetime
+                    if isinstance(start_ts, (int, float)):
+                        dt = datetime.fromtimestamp(start_ts)
+                    elif isinstance(start_ts, datetime):
+                        dt = start_ts
+                    else:
+                        continue
+                    self._daily_free_data[dt.date().isoformat()] = float(val)
+        self._last_update = datetime.now()
+
+
+class ContactEnergyChartMonthlySensor(SensorEntity):
+    """Sensor exposing monthly usage data for ApexCharts."""
+
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Monthly ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly"
+        self._attr_icon = "mdi:calendar-month"
+        self._monthly_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent month's usage
+        if self._monthly_data:
+            latest = max(self._monthly_data.keys())
+            return self._monthly_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "monthly_data": self._monthly_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 12 months of monthly statistics
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=365)
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "month",
+            None,
+            {"sum"}
+        )
+        self._monthly_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                start_ts = entry.get("start")
+                val = entry.get("sum")
+                if start_ts and val is not None:
+                    # Convert timestamp to datetime and store as year-month string
+                    if isinstance(start_ts, (int, float)):
+                        dt = datetime.fromtimestamp(start_ts)
+                    elif isinstance(start_ts, datetime):
+                        dt = start_ts
+                    else:
+                        continue
+                    # Store as YYYY-MM format for monthly data
+                    self._monthly_data[dt.strftime("%Y-%m")] = float(val)
+        self._last_update = datetime.now()
+
+
+class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
+    """Sensor exposing monthly free usage data for ApexCharts."""
+
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+        self.hass = hass
+        self._stat_id = stat_id
+        self._contract_icp = contract_icp
+        self._attr_name = f"Contact Energy Chart Monthly Free ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly_free"
+        self._attr_icon = "mdi:gift"
+        self._monthly_free_data: dict[str, float] = {}
+        self._last_update: Optional[datetime] = None
+        self._state = None
+
+    @property
+    def state(self) -> Any:
+        # Return the most recent month's free usage
+        if self._monthly_free_data:
+            latest = max(self._monthly_free_data.keys())
+            return self._monthly_free_data[latest]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "monthly_free_data": self._monthly_free_data,
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    async def async_update(self) -> None:
+        # Query last 12 months of monthly free statistics
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=365)
+        recorder = __import__("homeassistant.components.recorder").components.recorder
+        stats = await recorder.get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start_time,
+            end_time,
+            [self._stat_id],
+            "month",
+            None,
+            {"sum"}
+        )
+        self._monthly_free_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                start_ts = entry.get("start")
+                val = entry.get("sum")
+                if start_ts and val is not None:
+                    # Robustly handle both float and datetime
+                    if isinstance(start_ts, (int, float)):
+                        dt = datetime.fromtimestamp(start_ts)
+                    elif isinstance(start_ts, datetime):
+                        dt = start_ts
+                    else:
+                        continue
+                    # Store as YYYY-MM format for monthly data
+                    self._monthly_free_data[dt.strftime("%Y-%m")] = float(val)
         self._last_update = datetime.now()
 
 
