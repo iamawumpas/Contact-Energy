@@ -168,12 +168,9 @@ series:
     data_generator: |
       const data = entity.attributes.monthly_data || {};
       const result = [];
-      let prevSum = 0;
-      for (const [monthStr, cumSum] of Object.entries(data).sort()) {
-        const monthlyValue = cumSum - prevSum;
-        // Parse YYYY-MM-15 date string
-        result.push([new Date(monthStr).getTime(), monthlyValue]);
-        prevSum = cumSum;
+      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
+        // Data already contains monthly totals, no calculation needed
+        result.push([new Date(monthStr).getTime(), monthlyTotal]);
       }
       return result;
       
@@ -184,12 +181,9 @@ series:
     data_generator: |
       const data = entity.attributes.monthly_free_data || {};
       const result = [];
-      let prevSum = 0;
-      for (const [monthStr, cumSum] of Object.entries(data).sort()) {
-        const monthlyValue = cumSum - prevSum;
-        // Parse YYYY-MM-15 date string
-        result.push([new Date(monthStr).getTime(), monthlyValue]);
-        prevSum = cumSum;
+      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
+        // Data already contains monthly totals, no calculation needed
+        result.push([new Date(monthStr).getTime(), monthlyTotal]);
       }
       return result;
 ```
@@ -200,7 +194,8 @@ series:
 In all examples above, replace `0000000966tr348` with your actual ICP number (in lowercase with special characters replaced by underscores).
 
 ### Data Structure
-All chart sensors store **cumulative** statistics in their attributes. The `data_generator` code calculates the difference between consecutive entries to get the actual usage for each period.
+- **Hourly and Daily** chart sensors store **cumulative** statistics in their attributes. The `data_generator` code calculates the difference between consecutive entries to get the actual usage for each period.
+- **Monthly** chart sensors store **actual monthly totals** directly (pre-calculated), so no difference calculation is needed in the `data_generator`.
 
 ### Attribute Names
 - Hourly: `hourly_data` (paid), `hourly_free_data` (free)

@@ -1456,6 +1456,7 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         )
         self._monthly_data = {}
         if self._stat_id in stats:
+            prev_sum = 0
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
@@ -1467,8 +1468,11 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
+                    # Calculate monthly total (difference from previous cumulative sum)
+                    monthly_total = float(val) - prev_sum
                     # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_data[dt.strftime("%Y-%m-15")] = float(val)
+                    self._monthly_data[dt.strftime("%Y-%m-15")] = monthly_total
+                    prev_sum = float(val)
         self._last_update = datetime.now()
 
 
@@ -1527,6 +1531,7 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         )
         self._monthly_free_data = {}
         if self._stat_id in stats:
+            prev_sum = 0
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
@@ -1538,8 +1543,11 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
+                    # Calculate monthly total (difference from previous cumulative sum)
+                    monthly_total = float(val) - prev_sum
                     # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
+                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = monthly_total
+                    prev_sum = float(val)
         self._last_update = datetime.now()
 
 
