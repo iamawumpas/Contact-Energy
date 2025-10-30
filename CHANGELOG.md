@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.17
+
+### Changes
+
+• Added assets folder with ApexCharts example configurations and chart images
+• Updated README.md with comprehensive ApexCharts Card Examples section
+• Fixed logo image URL to display correctly from GitHub repository
+• Fixed YAML configuration file links to open properly in GitHub web interface
+• Improved documentation formatting and consistency
+• Fixed spelling and grammar issues throughout README
+• Corrected sensor data storage information (daily sensors store 30 days, not 400)
+
+
 ## 0.3.16
 
 ### Changes

@@ -1,0 +1,117 @@
+type: custom:apexcharts-card
+all_series_config:
+  stroke_width: 2
+  type: column
+  opacity: 0.8
+update_interval: 6h
+header:
+  show: true
+  title: Last Month's Usage
+  show_states: false
+series:
+  - entity: sensor.contact_energy_chart_daily_0000000966tr348
+    name: Usage (kWh)
+    show:
+      legend_value: false
+    data_generator: |
+      // Read the cumulative data from the daily_data attribute
+      const entries = Object.entries(entity.attributes.daily_data || {})
+        // Ensure data points are valid and sort by date key
+        .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 10 && !isNaN(Date.parse(dt)))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      let dailyDeltas = [];
+      let prevCumulative = null;
+
+      entries.forEach(([dt, cumulativeValue]) => {
+        const currentCumulative = Number(cumulativeValue);
+
+        if (prevCumulative !== null) {
+          // Calculate the actual daily usage (delta)
+          const dailyUsage = currentCumulative - prevCumulative;
+          // ApexCharts expects [date, value] pairs
+          dailyDeltas.push([dt, parseFloat(dailyUsage.toFixed(1))]);
+        }
+        prevCumulative = currentCumulative;
+      });
+
+      return dailyDeltas;
+  - entity: sensor.contact_energy_chart_daily_free_0000000966tr348
+    name: Free Usage (kWh)
+    show:
+      legend_value: false
+    data_generator: >
+      // Read the cumulative data from the daily_free_data attribute
+
+      // Note: We are assuming the daily free data is in an attribute named
+      'daily_free_data' 
+
+      // based on the sensor name, but using 'daily_data' for safety if the
+      sensor naming is inconsistent.
+
+      const dailyFreeAttr = entity.attributes.daily_free_data ||
+      entity.attributes.daily_data;
+
+
+      const entries = Object.entries(dailyFreeAttr || {})
+        // Ensure data points are valid and sort by date key
+        .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 10 && !isNaN(Date.parse(dt)))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      let dailyDeltas = [];
+
+      let prevCumulative = null;
+
+
+      entries.forEach(([dt, cumulativeValue]) => {
+        const currentCumulative = Number(cumulativeValue);
+
+        if (prevCumulative !== null) {
+          // Calculate the actual daily free usage (delta)
+          const dailyUsage = currentCumulative - prevCumulative;
+          dailyDeltas.push([dt, parseFloat(dailyUsage.toFixed(1))]);
+        }
+        prevCumulative = currentCumulative;
+      });
+
+
+      return dailyDeltas;
+graph_span: 35d
+apex_config:
+  chart:
+    height: 250px
+    type: bar
+    stacked: true
+  plotOptions:
+    bar:
+      columnWidth: 94%
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+  xaxis:
+    type: datetime
+    labels:
+      format: d
+      datetimeUTC: false
+  yaxis:
+    min: 0
+    max: 70
+    title:
+      text: kWh
+card_mod:
+  style: |
+    /* FIX 1: Center the Title */
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+    /* FIX 2: Reduce space between legend and chart */
+    .apexcharts-legend {
+      margin-top: -10px !important;  
+      padding-top: 0px !important;
+    }
+    .apexcharts-canvas {
+      margin-top: -15px !important;  
+    }

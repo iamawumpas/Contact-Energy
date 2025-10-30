@@ -1,0 +1,82 @@
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Monthly Energy Usage
+all_series_config:
+  stroke_width: 2
+  type: column
+  opacity: 0.8
+graph_span: 13month
+span:
+  start: month
+  offset: "-13month"
+stacked: true
+series:
+  - entity: sensor.contact_energy_chart_monthly_0000000966tr348
+    name: Usage
+    show:
+      legend_value: false
+    data_generator: |
+      const data = entity.attributes.monthly_data || {};
+      const result = [];
+      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
+        // Data already contains monthly totals, no calculation needed
+        result.push([new Date(monthStr).getTime(), monthlyTotal]);
+      }
+      return result;
+  - entity: sensor.contact_energy_chart_monthly_free_0000000966tr348
+    name: Free Usage
+    show:
+      legend_value: false
+    data_generator: |
+      const data = entity.attributes.monthly_free_data || {};
+      const result = [];
+      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
+        // Data already contains monthly totals, no calculation needed
+        result.push([new Date(monthStr).getTime(), monthlyTotal]);
+      }
+      return result;
+apex_config:
+  chart:
+    height: 250px
+    type: bar
+    stacked: true
+  plotOptions:
+    bar:
+      columnWidth: 90%
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+  xaxis:
+    type: datetime
+    labels:
+      format: MMM
+      datetimeUTC: false
+      offsetX: 20
+  yaxis:
+    min: 0
+    max: 1700
+    title:
+      text: kWh
+    labels:
+      formatter: |
+        EVAL:function(value) {
+          return value.toFixed(0);
+        }
+card_mod:
+  style: |
+    /* FIX 1: Center the Title */
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+    /* FIX 2: Reduce space between legend and chart */
+    .apexcharts-legend {
+      margin-top: -10px !important;  
+      padding-top: 0px !important;
+    }
+    .apexcharts-canvas {
+      margin-top: -15px !important;  
+    }
