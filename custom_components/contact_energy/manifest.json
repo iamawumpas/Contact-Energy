@@ -1,7 +1,7 @@
 {
   "domain": "contact_energy",
   "name": "Contact Energy",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "documentation": "https://github.com/iamawumpas/Contact-Energy",
   "requirements": [],
   "dependencies": [],

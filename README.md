@@ -1,51 +1,136 @@
-# Contact-Energy
+<table>
+  <tr>
+    <td style="vertical-align: top;">
+  <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAyMDQ4IDc2NyIgd2lkdGg9IjE1NTEiIGhlaWdodD0iNTgxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwKSIgZD0ibTAgMGgyMDQ4djc2N2gtMjA0OHoiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoODE4KSIgZD0ibTAgMGgxMjMwdjY2OWgtM2wtMTMtMjktMTYtMzQtMTAtMjAtMTMtMjMtMTEtMjAtMTctMjgtMjItMzMtMTEtMTYtMTMtMTgtMTQtMTgtMTMtMTYtOS0xMS0xMi0xNC05LTEwLTExLTEyLTE0LTE1LTMyLTMyLTgtNy0xMi0xMS0xMC05LTExLTktMTMtMTEtMTQtMTEtMjEtMTYtMTgtMTMtMTktMTMtMjAtMTMtMTktMTItMjYtMTUtMjktMTYtMzYtMTgtMzMtMTUtMjctMTEtMjktMTEtMzYtMTItMzItMTAtMzctMTAtMzAtNy00Ny05LTQyLTYtMzMtNCAzOCAxNCAyOCAxMiAzMyAxNSAzNCAxNyAyMyAxMyAxOCAxMCAyNSAxNiAxNSAxMCA0MSAxNiAzMCAxMyAzNCAxNiAxOSAxMCAyNSAxNCAyMCAxMiAyNSAxNiAxOSAxMyAxOCAxMyAxMyAxMCAxNiAxMyAxNCAxMSAxMCA5IDggNyAxMiAxMSA4IDcgMTkgMTkgNSA0IDcgOCAxMCAxMCA3IDggMTEgMTIgOSAxMSAxMiAxNCAxMSAxNCAxNSAyMCAxMyAxOCAxNiAyNCAxMiAxOSAxMiAyMCAxNCAyNSAxMCAxOCA1IDE1IDIgMTR2MThsLTQgMjAtNiAxNi04IDE0LTExIDEzLTEwIDktMTMgOC0xMyA2LTEzIDQtMjAgM2gtMTBsLTE4LTMtMTktNy0xNC04LTExLTktMTItMTItMTAtMTUtNy0xNS0xNy00OS0xNS0zNy0xNS0zMy0xMi0yNS0xMi0yMi0xNi0yOC0xNS0yNC0xNS0yMi0xMy0xOC0xMy0xNy04LTEwLTEzLTE2LTEzLTE1LTEwLTExLTctOC0xNy0xNy03LTgtMjktMjctOC03LTE0LTEyLTExLTktMTgtMTQtMjEtMTYtMTAtNS00My0xNC0zNi0xMC00Mi0xMC00My04LTQ0LTYtMzUtMy0xNi0xLTUyLTEtMzcgMS00MCAzLTM5IDUtNDcgOC0zMSA3LTUwIDE0LTM1IDEyLTM1IDE0LTIzIDEwLTM4IDE4LTI1IDEzLTI0IDE0LTIyIDEzLTMzIDIyLTE3IDEyLTEyIDktMTggMTQtMTYgMTMtMTEgOS0xMSAxMC04IDctMTIgMTEtMTUgMTUtNyA2LTcgOC0xNCAxNC03IDgtMTEgMTItOSAxMS0xMSAxMy04IDEwLTEwIDEzLTE0IDE5LTEyIDE3LTEyIDE4LTEzIDIxLTEzIDIyLTEzIDI0LTEwIDE5LTggMTgtMyAxIDMtMTAgMTAtMjUgMTEtMjUgMTQtMjkgMTItMjMgMTQtMjQgMTItMjAgMTYtMjQgMTItMTcgMTQtMTkgMTQtMTggMTEtMTMgOS0xMSAxMC0xMSA3LTggMTYtMTcgMzAtMzAgOC03IDE0LTEzIDExLTkgMTUtMTMgMTMtMTAgMjEtMTYgMTgtMTMgMzItMjEgMjEtMTMgMjEtMTIgMjgtMTUgMjgtMTQgMzQtMTUgMzgtMTUgNDctMTYgNDMtMTIgNDAtOSAzNi02IDQxLTUgMzktMyAyOS0xaDI0bDMyIDEgMzUgMi0yNy04LTM1LTEwLTM5LTktMzMtNi0zMy00LTI2LTJoLTQ2bC0yNiAyLTM2IDUtMzMgNy0yNiA3LTM3IDEyLTMzIDEzLTMwIDEzLTMwIDE0LTMzIDE3LTE4IDEwLTI2IDE1LTIyIDEzLTQ1IDMwLTE4IDEzLTE5IDE0LTE2IDEzLTEwIDgtMTEgOS0xNSAxMy0xNCAxMi04IDgtOCA3LTMxIDMxLTcgOC03IDctOSAxMS0xMSAxMi05IDExLTExIDEzLTEzIDE3LTEyIDE2LTEyIDE3LTExIDE2LTE1IDIzLTE3IDI4LTE0IDI1LTEyIDIyLTE4IDM2LTEzIDI5LTExIDI2LTcgMTMtMTAgMTMtNyA3LTE0IDEwLTE2IDgtMTUgNS0xNyAzaC0xN2wtMjAtNC0xNS02LTE2LTEwLTExLTktOS0xMS03LTEwLTctMTQtNC0xMy0zLTE5di0xMmwzLTE5IDEwLTI4IDE3LTM4IDEyLTI1IDE0LTI4IDEzLTIzIDE1LTI2IDE3LTI2IDExLTE2IDEyLTE3IDEwLTEzIDExLTE0IDktMTEgMTEtMTMgOS0xMCA5LTExIDEwLTEwIDctOCAzMi0zMiA4LTcgNy03IDgtNyAxMS0xMCA4LTcgMTQtMTIgMTMtMTEgMTQtMTEgMTctMTMgMTgtMTMgMzAtMjAgMTktMTIgMjQtMTQgMjYtMTQgMzQtMTcgMjAtOSAzOS0xNiAzNC0xMiA0MC0xMiAzMC04IDM2LTggNDEtNyA0OC02eiIgZmlsbD0iI0UzMkQzMyIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSg4ODAsMjQ4KSIgZD0ibTAgMGg0MDZsMTIgMSAxMyAxMCA1IDYgMyAxMiAxIDIydjI1OGwtMSAxMzMtMyAxMC04IDEwLTEyIDdoLTQyMWwtNi0zLTgtNS0zLTUtNC00LTUtMjAgMi00di0yMjRsLTMtMyAyLTV2LTdsLTEtNCAxLTQtMi01IDItM3YtN2wtMS00di0xMWwxLTF2LTE3bC0xLTUgMS0ydi0xOGwtMS00IDEtMXYtMjRsMS00NSAyLTEyIDMtNiA2LTcgNi00IDQtNHoiIGZpbGw9IiM0N0JCRjEiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTE0NSkiIGQ9Im0wIDBoOTAzdjY2N2wtMy00LTEzLTMzLTEzLTMwLTE5LTQwLTEwLTE5LTE1LTI3LTEyLTIwLTE1LTI0LTE2LTI0LTEyLTE3LTEwLTE0LTEwLTEzLTEzLTE3LTE0LTE3LTI0LTI4LTIyLTI0LTQwLTQwLTgtNy0xMy0xMi0xMS05LTEwLTktMTQtMTEtMTUtMTItMzYtMjYtMzMtMjItMjItMTQtMjUtMTUtMjUtMTQtMjQtMTMtMjYtMTMtMzYtMTYtMjMtMTAtNDAtMTUtNDUtMTUtMzUtMTAtNTAtMTItNDQtOC0zNC01LTM3LTQtMzYtM3oiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTA4MywzMDQpIiBkPSJtMCAwaDdsNSA2IDUgNCA1IDUgNiA3IDUgNCA1IDUgNiA3IDUgNSA4IDcgNSA1IDYgNyA1IDQgNSA1IDYgNyA1IDQgNCA1IDcgNyAyIDF2LTE3bDMtNSAyLTFoMzVsMyAzIDEgM3Y2NGw1IDIgNSA2IDUgNSA2IDUgMiA0IDcgNSA3IDggMiA0IDUgMiAzIDUtMSA3LTUgM2gtNDB2MTMwbC0yIDUtMSAxaC0xMzNsNi03IDE4LTE4aDI5bDMgNSA1IDNoN2w2LTQgMy03LTItMTAtNy00LTkgMS01IDEtMSA2LTMzIDEtNSAyLTIgNS0xMiAxMS0zIDF2LTI5bDctNiA2LTcgNS01IDUtNCAxLTMgNC0zIDMzLTFoMThsNiA3IDggMSA1LTIgNC01di0xM2wtMy0zLTYtMi03IDEtNSAzLTIgNGgtMzlsMS00IDQtM2gybDItNCA1LTQgNC02IDQtMiAzLTQgMS0yNyA5LTEwIDUtNSA1LTRoOWw2LTQgMi0ydi0xM2wtNS00LTQtMi03IDEtNiA0LTEgMTB2NGwtNSAzLTUgNi0zIDF2LTQxbDQtMiAzLTgtMi05LTQtNC0zLTFoLTdsLTYgNC0zIDUgMSA4IDQgNSAyIDF2NDFsLTUtMy0zLTUtMi0xdi04bC0zLTctNy00aC03bC02IDQtMyA3IDEgNiA1IDYgNSAyaDhsOSA4IDcgOCAyIDN2MjNsLTcgOC02IDZoLTJsLTIgNC03IDZ2LTIwbDYtNSAxLTN2LTdsLTQtNi01LTNoLTdsLTYgNC0yIDR2OWw0IDYgMyAydjMwbC0yMCAyMGgtMnYtMTM3bDE0LTE0aDJsMi00aDhsOC00IDItNHYtOWwtNC01di0ybC00LTFoLThsLTUgNS0zIDV2OWwtMTMgMTItNSA1LTMtMi0yLTQtNi01LTUtNS0xLTUtMS04LTUtNS0zLTJoLTdsLTYgNC0zIDR2OGwzIDUgNyA0aDhsMTAgOSA5IDl2OThsLTYtNS04LTh2LTJsLTQtMi00LTR2LTJsLTQtMi00LTR2LTJsLTMtMXYtMjhsNC00aDJsMi02LTEtOS02LTUtMi0xaC03bC01IDMtMyAzLTEgM3Y3bDIgNCAyIDF2Mmw0IDJ2MThsLTQtM3YtMmwtNC0yLTUtNi03LTZ2LTNsLTQtMS0zLTN2LTI4bDYtNCAxLTJ2LTExbC01LTUtMi0xaC0xMGwtNSAzLTIgNSAxIDkgMyA1IDQgMSAxIDM0IDEwIDkgMTYgMTZ2MmgtMTdsLTUtNi0yLTFoLTlsLTYgNC0yIDR2N2w0IDYgNSAzIDktMSA2LTZoMjlsMzkgMzl2NjlsLTYtNC01LTYtMTAtMTB2LTI3bDYtNCAyLTV2LTdsLTQtNi00LTNoLThsLTUgMy0zIDR2MTFsNSA1IDIgMXYxOGwtOC02LTctOC02LTV2LTJsLTMtMS01LTYtMi0xLTEtMTQtMTAtNi03IDEtNSAzLTIgNXY3bDIgNiA1IDIgMiAxaDbsNyA1IDUgNiA1IDUgNiA1IDQgNSA1IDV2MWgtMThsLTEtNS02LTItNy0xLTYgM2gtMmwtMSA1djlsNCA2IDQgMmg3bDgtN2gzMGwzIDIgMyA1IDggNyA4IDkgMiAyaC0xMzVsLTMtMi0xLTE1di01NmwxLTYzaC00MWwtNS01IDEtNyAxMTMtMTEzIDYtNyA4LTcgMTAtMTEgOC03IDctOCA4LTcgNy04IDktOCA3LTh6IiBmaWxsPSIjRkFGQkZCIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDcyNiw3MikiIGQ9Im0wIDAgNCAxLTE4IDctMjQgOS0yNiAxMS0zNCAxNi0yMCAxMC0yMyAxMy0xNiA5LTIzIDE0LTQyIDI4LTE4IDEzLTIxIDE2LTE0IDExLTE0IDEyLTEwIDgtMTEgMTAtOCA3LTEyIDExLTE1IDE0LTM0IDM0LTcgOC0xMiAxMy0xMiAxNC0xMyAxNS05IDExLTExIDE0LTE2IDIxLTEzIDE4LTEzIDE5LTE2IDI0LTE2IDI2LTE3IDI5LTE0IDI2LTE1IDI5LTE1IDMyLTEwIDIzLTYgOS04IDctOCA0LTggMmgtMTBsLTEzLTQtOC02LTgtOS00LTktMS00di0xM2w3LTIwIDEwLTI0IDktMjAgMTQtMjkgMTItMjIgMTMtMjMgMTYtMjYgMTktMjggMTItMTcgMTYtMjEgMTEtMTQgMTEtMTMgMTMtMTUgMTEtMTIgNy04IDEwLTEwIDctOCAxMC0xMCA4LTcgMTMtMTMgOC03IDEwLTkgMTEtOSAxMy0xMSAxMy0xMCAxOC0xNCAxNy0xMiAzNi0yNCAyOC0xNyAyNS0xNCAyNy0xNCAyOC0xMyAyNi0xMSAyOS0xMSAzNi0xMiAzNS0xMCA0MS05eiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNjA4LDMzMCkiIGQ9Im0wIDAgNCAyIDE3IDEzIDIyIDE4IDE0IDEyIDEzIDEyIDggNyAzNiAzNiA3IDggMTIgMTMgOSAxMSAxMiAxNCAxMCAxMyAxMiAxNiAxMiAxNyAyMCAzMCAxNSAyNSAxNSAyNiA4IDE2IDEgM3YxNmwtNCAxMS02IDktOSA3LTEwIDQtNSAxaC0xMGwtMTAtMy0xMC02LTctOC03LTE1LTEyLTM1LTE1LTM4LTE1LTM0LTE0LTI5LTI0LTQ0LTE3LTI4LTIyLTMzLTE0LTIwLTE2LTIxLTEwLTEzLTEwLTEyeiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUzLDQwMCkiIGQ9Im0wIDBoN2w3IDUgMyA2djlsNSA0IDQgNSA0IDN2M2w0IDEgMTEtMTIgNS00di05bDQtNyA1LTRoOGw0IDIgNSA3djlsLTMgNS04IDRoLThsLTE3IDE3LTEgMTM3IDgtNyA0LTUgOC03IDEtMXYtMzBsLTUtNC0yLTR2LTlsNC02IDUtM2g3bDggNiAyIDR2N2wtMyA1LTQgM3YxOWwyMS0yMSAxLTJ2LTIzbC03LTgtNS02LTUtNGgtOGwtNi0zLTUtNi0xLTYgMy03IDUtNCAyLTFoN2w3IDQgMyA0IDEgNi0xIDYgMyAxIDMgNSAzIDIgMS00MC00LTItMy00LTEtOCA0LTYgNi00aDdsNiAzIDQgOS0xIDYtMyA2LTMgMXY0MGw1LTQgNC01aDNsLTEtOSAyLTYgOC01IDcgMSA2IDQgMiAydjEzbC03IDYtMiAxaC05bC01IDQtNSA1LTggOS0xIDI3LTQgNS01IDMtMyA1LTYgNS01IDUgMiAxLTEgM2gzOWwxLTQgMy0zIDYtMiA3IDEgNSAzIDIgMnYxM2wtNiA3LTggMS01LTItNS02aC0xOGwtMzMgMS00IDItMSA0LTYgNS01IDUtNSA2LTYgNXYyOGw4LTcgNS00IDMtNSA1LTNoMzNsMS02IDgtM2g2bDggNSAyIDEwLTMgNy03IDVoLTdsLTctNS0xLTQtMjkgMS0yMyAyM3YyaC00djJsLTUgMnYtMmwtNy0yLTYtOC05LTktNS00LTEtMy0yLTFoLTMwbC04IDdoLTdsLTUtMy00LTZ2LTlsMi01IDgtNCA3IDEgNiAzIDEgNSAxNy0xLTgtOHYtMmwtNC0yLTUtNi03LTYtMy0zLTQtM2gtOGwtNy00LTMtNnYtN2wzLTYgOC00IDYgMSA5IDZ2MTRsNCAyIDQgNSA4IDcgMTQgMTQgMS0xNy01LTItMy00di0xMWw0LTUgNS0zaDhsNyA2IDIgNHY3bC0zIDYtNSAzdjI3bDcgOCA3IDYgNSA1di02OGwtMzgtMzhoLTI5bC00IDUtNSAyaC02bC04LTYtMi00di03bDQtNiA1LTNoOWw3IDZ2MmgxN2wtNy04LTE2LTE2LTQtM3YtMzRsLTUtMS0zLTUtMS05IDMtNiA1LTNoMTBsNiA0IDIgM3YxMWwtNCA1LTQgMSAxIDI4IDMgMyAzIDEgMyA1IDUgNCA2IDcgNSA1di0xN2wtMy0ydi0ybC0zLTEtMi00di03bDMtNSA0LTQgMy0xaDdsNiA0IDMgMyAxIDktMyA2LTUgNHYyOGw1IDUgNSA0IDYgNyA1IDUgNSA0IDUgNnYtOTdsLTE1LTE1LTMtMmgtOGwtNy00LTMtMy0xLTN2LThsNi03eiIgZmlsbD0iIzQ2QkJGMSIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSg5NTYsNjM5KSIgZD0ibTAgMGgxMjZsNSAxLTEgMyA1LTJ2LTJoMTM1djFsLTE2IDQtNCAyLTEzIDFoLTExMWwtNCAxaC00M2wtMTQtMS0zMy0xLTE3LTUtMTUtMXoiIGZpbGw9IiMzOTlGQ0UiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIzMCw1MDIpIiBkPSJtMCAwaDI4bDIgMi00IDEtMiA1LTggMTItNCA1LTYgMTMtMSA0LTEgMjF2MzhsLTEgMjMtMiAxMGgtMWwtMS0yMXYtNDN6IiBmaWxsPSIjMzlBMENGIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDkwNSkiIGQ9Im0wIDBoMTYxdjFsLTQ0IDQtMjggNGgtMTNsLTMxLTQtNDUtNHoiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIzMCw0MDQpIiBkPSJtMCAwaDFsMyAyMSAzIDI1IDQgNS00LTItNC01LTMtMnoiIGZpbGw9IiMzOTlGQ0YiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoOTk4LDUwNikiIGQ9Im0wIDBoNmwyIDJ2N2wtMiAyaC02bC0yLTJ2LTd6IiBmaWxsPSIjRkFGQkZCIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExNTAsNDMwKSIgZD0ibTAgMGg2bDMgMy0xIDUtMiAyLTctMS0yLTIgMS02eiIgZmlsbD0iI0ZBRkJGQiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxZTMgNTUzKSIgZD0ibTAgMCA1IDEgMiAzLTEgNy03IDEtMi0zIDEtN3oiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTExNSw1MTQpIiBkPSJtMCAwaDZsMyA0LTEgNS0yIDFoLTZsLTItMnYtNnoiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTAxMiw2MDMpIiBkPSJtMCAwIDYgMSAxIDF2N2wtMyAyLTUtMS0yLTIgMS03eiIgZmlsbD0iI0ZBRkJGQiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMTgyLDU1NSkiIGQ9Im0wIDAgNCAxIDIgMnY2bC0yIDJoLTdsLTEtN3oiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTE4MCw0NjYpIiBkPSJtMCAwaDZsMiAydjZsLTUgMy00LTEtMS03eiIgZmlsbD0iI0ZBRkJGQiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMTEzLDQwOCkiIGQ9Im0wIDBoNmwyIDJ2NmwtMiAyaC02bC0yLTJ2LTZ6IiBmaWxsPSIjRkFGQkZCIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwNDAsNDY0KSIgZD0ibTAgMGg1bDMgM3Y1bC00IDMtNS0yLTEtMXYtNnoiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMWUzIDQyOSkiIGQ9Im0wIDAgNyAxIDEgNi0yIDMtNCAxLTQtMnYtN3oiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTA1NCw0MDgpIiBkPSJtMCAwaDVsMiAydjZsLTIgMmgtNmwtMi0yIDEtN3oiIGZpbGw9IiNGQUZCRkIiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTEyMiw0NjYpIiBkPSJtMCAwIDYgMSAxIDYtMiAzLTQgMS00LTMgMS03eiIgZmlsbD0iI0ZBRkJGQiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUzLDU2MSkiIGQ9Im0wIDBoNmwyIDYtMyA0aC01bC0yLTJ2LTZ6IiBmaWxsPSIjRkFGQkZCIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExNTYsNjAzKSIgZD0ibTAgMGg2bDIgNS0zIDUtMyAxLTQtNCAxLTZ6IiBmaWxsPSIjRkFGQkZCIi8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDkyNyw1MDIpIiBkPSJtMCAwaDE0djE2bC0yLTEtMS0xMS0xMC0yeiIgZmlsbD0iIzM5OUZDRSIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMzE4LDY4NikiIGQ9Im0wIDAgMSA0LTMgMTAtOCAxMC0xMCA2aC01bDMtMiAxMC02IDgtMTAgMy0xMXoiLz4KPC9zdmc+Cg==" alt="Contact Energy Logo" width="auto" height="50px" style="vertical-align: top; display: inline-block;">
+    </td>
+    <td >
+      <h1>Contact Energy</h1>
+      <h4>Let's do the energy thing</h4>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="border: none; vertical-align: top;">
+  <strong>version:</strong> 0.3.16
+    </td>
+  </tr>
+</table>
 
-**Version:** 0.3.15
+My implementation of the **Home Assistant** Contact Energy integration in HACS, to fix bugs on my HA instance.
+
+## Why make my own version
+I have used ***cody1515's*** original integration, and later, ***notf0und's*** fork, to access my energy usage from Contact Energy (a New Zealand electricity supplier) for several years now.
+
+However, for some reason since August 2025, the integration has refused to download my usage data, while all other Contact Energy data was being updated. I assumed it was a change to Contact Energy's API structure, but then again their app hasn't been updated recently and it works fine. So I decided to see if the integration could be fixed.
+
+The logs showed the integration failing for a number of reasons:
+- Timing out
+- Not initialising
+- Errors calling the ICP number for the account
+- Authentication issues
+
+So time for some digging and hopefully patching.
+
+<code style="color : orange;">**THIS IS NOT A FORK**</code> - but a modification for my own use. In time I might discuss forking this project if I can get more out of the integration.
+
+## What does the integration do?
+
+All it does is download the current energy usage and billing information from your Contact Energy account in the same way that the smartphone app gathers your data for you to view.
+
+The integration creates three groups of entities:
+
+### 1. Energy Usage Statistics
+The ***energy usage*** and ***free energy usage*** sensors (if you take advantage of the free energy option). This data is stored in the Home Assistant statistics database and is visualized in the Energy Dashboard.
+
+### 2. Account & Billing Information Sensors
+These sensors expose the following information to dashboard cards:
+  - Current bill amount
+  - Current bill due date
+  - Next bill amount
+  - Next bill due date
+  - Next reading date
+  - Account balance
+  - Contract details
+
+### 3. Chart Sensors for ApexCharts
+These sensors provide pre-formatted data for charting with ApexCharts card:
+  - **Hourly sensors**: Last 14 days of hourly usage (paid and free energy)
+  - **Daily sensors**: Last 30 days of daily usage (paid and free energy)
+  - **Monthly sensors**: Last 12 months of usage totals (paid and free energy)
+  
+These sensors store data in their attributes for easy use with the ApexCharts custom card. See the APEXCHARTS_EXAMPLES.md file for configuration examples.
 
 
+## Limitations
+
+The data provided by Contact Energy is significantly limited, and so there are caveats to the usefulness of this integration.
+
+### No Real-Time Monitoring
+**This is the most important limitation.** Contact Energy makes your energy usage available to download anywhere between 24-72 hours after the day of use. So, you will only ever be looking at your **historical usage**. You will be able to see monthly, daily and hourly statistics once the data has been downloaded.
+
+**Some context:** The Genesis smart meters installed in most NZ homes since the 1990s report back to their host using the cellular network once a day (<https://www.ea.govt.nz/your-power/meters/>)
+
+### Automatic Daily Restart
+To maintain reliable operation, the integration automatically restarts itself once per day at approximately 3:00 AM (±30 minutes random variance). This helps ensure fresh API connections and clears any accumulated state issues. The restart is seamless and does not require manual intervention.
+
+# Free to use
+
+If anyone finds this repository, you are free to use the code as is - no warranties are provided. It works for me. I may, in the future modify the functionality to get more information for my HA instance.
 
 
+# **Installation**  
+
+## **HACS (Recommended)**  
+
+1. Ensure [HACS is installed](https://hacs.xyz/docs/setup/download).  
+2. Click the button below to open the repository in HACS:  
+   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamawumpas&repository=contact_energy&category=integration)  
+3. Install the **Contact Energy** integration.  
+4. Restart Home Assistant.  
+
+### **Manual Installation**  
+
+1. Download the integration files from the repository.  
+2. Copy all files from `custom_components/contact_energy` to your Home Assistant folder `config/custom_components/contact_energy`
+3. Restart Home Assistant
+
+## Getting Started
+
+1. Open Home Assistant and navigate to: **Settings → Devices & Services → + Add Integration**
+2. Search for **Contact Energy** and select it.
+3. Enter the required details:
+   - **Email & Password**: Use the credentials for your Contact Energy account
+   - **Usage Days**: Number of days of historical data to fetch (1-400 days, recommended: 30 days)
+
+Once configured, the integration will begin fetching and displaying your account and usage data.
+
+### Modifying Settings After Installation
+
+You can change the **Usage Days** setting after installation:
+
+1. Go to **Settings → Devices & Services**
+2. Find the **Contact Energy** integration
+3. Click the three dots (⋮) and select **Configure**
+4. Adjust the usage days as needed
+
+## Viewing Usage Data and Costs in Home Assistant
+
+To see your electricity usage and costs in Home Assistant's Energy Dashboard, follow these steps:
+
+1. Go to **Settings → Dashboards → Energy**
+2. Click **"Add Consumption"** and select:
+   - **Contact Energy - Electricity (xxx)** where **xxx** represents your ICP number
+   - Select how Home Assistant should keep track of costs:
+     - **Do not track costs** - If you're only interested in kWh usage
+     - **Use a static price** - If you want to track costs
+     - This cost tracking feature is from cody1515's original implementation
+
+3. If you have Free Energy services on your account (e.g., 9pm-midnight or free weekends):
+   - Click **"Add Consumption"** again
+   - Select **Contact Energy - Free Electricity (xxx)** where **xxx** is your ICP number
+   - Make sure you select the same ICP number as Step 2 if monitoring multiple properties
 
 
+# Attribution and Acknowledgments
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-[Changelog](CHANGELOG.md)
-
-
-
-
-
+- Original project by [codyc1515](https://github.com/codyc1515/ha-contact-energy)
+- Fork by [notf0und](https://github.com/notf0und/ha-contact-energy)

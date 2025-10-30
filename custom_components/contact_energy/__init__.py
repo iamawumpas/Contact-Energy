@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import logging
+import random
+from datetime import datetime, time, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_change
 
 from .api import ContactEnergyApi
 from .coordinator import ContactEnergyCoordinator
@@ -20,6 +23,33 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+# Daily restart time: 3am +/- 30 minutes
+RESTART_HOUR = 3
+RESTART_MINUTE_VARIANCE = 30
+
+async def _calculate_next_restart_time() -> tuple[int, int]:
+    """Calculate the next restart time (hour, minute) with random variance."""
+    # Add random variance of +/- 30 minutes to 3am
+    variance = random.randint(-RESTART_MINUTE_VARIANCE, RESTART_MINUTE_VARIANCE)
+    target_time = datetime.now().replace(hour=RESTART_HOUR, minute=0, second=0, microsecond=0)
+    target_time += timedelta(minutes=variance)
+    return target_time.hour, target_time.minute
+
+async def _handle_daily_restart(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle the daily restart of the integration."""
+    _LOGGER.info("Contact Energy: Starting daily restart at 3am")
+    
+    # Unload the integration
+    await async_unload_entry(hass, entry)
+    
+    # Wait a moment for cleanup
+    await hass.async_add_executor_job(lambda: None)
+    
+    # Reload the integration
+    await async_setup_entry(hass, entry)
+    
+    _LOGGER.info("Contact Energy: Daily restart complete")
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Contact Energy from a config entry."""
@@ -49,24 +79,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Perform initial data fetch without blocking setup
     hass.async_create_task(coordinator.async_config_entry_first_refresh())
 
+    # Calculate random restart time around 3am
+    restart_hour, restart_minute = await _calculate_next_restart_time()
+    
+    # Schedule daily restart at 3am +/- 30 minutes
+    restart_cancel = async_track_time_change(
+        hass,
+        lambda now: hass.async_create_task(_handle_daily_restart(hass, entry)),
+        hour=restart_hour,
+        minute=restart_minute,
+        second=0,
+    )
+
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "api": api,
+        "restart_cancel": restart_cancel,
     }
 
     # Set up sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info(
-        "Contact Energy integration setup complete for account %s (ICP: %s)",
+        "Contact Energy integration setup complete for account %s (ICP: %s). Daily restart scheduled at %02d:%02d",
         account_id,
         contract_icp,
+        restart_hour,
+        restart_minute,
     )
 
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    # Cancel the daily restart timer if it exists
+    entry_data = hass.data[DOMAIN].get(entry.entry_id, {})
+    if restart_cancel := entry_data.get("restart_cancel"):
+        restart_cancel()
+    
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
 
