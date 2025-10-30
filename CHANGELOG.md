@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.20
+
+### Changes
+
+- Added comprehensive Table of Contents navigation to README.md
+- Added quick links to all major sections and subsections
+- Improved documentation navigation with anchor links
+- Enhanced user experience for browsing documentation
+
+
 ## 0.3.19
 
 ### Changes

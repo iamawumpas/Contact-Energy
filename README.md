@@ -10,10 +10,37 @@
   </tr>
   <tr>
     <td colspan="2" style="border: none; vertical-align: top;">
-  <strong>version:</strong> 0.3.19
+  <strong>version:</strong> 0.3.20
     </td>
   </tr>
 </table>
+
+## Table of Contents
+
+- [About This Integration](#about-this-integration)
+- [Why Make My Own Version](#why-make-my-own-version)
+- [What Does the Integration Do?](#what-does-the-integration-do)
+  - [Energy Usage Statistics](#1-energy-usage-statistics)
+  - [Account & Billing Information](#2-account--billing-information-sensors)
+  - [Chart Sensors for ApexCharts](#3-chart-sensors-for-apexcharts)
+- [Limitations](#limitations)
+- [Free to Use](#free-to-use)
+- [Installation](#installation)
+  - [HACS (Recommended)](#hacs-recommended)
+  - [Manual Installation](#manual-installation)
+- [Getting Started](#getting-started)
+  - [Modifying Settings After Installation](#modifying-settings-after-installation)
+- [Viewing Usage Data in Energy Dashboard](#viewing-usage-data-and-costs-in-home-assistant)
+- [ApexCharts Card Examples](#apexcharts-card-examples)
+  - [Hourly Usage Chart](#hourly-usage-and-free-usage)
+  - [Daily Usage Chart](#daily-usage-and-daily-free-usage)
+  - [Monthly Usage Chart](#monthly-usage-and-monthly-free-usage)
+- [Changelog](#changelog)
+- [Attribution and Acknowledgments](#attribution-and-acknowledgments)
+
+---
+
+## About This Integration
 
 My implementation of the **Home Assistant** Contact Energy integration in HACS, to fix bugs on my HA instance.
 
