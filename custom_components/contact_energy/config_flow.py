@@ -4,10 +4,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-# Debug: Print when this module loads
-print(f"DEBUG: contact_energy config_flow.py module loading...")
-logging.getLogger(__name__).info("Config flow module loaded for contact_energy")
-
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
@@ -17,7 +13,7 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 try:
     from homeassistant.helpers import selector as sel
     USE_SELECTOR = True
-except Exception:
+except ImportError:
     sel = None
     USE_SELECTOR = False
 
