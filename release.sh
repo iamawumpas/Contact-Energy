@@ -114,16 +114,16 @@ build_changelog_from_range() {
     local config_diff
     config_diff=$(git diff $range -- custom_components/contact_energy/config_flow.py)
     if echo "$config_diff" | grep -q "domain = DOMAIN"; then
-      detailed_changes+="• Fixed critical config flow registration bug (changed DOMAIN class attribute to domain)\n"
+      detailed_changes+="- Fixed critical config flow registration bug (changed DOMAIN class attribute to domain)\n"
     fi
     if echo "$config_diff" | grep -q "duplicate.*import\|import.*duplicate" || echo "$config_diff" | grep -qE "^-.*import.*ContactEnergyApi"; then
-      detailed_changes+="• Removed duplicate import statements in config flow\n"
+      detailed_changes+="- Removed duplicate import statements in config flow\n"
     fi
     if echo "$config_diff" | grep -q "selector\|voluptuous\|schema"; then
-      detailed_changes+="• Updated config flow validation schema and UI selectors\n"
+      detailed_changes+="- Updated config flow validation schema and UI selectors\n"
     fi
     if echo "$config_diff" | grep -q "error.*mapping\|InvalidAuth\|CannotConnect"; then
-      detailed_changes+="• Enhanced error handling and user-friendly error messages\n"
+      detailed_changes+="- Enhanced error handling and user-friendly error messages\n"
     fi
   fi
 
@@ -132,16 +132,16 @@ build_changelog_from_range() {
     local api_diff
     api_diff=$(git diff $range -- custom_components/contact_energy/api.py)
     if echo "$api_diff" | grep -q "retry\|backoff\|exponential"; then
-      detailed_changes+="• Added retry logic and exponential backoff for API requests\n"
+      detailed_changes+="- Added retry logic and exponential backoff for API requests\n"
     fi
     if echo "$api_diff" | grep -q "async_get_usage\|usage.*endpoint"; then
-      detailed_changes+="• Implemented working Contact Energy usage data endpoint\n"
+      detailed_changes+="- Implemented working Contact Energy usage data endpoint\n"
     fi
     if echo "$api_diff" | grep -q "session.*token\|x-api-key"; then
-      detailed_changes+="• Updated authentication headers and session management\n"
+      detailed_changes+="- Updated authentication headers and session management\n"
     fi
     if echo "$api_diff" | grep -q "InvalidAuth\|CannotConnect\|UnknownError"; then
-      detailed_changes+="• Added custom exception classes for better error handling\n"
+      detailed_changes+="- Added custom exception classes for better error handling\n"
     fi
   fi
 
@@ -150,16 +150,16 @@ build_changelog_from_range() {
     local sensor_diff
     sensor_diff=$(git diff $range -- custom_components/contact_energy/sensor.py)
     if echo "$sensor_diff" | grep -q "StatisticData\|StatisticMetaData\|async_add_external_statistics"; then
-      detailed_changes+="• Implemented Energy Dashboard integration with Statistics database\n"
+      detailed_changes+="- Implemented Energy Dashboard integration with Statistics database\n"
     fi
     if echo "$sensor_diff" | grep -q "energy.*consumption\|electricity\|kWh"; then
-      detailed_changes+="• Added energy consumption tracking for Home Assistant Energy Dashboard\n"
+      detailed_changes+="- Added energy consumption tracking for Home Assistant Energy Dashboard\n"
     fi
     if echo "$sensor_diff" | grep -q "cost\|dollar\|NZD"; then
-      detailed_changes+="• Added cost tracking and energy cost statistics\n"
+      detailed_changes+="- Added cost tracking and energy cost statistics\n"
     fi
     if echo "$sensor_diff" | grep -q "offpeak\|free.*energy"; then
-      detailed_changes+="• Added free/off-peak energy tracking\n"
+      detailed_changes+="- Added free/off-peak energy tracking\n"
     fi
   fi
 
@@ -168,10 +168,10 @@ build_changelog_from_range() {
     local coord_diff
     coord_diff=$(git diff $range -- custom_components/contact_energy/coordinator.py)
     if echo "$coord_diff" | grep -q "DataUpdateCoordinator"; then
-      detailed_changes+="• Implemented 8-hour polling DataUpdateCoordinator\n"
+      detailed_changes+="- Implemented 8-hour polling DataUpdateCoordinator\n"
     fi
     if echo "$coord_diff" | grep -q "28800\|8.*hour"; then
-      detailed_changes+="• Configured 8-hour data refresh interval\n"
+      detailed_changes+="- Configured 8-hour data refresh interval\n"
     fi
   fi
 
@@ -180,16 +180,16 @@ build_changelog_from_range() {
     local init_diff
     init_diff=$(git diff $range -- custom_components/contact_energy/__init__.py)
     if echo "$init_diff" | grep -q "async_setup_entry\|async_unload_entry"; then
-      detailed_changes+="• Enhanced integration setup and unload procedures\n"
+      detailed_changes+="- Enhanced integration setup and unload procedures\n"
     fi
     if echo "$init_diff" | grep -q "coordinator\|platform"; then
-      detailed_changes+="• Implemented proper coordinator and platform initialization\n"
+      detailed_changes+="- Implemented proper coordinator and platform initialization\n"
     fi
   fi
 
   # Check strings/translations changes
   if git diff $range --name-only | grep -q "strings.json\|translations"; then
-    detailed_changes+="• Updated user interface strings and translations\n"
+    detailed_changes+="- Updated user interface strings and translations\n"
   fi
 
   # Check manifest/metadata changes
@@ -197,10 +197,10 @@ build_changelog_from_range() {
     local meta_diff
     meta_diff=$(git diff $range -- custom_components/contact_energy/manifest.json hacs.json 2>/dev/null || true)
     if echo "$meta_diff" | grep -q "iot_class.*cloud_polling"; then
-      detailed_changes+="• Added cloud_polling IoT class designation\n"
+      detailed_changes+="- Added cloud_polling IoT class designation\n"
     fi
     if echo "$meta_diff" | grep -q "version"; then
-      detailed_changes+="• Updated integration version metadata\n"
+      detailed_changes+="- Updated integration version metadata\n"
     fi
   fi
 
@@ -221,20 +221,22 @@ build_changelog_from_range() {
       [[ "$f" =~ ^custom_components/contact_energy/coordinator\.py$ ]] && have_coordinator=1
     done
 
-    if [[ -n "$have_config" ]]; then detailed_changes+="• Config flow and validation improvements\n"; fi
-    if [[ -n "$have_api" ]]; then detailed_changes+="• API client updates and enhancements\n"; fi
-    if [[ -n "$have_setup" ]]; then detailed_changes+="• Integration setup/unload adjustments\n"; fi
-    if [[ -n "$have_consts" ]]; then detailed_changes+="• Constants and configuration updates\n"; fi
-    if [[ -n "$have_meta" ]]; then detailed_changes+="• Metadata and manifest updates\n"; fi
-    if [[ -n "$have_i18n" ]]; then detailed_changes+="• User interface translations updated\n"; fi
-    if [[ -n "$have_docs" ]]; then detailed_changes+="• Documentation updates\n"; fi
-    if [[ -n "$have_sensors" ]]; then detailed_changes+="• Sensor platform implementation\n"; fi
-    if [[ -n "$have_coordinator" ]]; then detailed_changes+="• Data coordination updates\n"; fi
+    if [[ -n "$have_config" ]]; then detailed_changes+="- Config flow and validation improvements\n"; fi
+    if [[ -n "$have_api" ]]; then detailed_changes+="- API client updates and enhancements\n"; fi
+    if [[ -n "$have_setup" ]]; then detailed_changes+="- Integration setup/unload adjustments\n"; fi
+    if [[ -n "$have_consts" ]]; then detailed_changes+="- Constants and configuration updates\n"; fi
+    if [[ -n "$have_meta" ]]; then detailed_changes+="- Metadata and manifest updates\n"; fi
+    if [[ -n "$have_i18n" ]]; then detailed_changes+="- User interface translations updated\n"; fi
+    if [[ -n "$have_docs" ]]; then detailed_changes+="- Documentation updates\n"; fi
+    if [[ -n "$have_sensors" ]]; then detailed_changes+="- Sensor platform implementation\n"; fi
+    if [[ -n "$have_coordinator" ]]; then detailed_changes+="- Data coordination updates\n"; fi
   fi
 
   local entry=""
   if [[ -n "$detailed_changes" ]]; then
     entry+=$'### Changes\n\n'
+    # Convert bullet character • to standard Markdown dash -
+    detailed_changes=$(echo "$detailed_changes" | sed 's/^•/-/g' | sed 's/^\([[:space:]]*\)•/\1-/g')
     entry+="$detailed_changes\n"
   fi
 
@@ -263,35 +265,35 @@ build_changelog_from_working_changes() {
       custom_components/contact_energy/config_flow.py)
         # Analyze config flow changes
         if git diff $range HEAD -- "$file" 2>/dev/null | grep -q "domain = DOMAIN" || git diff HEAD -- "$file" 2>/dev/null | grep -q "domain = DOMAIN"; then
-          detailed_changes+="• Fixed critical config flow registration bug (domain attribute fix)\n"
+          detailed_changes+="- Fixed critical config flow registration bug (domain attribute fix)\n"
         fi
         if git diff $range HEAD -- "$file" 2>/dev/null | grep -q "duplicate.*import\|import.*duplicate" || git diff HEAD -- "$file" 2>/dev/null | grep -q "duplicate.*import"; then
-          detailed_changes+="• Removed duplicate import statements in config flow\n"
+          detailed_changes+="- Removed duplicate import statements in config flow\n"
         fi
         if [[ -z "$detailed_changes" ]]; then
-          detailed_changes+="• Config flow validation and UI improvements\n"
+          detailed_changes+="- Config flow validation and UI improvements\n"
         fi
         ;;
       custom_components/contact_energy/api.py)
-        detailed_changes+="• API client enhancements and authentication improvements\n"
+        detailed_changes+="- API client enhancements and authentication improvements\n"
         ;;
       custom_components/contact_energy/sensor.py)
-        detailed_changes+="• Energy Dashboard sensor implementation and statistics integration\n"
+        detailed_changes+="- Energy Dashboard sensor implementation and statistics integration\n"
         ;;
       custom_components/contact_energy/coordinator.py)
-        detailed_changes+="• DataUpdateCoordinator implementation with 8-hour polling\n"
+        detailed_changes+="- DataUpdateCoordinator implementation with 8-hour polling\n"
         ;;
       custom_components/contact_energy/__init__.py)
-        detailed_changes+="• Integration setup and platform initialization\n"
+        detailed_changes+="- Integration setup and platform initialization\n"
         ;;
       custom_components/contact_energy/strings.json|custom_components/contact_energy/translations/*)
-        detailed_changes+="• User interface strings and translations updated\n"
+        detailed_changes+="- User interface strings and translations updated\n"
         ;;
       custom_components/contact_energy/manifest.json|hacs.json)
-        detailed_changes+="• Integration metadata and version updates\n"
+        detailed_changes+="- Integration metadata and version updates\n"
         ;;
       README.md|CHANGELOG.md)
-        detailed_changes+="• Documentation and changelog updates\n"
+        detailed_changes+="- Documentation and changelog updates\n"
         ;;
     esac
   done
@@ -299,6 +301,8 @@ build_changelog_from_working_changes() {
   local entry=""
   if [[ -n "$detailed_changes" ]]; then
     entry+=$'### Changes\n\n'
+    # Convert bullet character • to standard Markdown dash -
+    detailed_changes=$(echo "$detailed_changes" | sed 's/^•/-/g' | sed 's/^\([[:space:]]*\)•/\1-/g')
     entry+="$detailed_changes\n"
   fi
 
@@ -434,6 +438,11 @@ commit_and_release() {
     exit 1
   fi
   echo "GitHub release created successfully!"
+  
+  # Cleanup temporary release files
+  echo "Cleaning up temporary release files..."
+  rm -f .allow_release .release-owners .release_summary_* || true
+  echo "Cleanup completed."
 }
 
 # Main script logic

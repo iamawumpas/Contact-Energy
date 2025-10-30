@@ -1,0 +1,7 @@
+### Changes
+
+- Fixed CHANGELOG.md bullet point formatting to display correctly on GitHub
+- Updated all bullet points from • character to standard Markdown dash (-)
+- Updated release.sh to automatically use standard Markdown dashes for future releases
+- Added automatic cleanup of temporary release files in release.sh
+- Removed "Note: This release includes uncommitted changes" statements from changelog
