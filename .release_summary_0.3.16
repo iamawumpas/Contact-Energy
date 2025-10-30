@@ -1,9 +1,0 @@
-### Changes
-
-• Added automatic daily restart at 3:00 AM (±30 minutes) to maintain reliable API connections
-• Removed unused Python scripts (debug_api.py, sensor_usage.py)
-• Cleaned up CHANGELOG.md - removed duplicate entries and generic metadata references
-• Updated README.md with comprehensive documentation of all features
-• Added documentation for chart sensors (hourly, daily, monthly)
-• Added documentation for options flow to modify settings after installation
-• Improved consistency and fixed spelling errors throughout documentation

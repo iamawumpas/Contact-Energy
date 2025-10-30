@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.18
+
+### Changes
+
+• Added Changelog section to README.md with link to CHANGELOG.md file
+• Improved documentation navigation for users to access version history
+
+
 ## 0.3.17
 
 ### Changes

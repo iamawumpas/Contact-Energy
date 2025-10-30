@@ -10,7 +10,7 @@
   </tr>
   <tr>
     <td colspan="2" style="border: none; vertical-align: top;">
-  <strong>version:</strong> 0.3.17
+  <strong>version:</strong> 0.3.18
     </td>
   </tr>
 </table>
@@ -159,11 +159,13 @@ This chart is a WIP as I am not fully happy with the layout.
 
 ## Monthly Usage and Monthly Free Usage
 
-This card shows the monthly usage and monthly free usage. The integration creates two sensors that store up to 12 months' worth of data. This example displays the last 14 months of data. The total data initially displayed will depend on how much data you have downloaded initially.
+This card shows the monthly usage and monthly free usage. The integration creates two sensors that initially stores up to 13 months' worth of data. This example displays the last 14 months of data. The total data initially displayed will depend on how much data you have downloaded initially.
 
 <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Monthly_Usage_Chart.png" alt="ApexCharts card - Monthly Usage Chart example"></a>
 
+# Changelog
 
+For a detailed list of changes in each version, see the <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/CHANGELOG.md" target="_blank">CHANGELOG.md</a> file.
 
 # Attribution and Acknowledgments
 
