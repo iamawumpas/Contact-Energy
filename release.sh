@@ -59,10 +59,23 @@ update_readme_version() {
   local f="README.md"
   [[ ! -f "$f" ]] && return 0
 
-  # 1) Remove ALL existing version lines in common formats (case-insensitive)
-  awk 'BEGIN{IGNORECASE=1} !match($0,/^(\*\*version:.*\*\*|<b>version:.*<\/b>|version:)/)' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  # Prefer updating the HTML pattern used in README header table:
+  #   <strong>version:</strong> X.Y.Z
+  if grep -qi '<strong>version:</strong>' "$f"; then
+    # Replace the semantic version that follows the strong tag (case-insensitive)
+    sed -i -E "s|(\<strong\>version:\</strong\>[[:space:]]*)[0-9]+\.[0-9]+\.[0-9]+|\\1${new_version}|I" "$f"
+    return 0
+  fi
 
-  # 2) Insert the canonical version line after first H1 or at top
+  # Fallback 1: Update existing Markdown line if present: **Version:** <nbsp> X.Y.Z
+  # Match both with/without NBSP between the label and number
+  if grep -qi '^\*\*version:\*\*' "$f"; then
+    # Try with non-breaking space first, then regular space
+    sed -i -E "s|(\*\*Version:\*\*[[:space:]]*)([0-9]+\.[0-9]+\.[0-9]+)|\\1${new_version}|I" "$f"
+    return 0
+  fi
+
+  # Fallback 2: If neither pattern exists, insert a Markdown version line below the first H1 or at top
   local nbsp line
   nbsp=$'\u00A0'
   line="**Version:**${nbsp}${new_version}"
