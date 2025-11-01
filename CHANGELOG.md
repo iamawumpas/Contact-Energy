@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.24
+
+### Changes
+
+- Configuration: Switch from days to months for history window (1–36 months, up to 3 years)
+- Backward compatibility: Existing configs using days are auto-converted to months and honored
+- UI: Updated config/options forms to show a months slider and updated labels/descriptions
+- Translations: Updated strings to reflect months-based configuration
+- Runtime: Setup and sensors now read months (fall back to legacy days) and convert to days internally
+- Release tooling: README version updater now matches the HTML `<strong>version:</strong> X.Y.Z` format
+
+
 ## 0.3.22
 
 ### Changes
