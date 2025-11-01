@@ -18,6 +18,7 @@ from .const import (
     CONF_CONTRACT_ID,
     CONF_CONTRACT_ICP,
     CONF_USAGE_DAYS,
+    CONF_USAGE_MONTHS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +62,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     account_id = entry.data[CONF_ACCOUNT_ID]
     contract_id = entry.data[CONF_CONTRACT_ID]
     contract_icp = entry.data[CONF_CONTRACT_ICP]
-    usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
+    # Prefer months-based configuration; fallback to legacy days
+    months = entry.data.get(CONF_USAGE_MONTHS)
+    if months is None:
+        # Convert existing days to months (ceil) then back to days for runtime behavior
+        try:
+            import math
+            legacy_days = int(entry.data.get(CONF_USAGE_DAYS, 30))
+            months = max(1, min(36, math.ceil(legacy_days / 30)))
+        except Exception:  # noqa: BLE001
+            months = 3
+    usage_days = int(months) * 30
 
     # Create API instance
     api = ContactEnergyApi(hass, email, password)

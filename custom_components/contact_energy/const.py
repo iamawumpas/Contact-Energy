@@ -4,7 +4,10 @@ DOMAIN = "contact_energy"
 NAME = "Contact Energy"
 
 # Config options
+# Back-compat: legacy days key kept for existing entries
 CONF_USAGE_DAYS = "usage_days"
+# New: months-based configuration (1–36 months)
+CONF_USAGE_MONTHS = "usage_months"
 CONF_ACCOUNT_ID = "account_id"
 CONF_CONTRACT_ID = "contract_id"
 CONF_CONTRACT_ICP = "contract_icp"
@@ -12,6 +15,10 @@ CONF_CONTRACT_ICP = "contract_icp"
 # Limits
 USAGE_DAYS_MIN = 1
 USAGE_DAYS_MAX = 400
+
+# New months limits
+USAGE_MONTHS_MIN = 1
+USAGE_MONTHS_MAX = 36  # up to 3 years
 
 # Default scan interval - 8 hours as requested
 DEFAULT_SCAN_INTERVAL = 28800  # 8 hours in seconds

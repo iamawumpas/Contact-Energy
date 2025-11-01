@@ -7,12 +7,12 @@
 				"data": {
 					"email": "Email address",
 					"password": "Password",
-					"usage_days": "Usage days (1–400)"
+					"usage_months": "Usage months (1–36)"
 				},
 				"data_description": {
 					"email": "Your Contact Energy account email address",
 					"password": "Your Contact Energy account password", 
-					"usage_days": "Number of days of historical usage data to download. More days = longer initial setup time."
+					"usage_months": "Number of months of historical usage data to download (up to 3 years). More months = longer initial setup time."
 				}
 			}
 		},
@@ -30,12 +30,12 @@
 		"step": {
 			"init": {
 				"title": "Contact Energy Options",
-				"description": "Configure the number of days of historical usage data to fetch. Changes will take effect on the next data refresh.",
+				"description": "Configure the number of months of historical usage data to fetch (up to 3 years). Changes will take effect on the next data refresh.",
 				"data": {
-					"usage_days": "Usage days (1–400)"
+					"usage_months": "Usage months (1–36)"
 				},
 				"data_description": {
-					"usage_days": "Number of days of historical usage data to download. More days = longer data fetch time."
+					"usage_months": "Number of months of historical usage data to download. More months = longer data fetch time."
 				}
 			}
 		}
