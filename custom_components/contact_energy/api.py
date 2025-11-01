@@ -104,11 +104,11 @@ class ContactEnergyApi:
 						await asyncio.sleep(backoff)
 						backoff *= 2
 						continue
-					# Log 502 errors at debug level since they're common and expected from Contact Energy API
+					# Treat common upstream 502 as connectivity issue rather than unknown error
 					if "502" in str(e):
 						_LOGGER.debug("Server error 502 calling %s after %s retries (API temporarily unavailable)", url, max_retries)
-					else:
-						_LOGGER.warning("Unexpected error calling %s after %s retries: %s", url, max_retries, e)
+						raise CannotConnect("Server error 502") from e
+					_LOGGER.warning("Unexpected error calling %s after %s retries: %s", url, max_retries, e)
 					raise UnknownError("Unexpected error") from e
 
 	async def async_login(self) -> bool:
