@@ -17,16 +17,7 @@ except ImportError:
     sel = None
     USE_SELECTOR = False
 
-from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
-from .const import (
-    DOMAIN, 
-    CONF_USAGE_DAYS, 
-    CONF_ACCOUNT_ID,
-    CONF_CONTRACT_ID,
-    CONF_CONTRACT_ICP,
-    USAGE_DAYS_MIN, 
-    USAGE_DAYS_MAX
-)
+# Avoid importing API at module import time to minimize import cost during config_flow load
 from .const import (
     DOMAIN,
     CONF_USAGE_DAYS,
@@ -87,8 +78,7 @@ class ConfigFlow(config_entries.ConfigFlow):
         """Initialize config flow."""
         self._email: str = ""
         self._password: str = ""
-        self._usage_days: int = 30
-    self._usage_months: int = 3
+        self._usage_months: int = 3
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
@@ -97,7 +87,6 @@ class ConfigFlow(config_entries.ConfigFlow):
             # Store input for validation
             self._email = user_input[CONF_EMAIL]
             self._password = user_input[CONF_PASSWORD]
-            self._usage_days = user_input[CONF_USAGE_DAYS]
             self._usage_months = user_input[CONF_USAGE_MONTHS]
 
             try:
@@ -121,14 +110,10 @@ class ConfigFlow(config_entries.ConfigFlow):
                 # Validation returned a known code string
                 if str(e) == "invalid_auth":
                     errors["base"] = "invalid_auth"
+                elif str(e) == "cannot_connect":
+                    errors["base"] = "cannot_connect"
                 else:
                     errors["base"] = "unknown"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except UnknownError:
-                errors["base"] = "unknown"
             except Exception:  # noqa: BLE001
                 _LOGGER.exception("Unexpected error in config flow")
                 errors["base"] = "unknown"
@@ -141,15 +126,21 @@ class ConfigFlow(config_entries.ConfigFlow):
 
     async def _validate_input(self) -> dict[str, Any]:
         """Validate account data and return info for entry creation."""
+        # Import API lazily to keep module import light
+        from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError  # local import
+
         api = ContactEnergyApi(self.hass, self._email, self._password)
 
         # Login and validate
         try:
             if not await api.async_login():
-                raise InvalidAuth("Invalid credentials")
-        except Exception as exc:
-            _LOGGER.exception("Validation failed with exception")
-            raise UnknownError("Connection failed") from exc
+                raise ValueError("invalid_auth")
+        except InvalidAuth:
+            raise ValueError("invalid_auth")
+        except CannotConnect:
+            raise ValueError("cannot_connect")
+        except Exception:
+            raise ValueError("unknown")
 
         # Get account data to extract IDs and contracts
         try:
@@ -199,10 +190,11 @@ class ConfigFlow(config_entries.ConfigFlow):
             }
 
         except InvalidAuth:
-            raise InvalidAuth("Invalid credentials")
-        except Exception as exc:
-            _LOGGER.exception("Account validation failed with exception")
-            raise CannotConnect("Unable to connect") from exc
+            raise ValueError("invalid_auth")
+        except CannotConnect:
+            raise ValueError("cannot_connect")
+        except Exception:
+            raise ValueError("unknown")
 
 
 # Backwards compatibility alias

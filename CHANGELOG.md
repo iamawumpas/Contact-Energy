@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.25
+
+Contact Energy – 0.3.25
+
+Highlights:
+- Config flow: defer API imports to reduce event loop blocking warnings during handler load.
+- Config flow polish and fixes following months-based window migration (1–36 months), with back-compat retained.
+- Release tooling: README version updater alignment and minor docs cleanup.
+
+Notes:
+- Existing configs using days automatically migrate to months (rounded). No action required.
+- If you still see transient connection errors, the integration now treats upstream 5xx (incl. 502) as retryable/cannot connect.
+
+
 ## 0.3.24
 
 ### Changes
