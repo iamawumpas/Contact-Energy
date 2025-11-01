@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.22
+
+### Changes
+
+- API resilience: Map frequent upstream 502s to CannotConnect (transient) instead of UnknownError, improving retry behavior and reducing noise
+- Coordinator robustness: Mark update failed when `accountDetail` is missing/empty so account sensors show `unavailable` rather than blank values
+- Thread-safety: Use an async callback for the daily restart scheduler to eliminate "coroutine was never awaited" and thread warnings
+- Documentation: Existing .codebase_explanation.md remains accurate; no user-facing config changes required
+
+
 ## 0.3.21
 
 ### Changes

@@ -56,14 +56,17 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 _LOGGER.error("Failed to fetch account data: received %s (type: %s)", account_data, type(account_data).__name__)
                 raise UpdateFailed(f"Failed to fetch account data: received {type(account_data).__name__}")
             
-            # Extract accountDetail from response (API returns {'accountDetail': {...}})
-            account_details = account_data.get("accountDetail", {})
-            
-            # If accountDetail is empty, maybe the structure is different
+            # Extract accountDetail from response (expected {'accountDetail': {...}})
+            account_details = account_data.get("accountDetail", {}) if isinstance(account_data, dict) else {}
+
+            # If accountDetail is missing/empty, treat as a failed update so entities become unavailable
             if not account_details:
-                _LOGGER.error("No 'accountDetail' found in API response keys: %s", list(account_data.keys()))
-                # Don't fail, just return empty details
-                account_details = {}
+                _LOGGER.error(
+                    "Account response missing 'accountDetail' or empty. Keys: %s | Raw type: %s",
+                    list(account_data.keys()) if isinstance(account_data, dict) else type(account_data).__name__,
+                    type(account_data).__name__,
+                )
+                raise UpdateFailed("Account details missing in API response")
             
             # Return data structure for coordinator (match what sensors expect)
             coordinator_data = {

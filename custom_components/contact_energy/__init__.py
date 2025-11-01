@@ -83,9 +83,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     restart_hour, restart_minute = await _calculate_next_restart_time()
     
     # Schedule daily restart at 3am +/- 30 minutes
+    # Use an async callback to avoid creating tasks from non-event-loop threads
+    async def _on_scheduled_restart(now: datetime) -> None:
+        await _handle_daily_restart(hass, entry)
+
     restart_cancel = async_track_time_change(
         hass,
-        lambda now: hass.async_create_task(_handle_daily_restart(hass, entry)),
+        _on_scheduled_restart,
         hour=restart_hour,
         minute=restart_minute,
         second=0,
