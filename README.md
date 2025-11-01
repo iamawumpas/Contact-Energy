@@ -10,7 +10,7 @@
   </tr>
   <tr>
     <td colspan="2" style="border: none; vertical-align: top;">
-  <strong>version:</strong> 0.3.22
+  <strong>version:</strong> 0.3.25
     </td>
   </tr>
 </table>
@@ -126,18 +126,23 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 2. Search for **Contact Energy** and select it.
 3. Enter the required details:
    - **Email & Password**: Use the credentials for your Contact Energy account
-   - **Usage Days**: Number of days of historical data to fetch (1-400 days, recommended: 30 days)
+   - **Usage History Window**: Select how many months of historical data to fetch (1-36 months)
+     - **Recommended:** 12 months for standard energy dashboard usage
+     - **Maximum:** 36 months (3 years) if you need longer-term historical analysis
+     - **Note:** Larger windows will take longer to download initially
 
 Once configured, the integration will begin fetching and displaying your account and usage data.
 
 ### Modifying Settings After Installation
 
-You can change the **Usage Days** setting after installation:
+You can change the **Usage History Window** setting after installation:
 
 1. Go to **Settings → Devices & Services**
 2. Find the **Contact Energy** integration
 3. Click the three dots (⋮) and select **Configure**
-4. Adjust the usage days as needed
+4. Adjust the number of months as needed (1-36 months)
+
+**Important:** If you need more historical data for charts (e.g., 15+ months for ApexCharts), you must increase this setting. The chart sensors will only contain data for the configured window.
 
 ## Viewing Usage Data and Costs in Home Assistant
 
@@ -186,7 +191,19 @@ This chart is a WIP as I am not fully happy with the layout.
 
 ## Monthly Usage and Monthly Free Usage
 
-This card shows the monthly usage and monthly free usage. The integration creates two sensors that initially stores up to 13 months' worth of data. This example displays the last 14 months of data. The total data initially displayed will depend on how much data you have downloaded initially.
+This card shows the monthly usage and monthly free usage. The integration creates two sensors that store historical monthly data based on your configured usage history window. This example displays data for the configured period.
+
+**Important:** The amount of data displayed depends on your **Usage History Window** setting:
+- If you configure the integration for **12 months**, you'll see 12 months of data
+- If you configure it for **24 months**, you'll see 24 months of data
+- Maximum is **36 months** (3 years)
+
+**Troubleshooting Chart Display:**
+If your chart shows fewer months than expected (e.g., chart configured for 15 months but only showing 12):
+1. Check your integration configuration: **Settings → Devices & Services → Contact Energy → Configure**
+2. Increase the **Usage History Window** to match or exceed your chart's `graph_span` setting
+3. Wait for the integration to fetch the additional historical data (may take a few minutes)
+4. The chart sensors (`sensor.contact_energy_chart_monthly_*`) will automatically update with the new data
 
 <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Monthly_Usage_Chart.png" alt="ApexCharts card - Monthly Usage Chart example"></a>
 
