@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.28
+
+Contact Energy – 0.3.28
+
+Highlights:
+- Monthly chart sensors (paid and free) now read exclusively from Home Assistant recorder monthly statistics.
+- Removed API-based backfill for chart sensors to ensure charts exactly mirror the statistics database.
+- The chart window still honors your configured Usage History Window (1–36 months), limited by data available in recorder.
+
+Notes:
+- If the recorder contains fewer months than configured, charts will show only those months. Use the integration to populate statistics over time or migrate/restore recorder data if needed.
+- Energy Dashboard behavior is unchanged and continues to use recorder statistics.
+
+
 ## 0.3.27
 
 Contact Energy – 0.3.27
