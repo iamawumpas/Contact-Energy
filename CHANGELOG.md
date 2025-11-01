@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.26
+
+Contact Energy – 0.3.26
+
+Highlights:
+- Fixed monthly chart sensors to respect configured usage history window (1-36 months)
+- Monthly chart sensors now dynamically query based on your configuration instead of being hardcoded to 12 months
+- Energy Dashboard continues to show full statistics database
+
+Bug Fix:
+- Monthly chart sensors (for ApexCharts) were hardcoded to only query 12 months of data, even when the integration was configured for more months (e.g., 36 months for 3 years)
+- The Energy Dashboard was correctly showing all historical data because it queries the full statistics database
+- ApexCharts cards were limited to 12 months because they read from sensor attributes
+
+Impact:
+- If you configured the integration for 15+ months, your ApexCharts monthly usage cards will now display the full configured window
+- No changes needed to existing ApexCharts card configurations
+- Sensor attributes will populate with the configured number of months on the next update cycle
+
+Notes:
+- If you're using ApexCharts with graph_span > 12 months, make sure your integration's Usage History Window setting matches or exceeds that span
+- The chart sensors update periodically - allow a few minutes for the attributes to populate with the full data range
+
+
 ## 0.3.25
 
 Contact Energy – 0.3.25

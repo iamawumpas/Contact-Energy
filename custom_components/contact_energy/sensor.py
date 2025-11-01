@@ -107,8 +107,8 @@ async def async_setup_entry(
         ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
         ContactEnergyChartHourlyFreeSensor(hass, free_stat_id, contract_icp),
         ContactEnergyChartDailyFreeSensor(hass, free_stat_id, contract_icp),
-        ContactEnergyChartMonthlySensor(hass, kwh_stat_id, contract_icp),
-        ContactEnergyChartMonthlyFreeSensor(hass, free_stat_id, contract_icp),
+        ContactEnergyChartMonthlySensor(hass, kwh_stat_id, contract_icp, usage_days),
+        ContactEnergyChartMonthlyFreeSensor(hass, free_stat_id, contract_icp, usage_days),
     ]
 
     # Register all entities in a single call
@@ -1413,10 +1413,11 @@ class ContactEnergyChartDailyFreeSensor(SensorEntity):
 class ContactEnergyChartMonthlySensor(SensorEntity):
     """Sensor exposing monthly usage data for ApexCharts."""
 
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str, usage_days: int = 365) -> None:
         self.hass = hass
         self._stat_id = stat_id
         self._contract_icp = contract_icp
+        self._usage_days = usage_days
         self._attr_name = f"Contact Energy Chart Monthly ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly"
         self._attr_icon = "mdi:calendar-month"
@@ -1449,9 +1450,9 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 12 months of monthly statistics
+        # Query configured months of monthly statistics based on usage_days setting
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=365)
+        start_time = end_time - timedelta(days=self._usage_days)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
@@ -1488,10 +1489,11 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
 class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
     """Sensor exposing monthly free usage data for ApexCharts."""
 
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str, usage_days: int = 365) -> None:
         self.hass = hass
         self._stat_id = stat_id
         self._contract_icp = contract_icp
+        self._usage_days = usage_days
         self._attr_name = f"Contact Energy Chart Monthly Free ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly_free"
         self._attr_icon = "mdi:gift"
@@ -1524,9 +1526,9 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 12 months of monthly free statistics
+        # Query configured months of monthly free statistics based on usage_days setting
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=365)
+        start_time = end_time - timedelta(days=self._usage_days)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
