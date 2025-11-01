@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.27
+
+Contact Energy – 0.3.27
+
+Highlights:
+- Monthly chart sensors now backfill missing months via Contact Energy API to match your configured Usage History Window (1–36 months).
+- Chart attributes combine recorder statistics with API-fetched gaps; no changes are made to recorder statistics used by the Energy Dashboard.
+- Both paid and free monthly chart sensors respect your configuration and will display the full period (subject to API availability).
+
+Fix Details:
+- Previously, when the recorder database had fewer months than configured (e.g., 14 months), monthly chart sensors only showed those months.
+- The Energy Dashboard could still show longer spans because it queries recorder directly.
+- Now, if recorder doesn't have enough months, sensors fetch missing months day-by-day from the API and sum:
+  - Paid monthly chart: sum of hours with offpeakValue == "0.00"
+  - Free monthly chart: sum of hours with offpeakValue != "0.00"
+
+Notes:
+- Backfill affects only chart sensor attributes (for ApexCharts). Recorder statistics remain unchanged.
+- Initial backfill may take a short while when increasing the window; attributes will populate progressively.
+
+
 ## 0.3.26
 
 Contact Energy – 0.3.26

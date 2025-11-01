@@ -107,8 +107,25 @@ async def async_setup_entry(
         ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
         ContactEnergyChartHourlyFreeSensor(hass, free_stat_id, contract_icp),
         ContactEnergyChartDailyFreeSensor(hass, free_stat_id, contract_icp),
-        ContactEnergyChartMonthlySensor(hass, kwh_stat_id, contract_icp, usage_days),
-        ContactEnergyChartMonthlyFreeSensor(hass, free_stat_id, contract_icp, usage_days),
+        # Pass usage_days and API/account identifiers so monthly charts can backfill via API when recorder is missing months
+        ContactEnergyChartMonthlySensor(
+            hass,
+            kwh_stat_id,
+            contract_icp,
+            usage_days,
+            coordinator.api,
+            account_id,
+            contract_id,
+        ),
+        ContactEnergyChartMonthlyFreeSensor(
+            hass,
+            free_stat_id,
+            contract_icp,
+            usage_days,
+            coordinator.api,
+            account_id,
+            contract_id,
+        ),
     ]
 
     # Register all entities in a single call
@@ -1411,13 +1428,31 @@ class ContactEnergyChartDailyFreeSensor(SensorEntity):
 
 
 class ContactEnergyChartMonthlySensor(SensorEntity):
-    """Sensor exposing monthly usage data for ApexCharts."""
+    """Sensor exposing monthly usage data for ApexCharts.
 
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str, usage_days: int = 365) -> None:
+    Uses recorder monthly statistics when available. If the recorder doesn't
+    have enough months (e.g., historical window recently increased), it will
+    backfill missing months directly from the Contact Energy API (read-only,
+    does not write to recorder) to populate attributes for charting.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        stat_id: str,
+        contract_icp: str,
+        usage_days: int = 365,
+        api: Any | None = None,
+        account_id: str | None = None,
+        contract_id: str | None = None,
+    ) -> None:
         self.hass = hass
         self._stat_id = stat_id
         self._contract_icp = contract_icp
         self._usage_days = usage_days
+        self._api = api
+        self._account_id = account_id
+        self._contract_id = contract_id
         self._attr_name = f"Contact Energy Chart Monthly ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly"
         self._attr_icon = "mdi:calendar-month"
@@ -1450,7 +1485,10 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query configured months of monthly statistics based on usage_days setting
+        # Desired months to display based on configured window
+        months_needed = max(1, min(36, int(self._usage_days // 30)))
+
+        # 1) Try recorder monthly statistics first
         end_time = datetime.now()
         start_time = end_time - timedelta(days=self._usage_days)
         recorder = __import__("homeassistant.components.recorder").components.recorder
@@ -1464,36 +1502,122 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
             None,
             {"sum"}
         )
-        self._monthly_data = {}
+
+        monthly_from_db: dict[str, float] = {}
         if self._stat_id in stats:
-            prev_sum = 0
+            prev_sum = None
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Convert timestamp to datetime and store as year-month string
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    # Calculate monthly total (difference from previous cumulative sum)
-                    monthly_total = float(val) - prev_sum
-                    # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_data[dt.strftime("%Y-%m-15")] = monthly_total
-                    prev_sum = float(val)
+                if start_ts is None or val is None:
+                    continue
+                # Convert timestamp to datetime and store as year-month key (mid-month day for stability)
+                if isinstance(start_ts, (int, float)):
+                    dt = datetime.fromtimestamp(start_ts)
+                elif isinstance(start_ts, datetime):
+                    dt = start_ts
+                else:
+                    continue
+                # If recorder already returns per-month totals in 'sum', keep them; otherwise compute delta
+                monthly_total: float
+                if prev_sum is None:
+                    # For first month, assume value is monthly total if too large deltas appear later
+                    monthly_total = float(val)
+                else:
+                    monthly_total = float(val) - float(prev_sum)
+                prev_sum = float(val)
+                monthly_from_db[dt.strftime("%Y-%m-15")] = monthly_total
+
+        # Keep only the last N months from DB
+        def _month_key_sort_key(k: str) -> tuple[int, int, int]:
+            try:
+                y, m, _ = map(int, k.split("-"))
+                return (y, m, 15)
+            except Exception:  # noqa: BLE001
+                return (0, 0, 0)
+
+        final_data: dict[str, float] = {}
+        for k in sorted(monthly_from_db.keys(), key=_month_key_sort_key)[-months_needed:]:
+            final_data[k] = monthly_from_db[k]
+
+        # 2) If not enough months from recorder and API context is available, backfill via API
+        if len(final_data) < months_needed and self._api and self._account_id and self._contract_id:
+            # Build target month keys for last N months (including current partial)
+            today = datetime.now().date()
+            first_of_this_month = today.replace(day=1)
+
+            def _add_months(d: date, months: int) -> date:
+                y = d.year + (d.month - 1 + months) // 12
+                m = (d.month - 1 + months) % 12 + 1
+                return date(y, m, 1)
+
+            target_month_starts: list[date] = [
+                _add_months(first_of_this_month, -i) for i in range(months_needed - 1, -1, -1)
+            ]
+
+            # Determine which months are missing
+            missing: list[date] = []
+            for ms in target_month_starts:
+                key = ms.strftime("%Y-%m-15")
+                if key not in final_data:
+                    missing.append(ms)
+
+            # For each missing month, fetch per-day usage and sum
+            for ms in missing:
+                # End of month (exclusive): next month's first day or today+1 if current month
+                next_month = _add_months(ms, 1)
+                month_end = min(next_month, today + timedelta(days=1))
+                total_kwh = 0.0
+                # Sum only paid usage for this sensor
+                current = ms
+                while current < month_end:
+                    try:
+                        resp = await self._api.async_get_usage(
+                            str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
+                        )
+                        if isinstance(resp, list):
+                            for p in resp:
+                                val = ContactEnergyUsageSensor._safe_float(p.get("value"))
+                                off = str(p.get("offpeakValue", "0.00"))
+                                if off == "0.00":
+                                    total_kwh += val
+                    except Exception as e:  # noqa: BLE001
+                        _LOGGER.debug("Monthly backfill (paid) fetch failed for %s: %s", current, e)
+                    current += timedelta(days=1)
+                    await asyncio.sleep(0)
+                final_data[ms.strftime("%Y-%m-15")] = final_data.get(ms.strftime("%Y-%m-15"), 0.0) + total_kwh
+
+            # Trim again to the last N months
+            final_data = {k: final_data[k] for k in sorted(final_data.keys(), key=_month_key_sort_key)[-months_needed:]}
+
+        self._monthly_data = final_data
         self._last_update = datetime.now()
 
 
 class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
-    """Sensor exposing monthly free usage data for ApexCharts."""
+    """Sensor exposing monthly free usage data for ApexCharts.
 
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str, usage_days: int = 365) -> None:
+    Uses recorder monthly statistics when available, and backfills missing
+    months directly from the Contact Energy API for charting attributes.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        stat_id: str,
+        contract_icp: str,
+        usage_days: int = 365,
+        api: Any | None = None,
+        account_id: str | None = None,
+        contract_id: str | None = None,
+    ) -> None:
         self.hass = hass
         self._stat_id = stat_id
         self._contract_icp = contract_icp
         self._usage_days = usage_days
+        self._api = api
+        self._account_id = account_id
+        self._contract_id = contract_id
         self._attr_name = f"Contact Energy Chart Monthly Free ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly_free"
         self._attr_icon = "mdi:gift"
@@ -1526,7 +1650,9 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query configured months of monthly free statistics based on usage_days setting
+        months_needed = max(1, min(36, int(self._usage_days // 30)))
+
+        # 1) Recorder statistics first
         end_time = datetime.now()
         start_time = end_time - timedelta(days=self._usage_days)
         recorder = __import__("homeassistant.components.recorder").components.recorder
@@ -1540,25 +1666,84 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
             None,
             {"sum"}
         )
-        self._monthly_free_data = {}
+
+        monthly_from_db: dict[str, float] = {}
         if self._stat_id in stats:
-            prev_sum = 0
+            prev_sum = None
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Robustly handle both float and datetime
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    # Calculate monthly total (difference from previous cumulative sum)
-                    monthly_total = float(val) - prev_sum
-                    # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = monthly_total
-                    prev_sum = float(val)
+                if start_ts is None or val is None:
+                    continue
+                if isinstance(start_ts, (int, float)):
+                    dt = datetime.fromtimestamp(start_ts)
+                elif isinstance(start_ts, datetime):
+                    dt = start_ts
+                else:
+                    continue
+                if prev_sum is None:
+                    monthly_total = float(val)
+                else:
+                    monthly_total = float(val) - float(prev_sum)
+                prev_sum = float(val)
+                monthly_from_db[dt.strftime("%Y-%m-15")] = monthly_total
+
+        def _month_key_sort_key(k: str) -> tuple[int, int, int]:
+            try:
+                y, m, _ = map(int, k.split("-"))
+                return (y, m, 15)
+            except Exception:  # noqa: BLE001
+                return (0, 0, 0)
+
+        final_data: dict[str, float] = {}
+        for k in sorted(monthly_from_db.keys(), key=_month_key_sort_key)[-months_needed:]:
+            final_data[k] = monthly_from_db[k]
+
+        # 2) API backfill for missing months
+        if len(final_data) < months_needed and self._api and self._account_id and self._contract_id:
+            today = datetime.now().date()
+            first_of_this_month = today.replace(day=1)
+
+            def _add_months(d: date, months: int) -> date:
+                y = d.year + (d.month - 1 + months) // 12
+                m = (d.month - 1 + months) % 12 + 1
+                return date(y, m, 1)
+
+            target_month_starts: list[date] = [
+                _add_months(first_of_this_month, -i) for i in range(months_needed - 1, -1, -1)
+            ]
+
+            missing: list[date] = []
+            for ms in target_month_starts:
+                key = ms.strftime("%Y-%m-15")
+                if key not in final_data:
+                    missing.append(ms)
+
+            for ms in missing:
+                next_month = _add_months(ms, 1)
+                month_end = min(next_month, today + timedelta(days=1))
+                total_free = 0.0
+                current = ms
+                while current < month_end:
+                    try:
+                        resp = await self._api.async_get_usage(
+                            str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
+                        )
+                        if isinstance(resp, list):
+                            for p in resp:
+                                val = ContactEnergyUsageSensor._safe_float(p.get("value"))
+                                off = str(p.get("offpeakValue", "0.00"))
+                                if off != "0.00":
+                                    total_free += val
+                    except Exception as e:  # noqa: BLE001
+                        _LOGGER.debug("Monthly backfill (free) fetch failed for %s: %s", current, e)
+                    current += timedelta(days=1)
+                    await asyncio.sleep(0)
+                final_data[ms.strftime("%Y-%m-15")] = final_data.get(ms.strftime("%Y-%m-15"), 0.0) + total_free
+
+            final_data = {k: final_data[k] for k in sorted(final_data.keys(), key=_month_key_sort_key)[-months_needed:]}
+
+        self._monthly_free_data = final_data
         self._last_update = datetime.now()
 
 
