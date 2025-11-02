@@ -247,7 +247,7 @@ build_changelog_from_range() {
   if [[ -z "$detailed_changes" ]]; then
     local files
     mapfile -t files < <(git diff --name-only $range)
-    local have_config have_api have_setup have_consts have_meta have_i18n have_docs have_sensors have_coordinator
+  local have_config="" have_api="" have_setup="" have_consts="" have_meta="" have_i18n="" have_docs="" have_sensors="" have_coordinator=""
     for f in "${files[@]}"; do
       [[ "$f" =~ ^custom_components/contact_energy/config_flow\.py$ ]] && have_config=1
       [[ "$f" =~ ^custom_components/contact_energy/api\.py$ ]] && have_api=1
@@ -260,15 +260,15 @@ build_changelog_from_range() {
       [[ "$f" =~ ^custom_components/contact_energy/coordinator\.py$ ]] && have_coordinator=1
     done
 
-    if [[ -n "$have_config" ]]; then detailed_changes+="- Config flow and validation improvements\n"; fi
-    if [[ -n "$have_api" ]]; then detailed_changes+="- API client updates and enhancements\n"; fi
-    if [[ -n "$have_setup" ]]; then detailed_changes+="- Integration setup/unload adjustments\n"; fi
-    if [[ -n "$have_consts" ]]; then detailed_changes+="- Constants and configuration updates\n"; fi
-    if [[ -n "$have_meta" ]]; then detailed_changes+="- Metadata and manifest updates\n"; fi
-    if [[ -n "$have_i18n" ]]; then detailed_changes+="- User interface translations updated\n"; fi
-    if [[ -n "$have_docs" ]]; then detailed_changes+="- Documentation updates\n"; fi
-    if [[ -n "$have_sensors" ]]; then detailed_changes+="- Sensor platform implementation\n"; fi
-    if [[ -n "$have_coordinator" ]]; then detailed_changes+="- Data coordination updates\n"; fi
+  if [[ -n "${have_config}" ]]; then detailed_changes+="- Config flow and validation improvements\n"; fi
+  if [[ -n "${have_api}" ]]; then detailed_changes+="- API client updates and enhancements\n"; fi
+  if [[ -n "${have_setup}" ]]; then detailed_changes+="- Integration setup/unload adjustments\n"; fi
+  if [[ -n "${have_consts}" ]]; then detailed_changes+="- Constants and configuration updates\n"; fi
+  if [[ -n "${have_meta}" ]]; then detailed_changes+="- Metadata and manifest updates\n"; fi
+  if [[ -n "${have_i18n}" ]]; then detailed_changes+="- User interface translations updated\n"; fi
+  if [[ -n "${have_docs}" ]]; then detailed_changes+="- Documentation updates\n"; fi
+  if [[ -n "${have_sensors}" ]]; then detailed_changes+="- Sensor platform implementation\n"; fi
+  if [[ -n "${have_coordinator}" ]]; then detailed_changes+="- Data coordination updates\n"; fi
   fi
 
   local entry=""
