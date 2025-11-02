@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.23
+
+### Changes
+
+- Config flow and validation improvements
+
+
 ## 0.3.22
 
 ### Changes
