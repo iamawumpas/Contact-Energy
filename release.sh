@@ -73,9 +73,20 @@ check_release_guards() {
     echo "Your current git user.email: ${email}" >&2
     exit 1
   fi
-  if ! grep -Fxq "${email}" .release-owners; then
-    echo "Release guard: ${email} is not listed in .release-owners. Aborting." >&2
-    exit 1
+  # Allow skipping owner check via env, or when the file exists but has no non-empty lines
+  if [[ "${RELEASE_SKIP_OWNER_CHECK:-}" != "1" ]]; then
+    local owners_count
+    owners_count=$(grep -Ev '^[[:space:]]*$' .release-owners | wc -l | tr -d ' \t')
+    if [[ "${owners_count}" -eq 0 ]]; then
+      echo "Release guard: .release-owners is empty; skipping owner check." >&2
+    else
+      if ! grep -Fxq "${email}" .release-owners; then
+        echo "Release guard: ${email} is not listed in .release-owners. Aborting." >&2
+        exit 1
+      fi
+    fi
+  else
+    echo "Release guard: Skipping owner check (RELEASE_SKIP_OWNER_CHECK=1)" >&2
   fi
 
   # 4) Ensure version increases the latest tag (semantic version order)
