@@ -1452,13 +1452,16 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query ALL available monthly statistics from the database (no time limit)
+        # Query monthly statistics from the database. Some recorder helpers default to
+        # the last 12 months when start_time is None, so explicitly ask from a very
+        # early date to ensure we get the full history available for this statistic.
         recorder = __import__("homeassistant.components.recorder").components.recorder
+        start_time = datetime(2000, 1, 1)
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
-            None,  # start_time=None fetches from the beginning of recorded history
-            None,  # end_time=None fetches up to now
+            start_time,
+            None,  # up to now
             [self._stat_id],
             "month",
             None,
@@ -1466,10 +1469,10 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         )
         self._monthly_data = {}
         if self._stat_id in stats:
-            prev_sum = 0
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
-                val = entry.get("sum")
+                # Prefer the monthly change if provided by the statistics helper; fall back to sum
+                val = entry.get("change", entry.get("sum"))
                 if start_ts and val is not None:
                     # Convert timestamp to datetime and store as year-month string
                     if isinstance(start_ts, (int, float)):
@@ -1478,11 +1481,8 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    # Calculate monthly total (difference from previous cumulative sum)
-                    monthly_total = float(val) - prev_sum
                     # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_data[dt.strftime("%Y-%m-15")] = monthly_total
-                    prev_sum = float(val)
+                    self._monthly_data[dt.strftime("%Y-%m-15")] = float(val)
         self._last_update = datetime.now()
 
 
@@ -1525,13 +1525,15 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query ALL available monthly free statistics from the database (no time limit)
+        # Query monthly free statistics from the database with an explicit early start
+        # date to avoid any implicit 12-month limitation.
         recorder = __import__("homeassistant.components.recorder").components.recorder
+        start_time = datetime(2000, 1, 1)
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
-            None,  # start_time=None fetches from the beginning of recorded history
-            None,  # end_time=None fetches up to now
+            start_time,
+            None,  # up to now
             [self._stat_id],
             "month",
             None,
@@ -1539,10 +1541,9 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         )
         self._monthly_free_data = {}
         if self._stat_id in stats:
-            prev_sum = 0
             for entry in stats[self._stat_id]:
                 start_ts = entry.get("start")
-                val = entry.get("sum")
+                val = entry.get("change", entry.get("sum"))
                 if start_ts and val is not None:
                     # Robustly handle both float and datetime
                     if isinstance(start_ts, (int, float)):
@@ -1551,11 +1552,8 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    # Calculate monthly total (difference from previous cumulative sum)
-                    monthly_total = float(val) - prev_sum
                     # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = monthly_total
-                    prev_sum = float(val)
+                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
         self._last_update = datetime.now()
 
 
