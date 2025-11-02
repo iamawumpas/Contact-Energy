@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -Eeuo pipefail
 
 # Automated release script for Contact Energy integration
 
@@ -14,6 +14,32 @@ VERSION_FILES=(
 # Enforce manual approval, version confirmation, and authorized releaser.
 check_release_guards() {
   local version="$1"
+
+  # Basic repo sanity checks
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD)
+  if [[ "$branch" != "main" ]]; then
+    echo "Release guard: Must release from 'main' branch (current: $branch)." >&2
+    exit 1
+  fi
+
+  # Working tree must be clean (no staged or unstaged changes)
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Release guard: Working tree must be clean (no unstaged or staged changes)." >&2
+    exit 1
+  fi
+
+  # Must be up-to-date with remote tracking branch
+  git fetch -q origin
+  if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+    local LOCAL REMOTE
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse @{u})
+    if [[ "$LOCAL" != "$REMOTE" ]]; then
+      echo "Release guard: Local main is not up to date with origin/main. Pull/rebase first." >&2
+      exit 1
+    fi
+  fi
 
   # 1) Explicit environment approval
   if [[ "${RELEASE_APPROVED:-}" != "1" ]]; then
@@ -51,6 +77,19 @@ check_release_guards() {
     echo "Release guard: ${email} is not listed in .release-owners. Aborting." >&2
     exit 1
   fi
+
+  # 4) Ensure version increases the latest tag (semantic version order)
+  local last_tag
+  last_tag=$(git tag --sort=version:refname | tail -n 1 || true)
+  if [[ -n "$last_tag" ]]; then
+    # sort -V compares version numbers naturally
+    local top
+    top=$(printf "%s\n%s\n" "$last_tag" "$version" | sort -V | tail -n1)
+    if [[ "$top" != "$version" ]]; then
+      echo "Release guard: Version $version is not greater than latest tag $last_tag." >&2
+      exit 1
+    fi
+  fi
 }
 
 # Update README.md version robustly (preserve formatting; insert if missing)
@@ -78,8 +117,8 @@ update_version_in_files() {
   for f in "${VERSION_FILES[@]}"; do
     if [[ -f "$f" ]]; then
       if [[ "$f" == *.json ]]; then
-        # Update JSON version field
-        sed -i -E 's/("version"[^"]*")[0-9.]+/\1'$new_version'/' "$f"
+        # Update JSON version field (preserve formatting)
+        sed -i -E 's/("version"[^"]*":\s*")[0-9.]+(\")/\1'$new_version'\2/' "$f"
       elif [[ "$f" == "README.md" ]]; then
         update_readme_version "$new_version"
       fi

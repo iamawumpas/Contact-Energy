@@ -190,6 +190,24 @@ This card shows the monthly usage and monthly free usage. The integration create
 
 <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Monthly_Usage_Chart.png" alt="ApexCharts card - Monthly Usage Chart example"></a>
 
+# Release policy and safeguards
+
+To avoid accidental or unauthorized releases, the release process is locked behind explicit guardrails:
+
+- You must create a file `.allow_release` at the repository root containing exactly the version number you're releasing (e.g. `0.3.21`).
+- You must have your `git config user.email` present on a per-line whitelist in `.release-owners`.
+- You must export `RELEASE_APPROVED=1` when invoking the script.
+- Releases must be performed from the `main` branch, with a clean working tree, up-to-date with `origin/main`.
+- The version must be greater than the latest existing tag (semantic version ordering).
+
+Example (manual):
+
+```bash
+echo "0.3.21" > .allow_release
+printf "%s\n" "$(git config user.email)" > .release-owners
+RELEASE_APPROVED=1 bash release.sh 0.3.21 ./.release_summary_0.3.21
+```
+
 # Changelog
 
 For a detailed list of changes in each version, see the <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/CHANGELOG.md" target="_blank">CHANGELOG.md</a> file.
