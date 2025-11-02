@@ -396,6 +396,11 @@ write_changelog_section() {
 github_release() {
   local version="$1"
   local entry_text="$2"
+  # Allow opt-out to avoid notifications
+  if [[ "${RELEASE_SKIP_GH:-}" == "1" ]]; then
+    echo "Skipping GitHub release (RELEASE_SKIP_GH=1)" >&2
+    return 0
+  fi
   
   # Check if gh CLI is available
   if ! command -v gh &> /dev/null; then
@@ -411,16 +416,22 @@ github_release() {
     return 0  # Don't fail the whole release if not authenticated
   fi
   
+  local draft_flag=""
+  if [[ "${RELEASE_DRAFT:-}" == "1" ]]; then
+    draft_flag="--draft"
+  fi
+
   if gh release view "$version" >/dev/null 2>&1; then
     echo "Release $version already exists. Updating..."
-    if ! gh release edit "$version" --title "$version" --notes "$entry_text"; then
+    # If requested, keep or set as draft on edit as well
+    if ! gh release edit "$version" --title "$version" --notes "$entry_text" ${draft_flag}; then
       echo "Error: Failed to edit GitHub release $version" >&2
       return 1
     fi
     echo "Release $version updated successfully."
   else
     echo "Creating new release $version..."
-    if ! gh release create "$version" --title "$version" --notes "$entry_text"; then
+    if ! gh release create "$version" --title "$version" --notes "$entry_text" ${draft_flag}; then
       echo "Error: Failed to create GitHub release $version" >&2
       return 1
     fi
@@ -455,18 +466,26 @@ commit_and_release() {
     echo "No changes to commit."
   fi
   
-  # Tag handling: force-update if exists
+  # Tag handling: force-update if exists; allow opting out of remote push
   if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
     git tag -fa "$version" -m "Release $version"
-    if ! git push --force origin "$version"; then
-      echo "Error: Failed to push tag to remote." >&2
-      exit 1
+    if [[ "${RELEASE_SKIP_TAG_PUSH:-}" != "1" ]]; then
+      if ! git push --force origin "$version"; then
+        echo "Error: Failed to push tag to remote." >&2
+        exit 1
+      fi
+    else
+      echo "Skipping remote tag push (RELEASE_SKIP_TAG_PUSH=1)" >&2
     fi
   else
     git tag -a "$version" -m "Release $version"
-    if ! git push origin "$version"; then
-      echo "Error: Failed to push tag to remote." >&2
-      exit 1
+    if [[ "${RELEASE_SKIP_TAG_PUSH:-}" != "1" ]]; then
+      if ! git push origin "$version"; then
+        echo "Error: Failed to push tag to remote." >&2
+        exit 1
+      fi
+    else
+      echo "Skipping remote tag push (RELEASE_SKIP_TAG_PUSH=1)" >&2
     fi
   fi
   
