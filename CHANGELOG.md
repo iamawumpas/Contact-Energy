@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.22
+
+### Changes
+
+- Updated config flow validation schema and UI selectors
+- Enhanced error handling and user-friendly error messages
+- Enhanced integration setup and unload procedures
+- Updated user interface strings and translations
+
+
 ## 0.3.21
 
 ### Changes
