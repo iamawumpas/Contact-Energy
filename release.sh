@@ -560,8 +560,8 @@ main() {
   local entry_text=""
   if [[ -n "$summary_file" && -f "$summary_file" ]]; then
     entry_text=$(cat "$summary_file")
-  elif [[ -n "$AGENT_CHANGE_SUMMARY" ]]; then
-    entry_text="$AGENT_CHANGE_SUMMARY"
+  elif [[ -n "${AGENT_CHANGE_SUMMARY:-}" ]]; then
+    entry_text="${AGENT_CHANGE_SUMMARY}"
   else
     # Fallback: Compute changelog from code analysis
     local prev_tag
