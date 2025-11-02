@@ -85,7 +85,7 @@ class ConfigFlow(config_entries.ConfigFlow):
         """Initialize config flow."""
         self._email: str = ""
         self._password: str = ""
-    self._usage_months = 1
+        self._usage_months = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
