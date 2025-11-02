@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Pre-push hook to enforce release guardrails on pushes to main
+# Blocks pushes to main when:
+# - A version bump is included but CHANGELOG.md lacks a matching section
+# - A version bump is included but guard files are missing in the commit (.allow_release and .release-owners)
+
+set -Eeuo pipefail
+
+# Read refs from stdin: <local_ref> <local_sha> <remote_ref> <remote_sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Only enforce on pushes to main
+  if [[ "$remote_ref" != "refs/heads/main" ]]; then
+    continue
+  fi
+
+  # If remote SHA is all zeros (new branch), don't enforce
+  if [[ "$remote_sha" =~ ^0+$ ]]; then
+    remote_sha=""
+  fi
+
+  # Determine if manifest version changed in the range
+  get_version() {
+    local sha="$1"
+    if [[ -z "$sha" ]]; then
+      # No remote; fallback to current index/worktree
+      if [[ -f custom_components/contact_energy/manifest.json ]]; then
+        sed -nE 's/.*"version"[^"]*"([0-9.]+)".*/\1/p' custom_components/contact_energy/manifest.json | head -n1 || true
+      else
+        echo ""
+      fi
+    else
+      git show "$sha:custom_components/contact_energy/manifest.json" 2>/dev/null | sed -nE 's/.*"version"[^"]*"([0-9.]+)".*/\1/p' | head -n1 || true
+    fi
+  }
+
+  local_ver=$(get_version "$local_sha")
+  remote_ver=$(get_version "$remote_sha")
+
+  # If version didn't change, allow push
+  if [[ -n "$remote_ver" && "$local_ver" == "$remote_ver" ]]; then
+    continue
+  fi
+
+  # If version changed, enforce:
+  # 1) CHANGELOG must contain a section for the new version
+  if ! git show "$local_sha:CHANGELOG.md" >/dev/null 2>&1; then
+    echo "pre-push: CHANGELOG.md missing in commit $local_sha" >&2
+    exit 1
+  fi
+  if ! git show "$local_sha:CHANGELOG.md" | grep -q "^## ${local_ver}$"; then
+    echo "pre-push: CHANGELOG.md does not contain section '## ${local_ver}' for version bump from ${remote_ver} -> ${local_ver}" >&2
+    exit 1
+  fi
+
+  # 2) Guard files must be present in the commit
+  if ! git show "$local_sha:.allow_release" >/dev/null 2>&1; then
+    echo "pre-push: .allow_release missing in commit for version ${local_ver}" >&2
+    exit 1
+  fi
+  if ! git show "$local_sha:.release-owners" >/dev/null 2>&1; then
+    echo "pre-push: .release-owners missing in commit for version ${local_ver}" >&2
+    exit 1
+  fi
+
+done
+
+exit 0

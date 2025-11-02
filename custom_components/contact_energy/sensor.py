@@ -21,7 +21,15 @@ from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
 import random
 import re
 
-from .const import DOMAIN, CONF_ACCOUNT_ID, CONF_CONTRACT_ID, CONF_CONTRACT_ICP, CONF_USAGE_DAYS
+from .const import (
+    DOMAIN,
+    CONF_ACCOUNT_ID,
+    CONF_CONTRACT_ID,
+    CONF_CONTRACT_ICP,
+    CONF_USAGE_DAYS,
+    CONF_USAGE_MONTHS,
+    months_to_days,
+)
 from .coordinator import ContactEnergyCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +45,11 @@ async def async_setup_entry(
     account_id = entry.data[CONF_ACCOUNT_ID]
     contract_id = entry.data[CONF_CONTRACT_ID]
     contract_icp = entry.data[CONF_CONTRACT_ICP]
-    usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
+    # Prefer months setting; fall back to legacy days
+    if CONF_USAGE_MONTHS in entry.data:
+        usage_days = months_to_days(entry.data.get(CONF_USAGE_MONTHS))
+    else:
+        usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
 
     # Create usage sensor for Energy Dashboard
     entities = [

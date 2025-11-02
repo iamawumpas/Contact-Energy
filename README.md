@@ -125,19 +125,19 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 1. Open Home Assistant and navigate to: **Settings → Devices & Services → + Add Integration**
 2. Search for **Contact Energy** and select it.
 3. Enter the required details:
-   - **Email & Password**: Use the credentials for your Contact Energy account
-   - **Usage Days**: Number of days of historical data to fetch (1-400 days, recommended: 30 days)
+  - **Email & Password**: Use the credentials for your Contact Energy account
+  - **Usage Months**: Number of months of historical data to fetch (1–36 months; backend uses calendar months to compute the exact number of days for API downloads)
 
 Once configured, the integration will begin fetching and displaying your account and usage data.
 
 ### Modifying Settings After Installation
 
-You can change the **Usage Days** setting after installation:
+You can change the **Usage Months** setting after installation:
 
 1. Go to **Settings → Devices & Services**
 2. Find the **Contact Energy** integration
 3. Click the three dots (⋮) and select **Configure**
-4. Adjust the usage days as needed
+4. Adjust the usage months as needed
 
 ## Viewing Usage Data and Costs in Home Assistant
 

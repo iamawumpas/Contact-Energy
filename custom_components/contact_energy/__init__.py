@@ -18,6 +18,8 @@ from .const import (
     CONF_CONTRACT_ID,
     CONF_CONTRACT_ICP,
     CONF_USAGE_DAYS,
+    CONF_USAGE_MONTHS,
+    months_to_days,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +63,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     account_id = entry.data[CONF_ACCOUNT_ID]
     contract_id = entry.data[CONF_CONTRACT_ID]
     contract_icp = entry.data[CONF_CONTRACT_ICP]
-    usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
+    # Determine the API download window in days from months (fallback to legacy days)
+    if CONF_USAGE_MONTHS in entry.data:
+        usage_days = months_to_days(entry.data.get(CONF_USAGE_MONTHS))
+    else:
+        usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
 
     # Create API instance
     api = ContactEnergyApi(hass, email, password)

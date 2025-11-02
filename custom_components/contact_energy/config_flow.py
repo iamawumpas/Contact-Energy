@@ -21,11 +21,13 @@ from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
 from .const import (
     DOMAIN, 
     CONF_USAGE_DAYS, 
+    CONF_USAGE_MONTHS,
     CONF_ACCOUNT_ID,
     CONF_CONTRACT_ID,
     CONF_CONTRACT_ICP,
-    USAGE_DAYS_MIN, 
-    USAGE_DAYS_MAX
+    USAGE_MONTHS_MIN,
+    USAGE_MONTHS_MAX,
+    days_to_months,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,27 +35,36 @@ _LOGGER = logging.getLogger(__name__)
 
 def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     defaults = defaults or {}
-    
+    # Default months based on provided defaults; support legacy days default
+    default_months = defaults.get(CONF_USAGE_MONTHS)
+    if default_months is None:
+        raw_days = defaults.get(CONF_USAGE_DAYS, 30)
+        try:
+            raw_days_int = int(raw_days)
+        except Exception:
+            raw_days_int = 30
+        default_months = days_to_months(raw_days_int)
+
     if USE_SELECTOR:
-        usage_days_field = sel.NumberSelector(
+        usage_months_field = sel.NumberSelector(
             sel.NumberSelectorConfig(
-                min=USAGE_DAYS_MIN,
-                max=USAGE_DAYS_MAX,
+                min=USAGE_MONTHS_MIN,
+                max=USAGE_MONTHS_MAX,
                 step=1,
                 mode=sel.NumberSelectorMode.SLIDER,
             )
         )
     else:
-        usage_days_field = vol.All(
-            cv.positive_int, 
-            vol.Range(min=USAGE_DAYS_MIN, max=USAGE_DAYS_MAX)
+        usage_months_field = vol.All(
+            cv.positive_int,
+            vol.Range(min=USAGE_MONTHS_MIN, max=USAGE_MONTHS_MAX)
         )
-    
+
     return vol.Schema(
         {
             vol.Required(CONF_EMAIL, default=defaults.get(CONF_EMAIL, "")): cv.string,
             vol.Required(CONF_PASSWORD, default=defaults.get(CONF_PASSWORD, "")): cv.string,
-            vol.Required(CONF_USAGE_DAYS, default=defaults.get(CONF_USAGE_DAYS, 10)): usage_days_field,
+            vol.Required(CONF_USAGE_MONTHS, default=default_months or 1): usage_months_field,
         }
     )
 
@@ -74,7 +85,7 @@ class ConfigFlow(config_entries.ConfigFlow):
         """Initialize config flow."""
         self._email: str = ""
         self._password: str = ""
-        self._usage_days: int = 30
+    self._usage_months = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
@@ -83,7 +94,7 @@ class ConfigFlow(config_entries.ConfigFlow):
             # Store input for validation
             self._email = user_input[CONF_EMAIL]
             self._password = user_input[CONF_PASSWORD]
-            self._usage_days = user_input[CONF_USAGE_DAYS]
+            self._usage_months = user_input[CONF_USAGE_MONTHS]
 
             try:
                 info = await self._validate_input()
@@ -95,7 +106,7 @@ class ConfigFlow(config_entries.ConfigFlow):
                 entry_data = {
                     CONF_EMAIL: user_input[CONF_EMAIL],
                     CONF_PASSWORD: user_input[CONF_PASSWORD],
-                    CONF_USAGE_DAYS: user_input[CONF_USAGE_DAYS],
+                    CONF_USAGE_MONTHS: user_input[CONF_USAGE_MONTHS],
                     CONF_ACCOUNT_ID: info["account_id"],
                     CONF_CONTRACT_ID: info["contract_id"],
                     CONF_CONTRACT_ICP: info["contract_icp"],
@@ -208,7 +219,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the config entry with new values
             updated_data = dict(self.config_entry.data)
-            updated_data[CONF_USAGE_DAYS] = user_input[CONF_USAGE_DAYS]
+            # Store months and remove legacy days if present
+            updated_data[CONF_USAGE_MONTHS] = user_input[CONF_USAGE_MONTHS]
+            if CONF_USAGE_DAYS in updated_data:
+                updated_data.pop(CONF_USAGE_DAYS, None)
             
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
@@ -218,26 +232,29 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data={})
 
         # Create schema with current values
-        current_days = self.config_entry.data.get(CONF_USAGE_DAYS, 30)
+        # Derive current months from stored months or legacy days
+        current_months = self.config_entry.data.get(CONF_USAGE_MONTHS)
+        if current_months is None:
+            current_months = days_to_months(self.config_entry.data.get(CONF_USAGE_DAYS, 30))
         
         if USE_SELECTOR:
-            usage_days_field = sel.NumberSelector(
+            usage_months_field = sel.NumberSelector(
                 sel.NumberSelectorConfig(
-                    min=USAGE_DAYS_MIN,
-                    max=USAGE_DAYS_MAX,
+                    min=USAGE_MONTHS_MIN,
+                    max=USAGE_MONTHS_MAX,
                     step=1,
                     mode=sel.NumberSelectorMode.SLIDER,
                 )
             )
         else:
-            usage_days_field = vol.All(
+            usage_months_field = vol.All(
                 cv.positive_int, 
-                vol.Range(min=USAGE_DAYS_MIN, max=USAGE_DAYS_MAX)
+                vol.Range(min=USAGE_MONTHS_MIN, max=USAGE_MONTHS_MAX)
             )
 
         options_schema = vol.Schema(
             {
-                vol.Required(CONF_USAGE_DAYS, default=current_days): usage_days_field,
+                vol.Required(CONF_USAGE_MONTHS, default=current_months): usage_months_field,
             }
         )
 
