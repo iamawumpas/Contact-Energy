@@ -1452,15 +1452,13 @@ class ContactEnergyChartMonthlySensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 12 months of monthly statistics
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=365)
+        # Query ALL available monthly statistics from the database (no time limit)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
-            start_time,
-            end_time,
+            None,  # start_time=None fetches from the beginning of recorded history
+            None,  # end_time=None fetches up to now
             [self._stat_id],
             "month",
             None,
@@ -1527,15 +1525,13 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Query last 12 months of monthly free statistics
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=365)
+        # Query ALL available monthly free statistics from the database (no time limit)
         recorder = __import__("homeassistant.components.recorder").components.recorder
         stats = await recorder.get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
-            start_time,
-            end_time,
+            None,  # start_time=None fetches from the beginning of recorded history
+            None,  # end_time=None fetches up to now
             [self._stat_id],
             "month",
             None,
