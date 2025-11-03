@@ -182,6 +182,7 @@ This chart is a WIP as I am not fully happy with the layout.
 ## Monthly Usage and Monthly Free Usage
 
 This card shows the monthly usage and monthly free usage. The integration creates two sensors that fetch all available monthly statistics from your Home Assistant database. The total data displayed will depend on how much historical data exists in your statistics database.
+
 [![Monthly Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-2.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml)
 
 
