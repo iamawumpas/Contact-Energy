@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+### Changes
+
+- **Version 0.4.0 - Stable Release**: No further changes to current codebase expected
+- Removed unused empty services.yaml file
+- Code cleanup and maintenance
+
+This release marks the integration as stable with all planned features implemented and tested.
+
+
 ## 0.3.25
 
 ### Changes
