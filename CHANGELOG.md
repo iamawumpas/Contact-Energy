@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.25
+
+### Changes
+
+- Documentation updates
+
+
 ## 0.3.24
 
 ### Changes
