@@ -2,12 +2,11 @@ type: custom:apexcharts-card
 all_series_config:
   stroke_width: 2
   type: area
-  opacity: 0.5
 graph_span: 8d
 span:
   start: day
   offset: "-9d"
-update_interval: 1h
+update_interval: 12h
 header:
   show: true
   title: Hourly Usage over the last 8 days
@@ -53,14 +52,29 @@ apex_config:
     position: top
     horizontalAlign: center
     offsetY: 20
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 99
+        - 100
   yaxis:
     min: 0
-    max: 6.5
     title:
       text: kwh
   xaxis:
     labels:
-      offsetX: 36
+      datetimeUTC: false
+      format: dd MMM
+    type: datetime
+    tickAmount: 8
+    tickPlacement: "on"
 card_mod:
   style: >
     /* FIX 1: Center the Title */
@@ -80,4 +94,13 @@ card_mod:
 
     .apexcharts-canvas {
       margin-top: -15px !important; 
+    } 
+
+    /* RESPONSIVE FIX: Center X-Axis Day Labels */ .apexcharts-xaxis-texts-g
+    text {
+      text-anchor: middle !important; 
+      transform: translateX(6.25%) !important; 
+      
+      /* NEW FIX: Override the default bolding for month boundaries */
+      font-weight: normal !important;
     }

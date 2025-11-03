@@ -1,44 +1,79 @@
 type: custom:apexcharts-card
 header:
   show: true
-  title: Monthly Energy Usage
+  title: Monthly Usage over the last 18 Months
 all_series_config:
   stroke_width: 2
   type: column
-  opacity: 0.8
-graph_span: 13month
+graph_span: 18month
 span:
   start: month
-  offset: "-13month"
+  offset: "-18month"
 stacked: true
 series:
   - entity: sensor.contact_energy_chart_monthly_0000000966tr348
     name: Usage
     show:
       legend_value: false
-    data_generator: |
+    data_generator: >
       const data = entity.attributes.monthly_data || {};
+
+      const entries = Object.entries(data).sort(([a], [b]) =>
+      a.localeCompare(b));
+
+      let lastValue = 0;
+
       const result = [];
-      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
-        // Data already contains monthly totals, no calculation needed
-        result.push([new Date(monthStr).getTime(), monthlyTotal]);
-      }
-      return result;
+
+      const oneDayMs = 1 * 24 * 60 * 60 * 1000;
+
+
+      for (const [monthStr, monthlyTotal] of entries) {
+        const cumulativeValue = Number(monthlyTotal);
+        const monthlyUsage = cumulativeValue - lastValue; 
+        
+        const date = new Date(monthStr);
+        date.setUTCDate(1); 
+        const timestamp = date.getTime() + oneDayMs;
+        result.push([timestamp, monthlyUsage]);
+        
+        lastValue = cumulativeValue;
+      } 
+
+      return result; 
   - entity: sensor.contact_energy_chart_monthly_free_0000000966tr348
     name: Free Usage
     show:
       legend_value: false
-    data_generator: |
+    data_generator: >
       const data = entity.attributes.monthly_free_data || {};
+
+      const entries = Object.entries(data).sort(([a], [b]) =>
+      a.localeCompare(b));
+
+      let lastValue = 0;
+
       const result = [];
-      for (const [monthStr, monthlyTotal] of Object.entries(data).sort()) {
-        // Data already contains monthly totals, no calculation needed
-        result.push([new Date(monthStr).getTime(), monthlyTotal]);
+
+      const oneDayMs = 1 * 24 * 60 * 60 * 1000;
+
+
+      for (const [monthStr, monthlyTotal] of entries) {
+        const cumulativeValue = Number(monthlyTotal);
+        const monthlyFreeUsage = cumulativeValue - lastValue;
+        
+        const date = new Date(monthStr);
+        date.setUTCDate(1);
+        const timestamp = date.getTime() + oneDayMs;
+        result.push([timestamp, monthlyFreeUsage]);
+        
+        lastValue = cumulativeValue;
       }
+
       return result;
 apex_config:
   chart:
-    height: 250px
+    height: 200
     type: bar
     stacked: true
   plotOptions:
@@ -49,15 +84,34 @@ apex_config:
     position: top
     horizontalAlign: center
     offsetY: 20
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 90
+        - 100
   xaxis:
     type: datetime
     labels:
       format: MMM
-      datetimeUTC: false
-      offsetX: 20
+      datetimeUTC: true
+      rotate: -90
+      rotateAlways: true
+      hideOverlappingLabels: false
+      showDuplicates: true
+      trim: false
+      style:
+        fontSize: 12px
   yaxis:
     min: 0
     max: 1700
+    tickAmount: 4
     title:
       text: kWh
     labels:
@@ -67,12 +121,10 @@ apex_config:
         }
 card_mod:
   style: |
-    /* FIX 1: Center the Title */
     div#header__title {
       text-align: center !important;
       width: 100%;
     }
-    /* FIX 2: Reduce space between legend and chart */
     .apexcharts-legend {
       margin-top: -10px !important;  
       padding-top: 0px !important;

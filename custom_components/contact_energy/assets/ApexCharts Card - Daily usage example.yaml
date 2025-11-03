@@ -2,11 +2,10 @@ type: custom:apexcharts-card
 all_series_config:
   stroke_width: 2
   type: column
-  opacity: 0.8
 update_interval: 6h
 header:
   show: true
-  title: Last Month's Usage
+  title: Daily Usage over the last Month
   show_states: false
 series:
   - entity: sensor.contact_energy_chart_daily_0000000966tr348
@@ -76,25 +75,47 @@ series:
 
 
       return dailyDeltas;
-graph_span: 35d
+graph_span: 31d
+span:
+  start: day
+  offset: "-31d"
+section_mode: false
 apex_config:
   chart:
-    height: 250px
+    height: 200
     type: bar
     stacked: true
+    parentHeightOffset: 35
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 90
+        - 100
   plotOptions:
     bar:
-      columnWidth: 94%
+      columnWidth: 100%
   legend:
     show: true
     position: top
     horizontalAlign: center
     offsetY: 20
   xaxis:
-    type: datetime
     labels:
-      format: d
-      datetimeUTC: false
+      format: d ddd
+      datetimeUTC: true
+      show: true
+      rotate: -90
+      rotateAlways: true
+      hideOverlappingLabels: false
+      showDuplicates: true
+      trim: false
   yaxis:
     min: 0
     max: 70

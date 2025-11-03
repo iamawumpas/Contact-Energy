@@ -4,14 +4,21 @@
 
 ### Changes
 
-- Sensor platform implementation
+- **Monthly Chart Sensors Enhancement**: Removed the 12-month limitation on monthly chart sensors (`ContactEnergyChartMonthlySensor` and `ContactEnergyChartMonthlyFreeSensor`)
+  - Changed statistics query to fetch all available history by setting explicit `start_time` to year 2000 instead of using `None` (which defaulted to 12 months)
+  - Fixed monthly total calculation to use the `change` value from statistics entries instead of computing differences from cumulative sums
+  - This ensures accurate monthly values and displays all historical data available in your Home Assistant statistics database
+- **Accurate Documentation**: Updated README.md to reflect that monthly sensors now fetch all available statistics history rather than being limited to 13 months
 
 
 ## 0.3.23
 
 ### Changes
 
-- Config flow and validation improvements
+- **Critical Bug Fix**: Fixed `NameError: name 'self' is not defined` error that occurred when importing the integration
+  - Corrected indentation of `self._usage_months = 1` initialization in `config_flow.py`
+  - The variable was incorrectly placed at class level instead of inside the `__init__` method
+  - This bug prevented the integration from loading properly in Home Assistant
 
 
 ## 0.3.22

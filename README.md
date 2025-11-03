@@ -44,7 +44,7 @@
 
 My implementation of the **Home Assistant** Contact Energy integration in HACS, to fix bugs on my HA instance.
 
-## Why make my own version
+## Why Make My Own Version
 I have used ***cody1515's*** original integration, and later, ***notf0und's*** fork, to access my energy usage from Contact Energy (a New Zealand electricity supplier) for several years now.
 
 However, for some reason since August 2025, the integration has refused to download my usage data, while all other Contact Energy data was being updated. I assumed it was a change to Contact Energy's API structure, but then again their app hasn't been updated recently and it works fine. So I decided to see if the integration could be fixed.
@@ -59,7 +59,7 @@ So time for some digging and hopefully patching.
 
 <code style="color : orange;">**THIS IS NOT A FORK**</code> - but a modification for my own use. In time I might discuss forking this project if I can get more out of the integration.
 
-## What does the integration do?
+## What Does the Integration Do?
 
 All it does is download the current energy usage and billing information from your Contact Energy account in the same way that the smartphone app gathers your data for you to view.
 
@@ -99,9 +99,9 @@ The data provided by Contact Energy is significantly limited, and so there are c
 ### Automatic Daily Restart
 To maintain reliable operation, the integration automatically restarts itself once per day at approximately 3:00 AM (±30 minutes random variance). This helps ensure fresh API connections and clears any accumulated state issues. The restart is seamless and does not require manual intervention.
 
-# Free to use
+# Free to Use
 
-If anyone finds this repository, you are free to use the code as is - no warranties are provided. It works for me. I may, in the future modify the functionality to get more information for my HA instance.
+If anyone finds this repository, you are free to use the code as is - no warranties are provided. It works for me. I may, in the future, modify the functionality to get more information for my HA instance.
 
 
 # **Installation**  
@@ -114,19 +114,19 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 3. Install the **Contact Energy** integration.  
 4. Restart Home Assistant.  
 
-### **Manual Installation**  
+## **Manual Installation**  
 
 1. Download the integration files from the repository.  
-2. Copy all files from `custom_components/contact_energy` to your Home Assistant folder `config/custom_components/contact_energy`
-3. Restart Home Assistant
+2. Copy all files from `custom_components/contact_energy` to your Home Assistant folder `config/custom_components/contact_energy`.
+3. Restart Home Assistant.
 
 ## Getting Started
 
 1. Open Home Assistant and navigate to: **Settings → Devices & Services → + Add Integration**
 2. Search for **Contact Energy** and select it.
 3. Enter the required details:
-  - **Email & Password**: Use the credentials for your Contact Energy account
-  - **Usage Months**: Number of months of historical data to fetch (1–36 months; backend uses calendar months to compute the exact number of days for API downloads)
+   - **Email & Password**: Use the credentials for your Contact Energy account
+   - **Usage Months**: Number of months of historical data to fetch (1–36 months; backend uses calendar months to compute the exact number of days for API downloads)
 
 Once configured, the integration will begin fetching and displaying your account and usage data.
 
@@ -134,27 +134,27 @@ Once configured, the integration will begin fetching and displaying your account
 
 You can change the **Usage Months** setting after installation:
 
-1. Go to **Settings → Devices & Services**
-2. Find the **Contact Energy** integration
-3. Click the three dots (⋮) and select **Configure**
-4. Adjust the usage months as needed
+1. Go to **Settings → Devices & Services**.
+2. Find the **Contact Energy** integration.
+3. Click the three dots (⋮) and select **Configure**.
+4. Adjust the usage months as needed.
 
 ## Viewing Usage Data and Costs in Home Assistant
 
 To see your electricity usage and costs in Home Assistant's Energy Dashboard, follow these steps:
 
-1. Go to **Settings → Dashboards → Energy**
+1. Go to **Settings → Dashboards → Energy**.
 2. Click **"Add Consumption"** and select:
-   - **Contact Energy - Electricity (xxx)** where **xxx** represents your ICP number
+   - **Contact Energy - Electricity (xxx)** where **xxx** represents your ICP number.
    - Select how Home Assistant should keep track of costs:
-     - **Do not track costs** - If you're only interested in kWh usage
-     - **Use a static price** - If you want to track costs
-     - This cost tracking feature is from cody1515's original implementation
+     - **Do not track costs** - If you're only interested in kWh usage.
+     - **Use a static price** - If you want to track costs.
+     - This cost tracking feature is from cody1515's original implementation.
 
 3. If you have Free Energy services on your account (e.g., 9pm-midnight or free weekends):
-   - Click **"Add Consumption"** again
-   - Select **Contact Energy - Free Electricity (xxx)** where **xxx** is your ICP number
-   - Make sure you select the same ICP number as Step 2 if monitoring multiple properties
+   - Click **"Add Consumption"** again.
+   - Select **Contact Energy - Free Electricity (xxx)** where **xxx** is your ICP number.
+   - Make sure you select the same ICP number as Step 2 if monitoring multiple properties.
 
 
 # ApexCharts Card Examples
@@ -166,47 +166,24 @@ These examples are what is currently on my desktop. Feel free to use them as tem
 ## Hourly Usage and Free Usage
 
 This card shows the hourly usage and hourly free usage. The integration creates two sensors that store up to 14 days' worth of data. This example displays the last 8 days of data and excludes the most recent two days of missing data.
-
-The code tries to center the data between the tick marks. This looks okay on PC desktop and wide display devices, but goes a little wonky when displayed on mobile devices.
-
-<a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Hourly%20usage%20example.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Hourly_Usage_Chart.png" alt="ApexCharts card - Hourly Usage Chart example"></a>
+[![Hourly Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Hourly%20usage%20example.yaml)
 
 ## Daily Usage and Daily Free Usage
 
-This card shows the daily usage and free usage over the last 35 days. The integration creates two sensors that store up to 30 days' worth of data. This example displays the last 35 days of data and excludes the most recent two days of missing data.
+This card shows the daily usage and free usage over the last 35 days. The integration creates two sensors that store up to 30 days' worth of data. This example displays the last 31 days of data and excludes the most recent two days of missing data.
 
 This chart is a WIP as I am not fully happy with the layout.
 
 **TO DO:**
 - Remove the empty space between the y-axis and displayed data
 - Add the first letter of each weekday in the correct space as well as the day
-- Align the day and weekday letter with the center of the bar
-
-<a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Daily%20usage%20example.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Daily_Usage_Chart.png" alt="ApexCharts card - Daily Usage Chart example"></a>
+[![Daily Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-1.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Daily%20usage%20example.yaml)
 
 ## Monthly Usage and Monthly Free Usage
 
-This card shows the monthly usage and monthly free usage. The integration creates two sensors that initially stores up to 13 months' worth of data. This example displays the last 14 months of data. The total data initially displayed will depend on how much data you have downloaded initially.
+This card shows the monthly usage and monthly free usage. The integration creates two sensors that fetch all available monthly statistics from your Home Assistant database. The total data displayed will depend on how much historical data exists in your statistics database.
+[![Monthly Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-2.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml)
 
-<a href="https://github.com/iamawumpas/Contact-Energy/blob/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml" target="_blank"><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts_card__Monthly_Usage_Chart.png" alt="ApexCharts card - Monthly Usage Chart example"></a>
-
-# Release policy and safeguards
-
-To avoid accidental or unauthorized releases, the release process is locked behind explicit guardrails:
-
-- You must create a file `.allow_release` at the repository root containing exactly the version number you're releasing (e.g. `0.3.21`).
-- You must have your `git config user.email` present on a per-line whitelist in `.release-owners`.
-- You must export `RELEASE_APPROVED=1` when invoking the script.
-- Releases must be performed from the `main` branch, with a clean working tree, up-to-date with `origin/main`.
-- The version must be greater than the latest existing tag (semantic version ordering).
-
-Example (manual):
-
-```bash
-echo "0.3.21" > .allow_release
-printf "%s\n" "$(git config user.email)" > .release-owners
-RELEASE_APPROVED=1 bash release.sh 0.3.21 ./.release_summary_0.3.21
-```
 
 # Changelog
 
