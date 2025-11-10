@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4
+
+### Changed
+- Increased daily chart sensor data collection period from 30 to 60 days
+- Provides 2 months of historical data for better trend analysis
+
+
 ## 0.4.3
 
 ### Changed
