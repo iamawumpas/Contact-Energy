@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.3
+
+### Changed
+- Daily chart sensors now use ISO 8601 datetime format (YYYY-MM-DDTHH:MM:SSZ) with timestamps at 23:59:59
+- Chart sensor values converted from cumulative totals to delta values (daily usage)
+- Delta values use absolute values (no negative numbers)
+- Improved data format for time-series charting with ApexCharts
+
+
 ## 0.4.2
 
 ### Documentation
