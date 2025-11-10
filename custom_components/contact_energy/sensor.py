@@ -830,8 +830,13 @@ class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
         async def _delayed_recompute():
             # Wait for coordinator to have data before computing
             if not self.coordinator.last_update_success or self.coordinator.data is None:
-                # Wait for first coordinator update
-                await self.coordinator.async_config_entry_first_refresh()
+                # Wait for coordinator to have data (it's already refreshing from setup)
+                max_wait_time = 60  # Maximum wait time in seconds
+                wait_interval = 0.5  # Check every 0.5 seconds
+                elapsed = 0
+                while (not self.coordinator.last_update_success or self.coordinator.data is None) and elapsed < max_wait_time:
+                    await asyncio.sleep(wait_interval)
+                    elapsed += wait_interval
             
             import hashlib
             icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
