@@ -371,6 +371,11 @@ build_changelog_from_working_changes() {
 write_changelog_section() {
   local version="$1"
   local entry_text="$2"
+  
+  # Strip any version headers from entry_text to avoid duplicates
+  # Remove lines like "## [0.4.1] - 2025-11-10" or "## 0.4.1" or "## [0.4.1]"
+  entry_text=$(echo "$entry_text" | sed -E '/^##[[:space:]]*(\[)?[0-9]+\.[0-9]+\.[0-9]+(\])?([[:space:]]*-[[:space:]]*[0-9]{4}-[0-9]{2}-[0-9]{2})?[[:space:]]*$/d')
+  
   # Ensure header exists
   if [[ ! -f CHANGELOG.md || ! $(grep -m1 -E '^# Changelog' -n CHANGELOG.md) ]]; then
     echo -e "# Changelog\n" > CHANGELOG.md
