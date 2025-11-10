@@ -106,6 +106,8 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 
 # **Installation**  
 
+> **Compatibility:** This integration requires Home Assistant version **2023.1 or later**.
+
 ## **HACS (Recommended)**  
 
 1. Ensure [HACS is installed](https://hacs.xyz/docs/setup/download).  
