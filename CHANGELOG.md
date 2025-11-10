@@ -7,10 +7,6 @@
 - Replaced improper `async_config_entry_first_refresh()` call in sensor.py with a polling loop that waits for coordinator data
 - Ensures compatibility with Home Assistant 2025.11 and beyond by avoiding calls to `async_config_entry_first_refresh()` after config entry is in LOADED state
 
-### Changed
-- Updated changelog format to only show version numbers (e.g., `## 0.4.1`) without dates
-- Modified release.sh to automatically strip version headers from changelog entries to prevent duplicates
-
 
 ## 0.4.0
 
