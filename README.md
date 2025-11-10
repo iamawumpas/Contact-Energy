@@ -174,8 +174,6 @@ This card shows the hourly usage and hourly free usage. The integration creates 
 
 This card shows the daily usage and free usage over the last 35 days. The integration creates two sensors that store up to 60 days' worth of data. This example displays the last 35 days of data and excludes the most recent two days of missing data.
 
-This chart is a WIP as I am not fully happy with the layout.
-
 **TO DO:**
 - Add the first letter of each weekday in the correct space as well as the day
 [![Daily Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-1.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Daily%20usage%20example.yaml)
