@@ -109,18 +109,9 @@ update_readme_version() {
   local f="README.md"
   [[ ! -f "$f" ]] && return 0
 
-  # 1) Remove ALL existing version lines in common formats (case-insensitive)
-  awk 'BEGIN{IGNORECASE=1} !match($0,/^(\*\*version:.*\*\*|<b>version:.*<\/b>|version:)/)' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-
-  # 2) Insert the canonical version line after first H1 or at top
-  local nbsp line
-  nbsp=$'\u00A0'
-  line="**Version:**${nbsp}${new_version}"
-  if grep -qE '^# ' "$f"; then
-    awk -v line="$line" 'NR==1 && /^# / { print; print ""; print line; next } { print }' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-  else
-    awk -v line="$line" 'BEGIN{print line "\n"} {print}' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-  fi
+  # Update version in HTML <strong> tag format used in the table
+  # Look for patterns like: <strong>version:</strong> 0.4.0
+  sed -i -E 's/(<strong>version:<\/strong>)[[:space:]]+[0-9.]+/\1 '"$new_version"'/' "$f"
 }
 
 update_version_in_files() {
