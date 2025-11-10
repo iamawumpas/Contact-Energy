@@ -7,10 +7,10 @@ header:
   show: true
   title: Daily Usage over the last Month
   show_states: false
-graph_span: 35d
+graph_span: 30d
 span:
   start: day
-  offset: "-35d"
+  offset: "-30d"
 section_mode: false
 apex_config:
   chart:
@@ -51,7 +51,7 @@ apex_config:
       show: true
       rotate: -90
       rotateAlways: true
-      hideOverlappingLabels: false
+      hideOverlappingLabels: true
       showDuplicates: false
   yaxis:
     min: 0
