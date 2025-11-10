@@ -1268,13 +1268,29 @@ class ContactEnergyChartDailySensor(SensorEntity):
         )
         self._daily_data = {}
         if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
+            # Sort entries by timestamp to ensure correct delta calculation
+            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
+            prev_val = None
+            
+            for entry in sorted_entries:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
                 if start_ts and val is not None:
-                    # Convert timestamp to datetime and store as ISO date string for ApexCharts
+                    # Convert timestamp to datetime and set to 23:59:59 (end of day)
                     dt = datetime.fromtimestamp(start_ts)
-                    self._daily_data[dt.date().isoformat()] = float(val)
+                    dt_end_of_day = dt.replace(hour=23, minute=59, second=59, microsecond=0)
+                    # Format as ISO 8601 with Z suffix
+                    iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    
+                    # Calculate delta from previous value (absolute value, no negatives)
+                    if prev_val is not None:
+                        delta = abs(float(val) - prev_val)
+                    else:
+                        # First entry: use the value as-is (or 0 if you prefer)
+                        delta = float(val)
+                    
+                    self._daily_data[iso_key] = delta
+                    prev_val = float(val)
         self._last_update = datetime.now()
 
 
@@ -1403,7 +1419,11 @@ class ContactEnergyChartDailyFreeSensor(SensorEntity):
         )
         self._daily_free_data = {}
         if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
+            # Sort entries by timestamp to ensure correct delta calculation
+            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
+            prev_val = None
+            
+            for entry in sorted_entries:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
                 if start_ts and val is not None:
@@ -1414,7 +1434,21 @@ class ContactEnergyChartDailyFreeSensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    self._daily_free_data[dt.date().isoformat()] = float(val)
+                    
+                    # Set to 23:59:59 (end of day)
+                    dt_end_of_day = dt.replace(hour=23, minute=59, second=59, microsecond=0)
+                    # Format as ISO 8601 with Z suffix
+                    iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    
+                    # Calculate delta from previous value (absolute value, no negatives)
+                    if prev_val is not None:
+                        delta = abs(float(val) - prev_val)
+                    else:
+                        # First entry: use the value as-is (or 0 if you prefer)
+                        delta = float(val)
+                    
+                    self._daily_free_data[iso_key] = delta
+                    prev_val = float(val)
         self._last_update = datetime.now()
 
 
