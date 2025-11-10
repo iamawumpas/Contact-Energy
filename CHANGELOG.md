@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2
+
+### Documentation
+- Added Home Assistant version compatibility requirement (2023.1 or later) to README installation section
+
+
 ## 0.4.1
 
 ### Fixed
