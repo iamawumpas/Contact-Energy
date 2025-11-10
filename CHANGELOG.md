@@ -2,10 +2,10 @@
 
 ## 0.4.1
 
-### Fixed
-- Fixed Home Assistant 2025.11 deprecation warning for `async_config_entry_first_refresh()`
-- Replaced improper `async_config_entry_first_refresh()` call in sensor.py with a polling loop that waits for coordinator data
-- Ensures compatibility with Home Assistant 2025.11 and beyond by avoiding calls to `async_config_entry_first_refresh()` after config entry is in LOADED state
+### Changes
+
+- Documentation updates
+- Sensor platform implementation
 
 
 ## 0.4.0
