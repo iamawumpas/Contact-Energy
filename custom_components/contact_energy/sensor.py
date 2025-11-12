@@ -226,9 +226,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
             # Calculate default date range
             today = datetime.now().date()
-            # Account for Contact Energy's typical 2-3 day data lag
-            end_date = today - timedelta(days=3)  # Only fetch data up to 3 days ago
-            start_date = end_date - timedelta(days=self._usage_days - 1)
+            start_date = today - timedelta(days=self._usage_days - 1)
+            end_date = today
 
             # Build statistic IDs and determine last recorded entries
             import re as _re
