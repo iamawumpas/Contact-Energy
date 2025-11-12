@@ -288,16 +288,19 @@ build_changelog_from_range() {
     sensor_diff=$(git diff $range -- custom_components/contact_energy/sensor.py)
     local sensor_additions=""
     
-    # Check for major refactoring patterns
+    # Check for major refactoring patterns (safe net-change heuristic)
     local line_reduction=""
-    local old_lines new_lines
-    old_lines=$(git show "$range" | head -1 | cut -d. -f1 | xargs git show | grep -c '^' || echo "0")
-    new_lines=$(git show "$range" | head -1 | cut -d. -f2 | xargs git show -- custom_components/contact_energy/sensor.py 2>/dev/null | grep -c '^' || echo "0")
-    if [[ "$old_lines" -gt 1000 && "$new_lines" -gt 0 ]]; then
-      local reduction=$((old_lines - new_lines))
-      local percent=$((reduction * 100 / old_lines))
-      if [[ "$percent" -gt 20 ]]; then
-        line_reduction="  - **sensor.py reduced by ${percent}%**: From $old_lines lines to $new_lines lines ($reduction lines removed)\n"
+    local numstat ins del net
+    numstat=$(git diff --numstat $range -- custom_components/contact_energy/sensor.py 2>/dev/null || true)
+    if [[ -n "$numstat" ]]; then
+      ins=$(echo "$numstat" | awk '{print $1}')
+      del=$(echo "$numstat" | awk '{print $2}')
+      if [[ "$ins" =~ ^[0-9]+$ && "$del" =~ ^[0-9]+$ ]]; then
+        net=$((del - ins))
+        # Consider "major" if net reduction exceeds 100 lines
+        if (( net > 100 )); then
+          line_reduction="  - Significant code reduction in sensor.py: -${net} net lines (deleted ${del}, added ${ins})\n"
+        fi
       fi
     fi
     
