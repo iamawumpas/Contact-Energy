@@ -7,10 +7,10 @@ header:
   show: true
   title: Daily Usage over the last Month
   show_states: false
-graph_span: 30d
-span:
-  start: day
-  offset: "-30d"
+graph_span: 35d
+now:
+  show: false
+  label: Now
 section_mode: false
 apex_config:
   chart:
