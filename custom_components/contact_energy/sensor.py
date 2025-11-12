@@ -226,8 +226,9 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
             # Calculate default date range
             today = datetime.now().date()
-            start_date = today - timedelta(days=self._usage_days - 1)
-            end_date = today
+            # Account for Contact Energy's typical 2-3 day data lag
+            end_date = today - timedelta(days=3)  # Only fetch data up to 3 days ago
+            start_date = end_date - timedelta(days=self._usage_days - 1)
 
             # Build statistic IDs and determine last recorded entries
             import re as _re
@@ -303,7 +304,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                         self._contract_id,
                     )
 
-                    if response and isinstance(response, list):
+                    # Only process if we got actual data points
+                    if response and isinstance(response, list) and len(response) > 0:
                         for point in response:
                             if point.get('currency') and currency != point['currency']:
                                 currency = point['currency']
@@ -332,7 +334,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                             free_kwh_statistics.append(StatisticData(start=date_obj, sum=free_kwh_running_sum))
 
                     else:
-                        _LOGGER.debug("No data available for %s", date_str)
+                        _LOGGER.debug("No data available for %s (may not be released yet)", date_str)
 
                 except Exception as error:
                     error_type = type(error).__name__
