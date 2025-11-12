@@ -45,6 +45,7 @@ apex_config:
     offsetY: 20
   xaxis:
     type: datetime
+    tickPlacement: on
     labels:
       format: dd MMM
       datetimeUTC: false
