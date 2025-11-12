@@ -72,9 +72,9 @@ series:
       const dataWithoutOldest = entries.slice(1);
         
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the date and set to start of day (00:00:00) to avoid date shifting
+        // Parse the date and set to noon (12:00:00) to center the bar
         const date = new Date(dateStr);
-        date.setUTCHours(0, 0, 0, 0);
+        date.setUTCHours(12, 0, 0, 0);
         return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
   - entity: sensor.contact_energy_chart_daily_free_0000000966tr348
@@ -91,9 +91,9 @@ series:
       const dataWithoutOldest = entries.slice(1);
 
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the date and set to start of day (00:00:00) to avoid date shifting
+        // Parse the date and set to noon (12:00:00) to center the bar
         const date = new Date(dateStr);
-        date.setUTCHours(0, 0, 0, 0);
+        date.setUTCHours(12, 0, 0, 0);
         return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
 card_mod:
