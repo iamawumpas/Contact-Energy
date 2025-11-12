@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+### Changes
+
+- Documentation updates
+- Added cloud_polling IoT class designation
+
+
 ## 0.4.10
 
 ### Changes
