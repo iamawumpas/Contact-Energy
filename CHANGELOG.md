@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.1
+
+### Major Refactoring - Code Efficiency and Maintainability Improvements
+
+This release represents comprehensive refactoring of the integration codebase.
+
+#### sensor.py - Major Consolidation
+  - Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11+ compatibility
+
+#### __init__.py - Cleaner Restart Logic
+  - Enhanced integration setup and unload procedures
+  - Improved coordinator and platform initialization
+  - Simplified daily restart scheduling logic
+
+
 ## 0.5.0
 
 ### Major Refactoring - Code Efficiency and Maintainability Improvements
