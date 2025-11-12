@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.7
+
+### Changes
+
+- Implemented Energy Dashboard integration with Statistics database
+- Added cost tracking and energy cost statistics
+- Enhanced integration setup and unload procedures
+- Implemented proper coordinator and platform initialization
+
+
 ## 0.4.6
 
 ### Changes
