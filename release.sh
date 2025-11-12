@@ -190,17 +190,29 @@ build_changelog_from_range() {
   if git diff $range --name-only | grep -q "custom_components/contact_energy/sensor.py"; then
     local sensor_diff
     sensor_diff=$(git diff $range -- custom_components/contact_energy/sensor.py)
-    if echo "$sensor_diff" | grep -q "StatisticData\|StatisticMetaData\|async_add_external_statistics"; then
-      detailed_changes+="- Implemented Energy Dashboard integration with Statistics database\n"
+    
+    # Check for specific bug fixes and improvements
+    if echo "$sensor_diff" | grep -q "mean_type"; then
+      detailed_changes+="- Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11 compatibility\n"
     fi
-    if echo "$sensor_diff" | grep -q "energy.*consumption\|electricity\|kWh"; then
-      detailed_changes+="- Added energy consumption tracking for Home Assistant Energy Dashboard\n"
+    if echo "$sensor_diff" | grep -q "len(response) > 0\|response.*and.*len"; then
+      detailed_changes+="- Added validation to only process API responses containing actual data points\n"
     fi
-    if echo "$sensor_diff" | grep -q "cost\|dollar\|NZD"; then
-      detailed_changes+="- Added cost tracking and energy cost statistics\n"
+    if echo "$sensor_diff" | grep -q "timedelta(days=60)"; then
+      detailed_changes+="- Increased daily chart sensor data collection period from 30 to 60 days\n"
     fi
-    if echo "$sensor_diff" | grep -q "offpeak\|free.*energy"; then
-      detailed_changes+="- Added free/off-peak energy tracking\n"
+    if echo "$sensor_diff" | grep -q "ISO.*8601\|strftime.*%Y-%m-%dT%H:%M:%SZ"; then
+      detailed_changes+="- Changed daily chart sensors to use ISO 8601 datetime format with timestamps at 23:59:59\n"
+    fi
+    if echo "$sensor_diff" | grep -q "delta.*=.*abs\|abs.*float.*val.*-.*prev"; then
+      detailed_changes+="- Converted chart sensor values from cumulative totals to delta values (daily usage)\n"
+    fi
+    
+    # Generic changes (only add if no specific changes detected above)
+    if [[ -z "$detailed_changes" ]]; then
+      if echo "$sensor_diff" | grep -q "StatisticData\|StatisticMetaData\|async_add_external_statistics"; then
+        detailed_changes+="- Updated statistics handling in sensor implementation\n"
+      fi
     fi
   fi
 
@@ -220,17 +232,55 @@ build_changelog_from_range() {
   if git diff $range --name-only | grep -q "custom_components/contact_energy/__init__.py"; then
     local init_diff
     init_diff=$(git diff $range -- custom_components/contact_energy/__init__.py)
-    if echo "$init_diff" | grep -q "async_setup_entry\|async_unload_entry"; then
-      detailed_changes+="- Enhanced integration setup and unload procedures\n"
+    
+    # Check for specific bug fixes
+    if echo "$init_diff" | grep -q "async def _restart_wrapper\|_restart_wrapper"; then
+      detailed_changes+="- Fixed async thread safety issue with hass.async_create_task in daily restart scheduler\n"
     fi
-    if echo "$init_diff" | grep -q "coordinator\|platform"; then
-      detailed_changes+="- Implemented proper coordinator and platform initialization\n"
+    if echo "$init_diff" | grep -q "async_call_later\|call_soon_threadsafe"; then
+      detailed_changes+="- Replaced lambda function with proper async wrapper to prevent RuntimeError\n"
+    fi
+    
+    # Generic changes (only add if no specific changes detected)
+    if [[ -z "$detailed_changes" ]] && echo "$init_diff" | grep -q "async_setup_entry\|async_unload_entry"; then
+      detailed_changes+="- Updated integration setup and unload procedures\n"
     fi
   fi
 
   # Check strings/translations changes
   if git diff $range --name-only | grep -q "strings.json\|translations"; then
     detailed_changes+="- Updated user interface strings and translations\n"
+  fi
+  
+  # Check README and documentation changes
+  if git diff $range --name-only | grep -q "README.md"; then
+    local readme_diff
+    readme_diff=$(git diff $range -- README.md)
+    
+    if echo "$readme_diff" | grep -q "60.*day\|60-day"; then
+      detailed_changes+="- Updated README documentation to reflect 60-day data collection capability\n"
+    fi
+    if echo "$readme_diff" | grep -q "WIP\|work.*progress" || echo "$readme_diff" | grep -qE "^-.*WIP"; then
+      detailed_changes+="- Removed work-in-progress notes from documentation\n"
+    fi
+    if echo "$readme_diff" | grep -q "image-1.png\|screenshot"; then
+      detailed_changes+="- Updated daily usage chart screenshot with current visualization\n"
+    fi
+    if [[ -z "$detailed_changes" ]]; then
+      detailed_changes+="- Documentation updates\n"
+    fi
+  fi
+  
+  # Check ApexCharts example changes
+  if git diff $range --name-only | grep -q "ApexCharts.*yaml"; then
+    detailed_changes+="- Updated ApexCharts card configuration examples\n"
+  fi
+  
+  # Check asset/image changes
+  if git diff $range --name-only | grep -q "assets/.*\.png"; then
+    if [[ ! "$detailed_changes" =~ "screenshot" ]]; then
+      detailed_changes+="- Updated integration screenshots and visual assets\n"
+    fi
   fi
 
   # Check manifest/metadata changes
@@ -240,9 +290,7 @@ build_changelog_from_range() {
     if echo "$meta_diff" | grep -q "iot_class.*cloud_polling"; then
       detailed_changes+="- Added cloud_polling IoT class designation\n"
     fi
-    if echo "$meta_diff" | grep -q "version"; then
-      detailed_changes+="- Updated integration version metadata\n"
-    fi
+    # Skip version updates as they're automatic in releases
   fi
 
   # If no specific changes detected, use generic analysis
