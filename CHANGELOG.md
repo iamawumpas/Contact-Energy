@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.8
+
+### Changes
+
+- Implemented Energy Dashboard integration with Statistics database
+
+
 ## 0.4.7
 
 ### Changes
