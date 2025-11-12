@@ -72,10 +72,15 @@ series:
       const dataWithoutOldest = entries.slice(1);
         
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the date and set to noon (12:00:00) to center the bar
+        // Parse the UTC date string and convert to local date at noon
         const date = new Date(dateStr);
-        date.setUTCHours(12, 0, 0, 0);
-        return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
+        // Extract just the date components in local timezone
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const day = date.getDate();
+        // Create new date at noon in local timezone
+        const localNoon = new Date(year, month, day, 12, 0, 0, 0);
+        return [localNoon.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
   - entity: sensor.contact_energy_chart_daily_free_0000000966tr348
     name: Free Usage (kWh)
@@ -91,10 +96,15 @@ series:
       const dataWithoutOldest = entries.slice(1);
 
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the date and set to noon (12:00:00) to center the bar
+        // Parse the UTC date string and convert to local date at noon
         const date = new Date(dateStr);
-        date.setUTCHours(12, 0, 0, 0);
-        return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
+        // Extract just the date components in local timezone
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const day = date.getDate();
+        // Create new date at noon in local timezone
+        const localNoon = new Date(year, month, day, 12, 0, 0, 0);
+        return [localNoon.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
 card_mod:
   style: |
