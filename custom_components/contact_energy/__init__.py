@@ -8,7 +8,7 @@ from datetime import datetime, time, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.event import async_track_time_change, async_call_later
 
 from .api import ContactEnergyApi
 from .coordinator import ContactEnergyCoordinator
@@ -89,9 +89,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     restart_hour, restart_minute = await _calculate_next_restart_time()
     
     # Schedule daily restart at 3am +/- 30 minutes
+    # Use a wrapper to properly create the task from the event loop
+    async def _restart_wrapper(now):
+        """Wrapper to handle the restart task."""
+        await _handle_daily_restart(hass, entry)
+    
     restart_cancel = async_track_time_change(
         hass,
-        lambda now: hass.async_create_task(_handle_daily_restart(hass, entry)),
+        _restart_wrapper,
         hour=restart_hour,
         minute=restart_minute,
         second=0,
