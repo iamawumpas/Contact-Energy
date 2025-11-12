@@ -47,7 +47,7 @@ apex_config:
     type: datetime
     labels:
       format: dd MMM
-      datetimeUTC: false
+      datetimeUTC: true
       show: true
       rotate: -90
       rotateAlways: true
@@ -80,14 +80,18 @@ series:
     name: Free Usage (kWh)
     show:
       legend_value: false
-    data_generator: |
-      const dailyFreeAttr = entity.attributes.daily_free_data || entity.attributes.daily_data;
+    data_generator: >
+      const dailyFreeAttr = entity.attributes.daily_free_data ||
+      entity.attributes.daily_data;
+
       const rawData = dailyFreeAttr || {};
+
 
       const entries = Object.entries(rawData)
         .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime());
         
       const dataWithoutOldest = entries.slice(1);
+
 
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
         // Parse the date and set to start of day (00:00:00) to avoid date shifting
