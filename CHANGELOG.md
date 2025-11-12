@@ -2,33 +2,47 @@
 
 ## 0.4.8
 
-### Changes
-
-- Implemented Energy Dashboard integration with Statistics database
+### Fixed
+- **Daily Chart Data Accuracy**: Fixed issue where daily chart sensors (`sensor.contact_energy_chart_daily_{icp}` and `sensor.contact_energy_chart_daily_free_{icp}`) were showing dates with no actual data from Contact Energy
+- Added validation to only process API responses containing actual data points (`len(response) > 0`)
+- Statistics entries are now only created when Contact Energy has released data for that date
+- Missing or unavailable data defaults to 0 and is overwritten when data becomes available
+- Ensures chart sensors accurately reflect only dates with real usage data from Contact Energy
 
 
 ## 0.4.7
 
-### Changes
+### Fixed
+- **Async Thread Safety**: Fixed RuntimeError where `hass.async_create_task` was being called from a thread other than the event loop
+  - Replaced lambda function with proper async wrapper in daily restart scheduler
+  - Resolves "coroutine '_handle_daily_restart' was never awaited" warnings
+  - Prevents potential Home Assistant crashes due to incorrect async task creation
 
-- Implemented Energy Dashboard integration with Statistics database
-- Added cost tracking and energy cost statistics
-- Enhanced integration setup and unload procedures
-- Implemented proper coordinator and platform initialization
+### Changed
+- **Home Assistant 2026.11 Compatibility**: Added `mean_type=None` parameter to all `StatisticMetaData` instances
+  - Required for Home Assistant 2026.11+ compatibility
+  - Applies to electricity consumption, electricity cost, and free electricity statistics
+  - Prevents deprecation warnings about missing `mean_type` in async_add_external_statistics calls
 
 
 ## 0.4.6
 
-### Changes
-
-- Documentation updates
+### Documentation
+- Updated README.md to remove "WIP" (work in progress) note from Daily Usage chart section
+- Updated daily usage chart screenshot (image-1.png) with improved visualization
+- Refined ApexCharts card configuration example for daily usage display
+  - Adjusted graph span and label visibility settings
+  - Improved date format display
+  - Optimized data generation logic for better chart rendering
 
 
 ## 0.4.5
 
-### Changes
-
-- Documentation updates
+### Documentation
+- Updated README.md documentation to accurately reflect 60-day data collection capability
+  - Changed description from "30 days" to "60 days" of stored data
+  - Updated example to display last 35 days instead of 31 days
+- Updated daily usage chart screenshot (image-1.png) to show current visualization
 
 
 ## 0.4.4
