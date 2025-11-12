@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.9
+
+### Changes
+
+- Updated ApexCharts card configuration examples
+
+
 ## 0.4.8
 
 ### Fixed
