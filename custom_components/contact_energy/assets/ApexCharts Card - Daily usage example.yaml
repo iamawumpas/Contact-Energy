@@ -45,7 +45,6 @@ apex_config:
     offsetY: 20
   xaxis:
     type: datetime
-    tickPlacement: on
     labels:
       format: dd MMM
       datetimeUTC: false
@@ -72,15 +71,10 @@ series:
       const dataWithoutOldest = entries.slice(1);
         
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the UTC date string and convert to local date at noon
+        // Parse the date and set to start of day (00:00:00) to avoid date shifting
         const date = new Date(dateStr);
-        // Extract just the date components in local timezone
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const day = date.getDate();
-        // Create new date at noon in local timezone
-        const localNoon = new Date(year, month, day, 12, 0, 0, 0);
-        return [localNoon.getTime(), parseFloat(deltaValue.toFixed(1))];
+        date.setUTCHours(0, 0, 0, 0);
+        return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
   - entity: sensor.contact_energy_chart_daily_free_0000000966tr348
     name: Free Usage (kWh)
@@ -96,15 +90,10 @@ series:
       const dataWithoutOldest = entries.slice(1);
 
       return dataWithoutOldest.map(([dateStr, deltaValue]) => {
-        // Parse the UTC date string and convert to local date at noon
+        // Parse the date and set to start of day (00:00:00) to avoid date shifting
         const date = new Date(dateStr);
-        // Extract just the date components in local timezone
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const day = date.getDate();
-        // Create new date at noon in local timezone
-        const localNoon = new Date(year, month, day, 12, 0, 0, 0);
-        return [localNoon.getTime(), parseFloat(deltaValue.toFixed(1))];
+        date.setUTCHours(0, 0, 0, 0);
+        return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
 card_mod:
   style: |
