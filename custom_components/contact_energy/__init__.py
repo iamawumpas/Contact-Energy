@@ -20,19 +20,17 @@ from .const import (
     CONF_USAGE_DAYS,
     CONF_USAGE_MONTHS,
     months_to_days,
+    RESTART_HOUR,
+    RESTART_MINUTE_VARIANCE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-# Daily restart time: 3am +/- 30 minutes
-RESTART_HOUR = 3
-RESTART_MINUTE_VARIANCE = 30
 
-async def _calculate_next_restart_time() -> tuple[int, int]:
-    """Calculate the next restart time (hour, minute) with random variance."""
-    # Add random variance of +/- 30 minutes to 3am
+def _calculate_restart_time() -> tuple[int, int]:
+    """Calculate the restart time (hour, minute) with random variance."""
     variance = random.randint(-RESTART_MINUTE_VARIANCE, RESTART_MINUTE_VARIANCE)
     target_time = datetime.now().replace(hour=RESTART_HOUR, minute=0, second=0, microsecond=0)
     target_time += timedelta(minutes=variance)
@@ -86,10 +84,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.async_create_task(coordinator.async_config_entry_first_refresh())
 
     # Calculate random restart time around 3am
-    restart_hour, restart_minute = await _calculate_next_restart_time()
+    restart_hour, restart_minute = _calculate_restart_time()
     
     # Schedule daily restart at 3am +/- 30 minutes
-    # Use a wrapper to properly create the task from the event loop
     async def _restart_wrapper(now):
         """Wrapper to handle the restart task."""
         await _handle_daily_restart(hass, entry)

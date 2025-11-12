@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import ContactEnergyApi, InvalidAuth, CannotConnect
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
@@ -44,9 +45,8 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         """Fetch data from Contact Energy."""
         try:
             # Ensure we're logged in
-            if not self.api._api_token:
-                if not await self.api.async_login():
-                    raise UpdateFailed("Failed to authenticate with Contact Energy")
+            if not self.api._api_token and not await self.api.async_login():
+                raise UpdateFailed("Failed to authenticate with Contact Energy")
 
             # Fetch account data (for billing, balance, etc.)
             async with self._account_lock:
@@ -59,21 +59,18 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             # Extract accountDetail from response (API returns {'accountDetail': {...}})
             account_details = account_data.get("accountDetail", {})
             
-            # If accountDetail is empty, maybe the structure is different
             if not account_details:
                 _LOGGER.error("No 'accountDetail' found in API response keys: %s", list(account_data.keys()))
-                # Don't fail, just return empty details
                 account_details = {}
             
-            # Return data structure for coordinator (match what sensors expect)
-            coordinator_data = {
+            # Return simplified data structure
+            return {
                 "account_details": account_details,
-                "last_update": datetime.utcnow(),  # Use utcnow to avoid timezone issues
+                "last_update": dt_util.utcnow(),
                 "account_id": self.account_id,
                 "contract_id": self.contract_id,
                 "contract_icp": self.contract_icp,
             }
-            return coordinator_data
 
         except InvalidAuth as err:
             raise UpdateFailed(f"Authentication failed: {err}") from err

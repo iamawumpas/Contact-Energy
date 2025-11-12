@@ -11,6 +11,15 @@ import async_timeout
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .const import (
+	API_BASE_URL,
+	API_KEY,
+	API_TIMEOUT_DEFAULT,
+	API_TIMEOUT_USAGE,
+	API_MAX_RETRIES,
+	API_BACKOFF_INITIAL,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -21,95 +30,101 @@ class ContactEnergyApi:
 		self._email = email
 		self._password = password
 		self._api_token: str = ""
-		self._url_base = "https://api.contact-digital-prod.net"
-		# Embedded API key provided by upstream mobile client
-		self._api_key = "z840P4lQCH9TqcjC9L2pP157DZcZJMcr5tVQCvyx"
+		self._url_base = API_BASE_URL
+		self._api_key = API_KEY
 		self._session = async_get_clientsession(hass)
 		self._login_lock = asyncio.Lock()
 
 	def _headers(self, include_token: bool = True) -> dict[str, str]:
+		"""Build request headers with optional session token."""
 		headers = {"x-api-key": self._api_key}
 		if include_token and self._api_token:
 			headers["session"] = self._api_token
 		return headers
 
+	async def _handle_retry(self, attempt: int, max_retries: int, backoff: float, error_context: str) -> float:
+		"""Handle retry logic with exponential backoff."""
+		if attempt <= max_retries:
+			_LOGGER.debug("%s; retrying in %ss (attempt %s/%s)", error_context, backoff, attempt, max_retries + 1)
+			await asyncio.sleep(backoff)
+			return backoff * 2
+		return backoff
+
 	async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-			"""HTTP request with retry/backoff for 5xx and robust error mapping."""
-			max_retries = kwargs.pop("_retries", 2)
-			backoff = 1
-			attempt = 0
-			last_server_error = None
-			while True:
-				attempt += 1
-				try:
-					# Use longer timeout for usage requests which can be slow
-					timeout_duration = 60 if "/usage/" in url else 30
-					async with async_timeout.timeout(timeout_duration):
-						async with self._session.request(method, url, **kwargs) as resp:
-							_LOGGER.debug("%s %s -> %s", method, url, resp.status)
-							if resp.status == 200:
-								ct = resp.headers.get("content-type", "")
-								if "application/json" in ct:
-									return await resp.json()
-								return await resp.text()
-							if resp.status == 401:
-								raise InvalidAuth("Unauthorized (401)")
-							text = await resp.text()
-							# Retry on server errors
-							if 500 <= resp.status <= 599 and attempt <= (max_retries + 1):
-								last_server_error = (resp.status, url)
-								_LOGGER.debug(
-									"Server error %s on %s; retrying in %ss (attempt %s/%s)",
-									resp.status,
-									url,
-									backoff,
-									attempt,
-									max_retries + 1,
-								)
-								await asyncio.sleep(backoff)
-								backoff *= 2
-								continue
-							# If we had server errors and exhausted retries, log at debug level
-							# The calling code will handle logging appropriately
-							if last_server_error:
-								_LOGGER.debug(
-									"Contact Energy API returned server error %s after %s retries for %s",
-									last_server_error[0],
-									max_retries,
-									last_server_error[1],
-								)
-							raise CannotConnect(f"Server error {resp.status}" if last_server_error else f"Unexpected status {resp.status}")
-				except asyncio.TimeoutError as e:
-					_LOGGER.debug("Timeout calling %s (attempt %s/%s)", url, attempt, max_retries + 1)
-					if attempt <= (max_retries + 1):
-						await asyncio.sleep(backoff)
-						backoff *= 2
-						continue
-					_LOGGER.warning("Timeout calling %s after %s retries", url, max_retries)
-					raise CannotConnect("Timeout") from e
-				except aiohttp.ClientError as e:
-					_LOGGER.debug("Client error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
-					if attempt <= (max_retries + 1):
-						await asyncio.sleep(backoff)
-						backoff *= 2
-						continue
-					_LOGGER.warning("Client error calling %s after %s retries: %s", url, max_retries, e)
-					raise CannotConnect("Client error") from e
-				except InvalidAuth:
-					# Do not retry invalid auth
-					raise
-				except Exception as e:  # noqa: BLE001
-					_LOGGER.debug("Unexpected error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
-					if attempt <= (max_retries + 1):
-						await asyncio.sleep(backoff)
-						backoff *= 2
-						continue
-					# Log 502 errors at debug level since they're common and expected from Contact Energy API
-					if "502" in str(e):
-						_LOGGER.debug("Server error 502 calling %s after %s retries (API temporarily unavailable)", url, max_retries)
-					else:
-						_LOGGER.warning("Unexpected error calling %s after %s retries: %s", url, max_retries, e)
-					raise UnknownError("Unexpected error") from e
+		"""HTTP request with retry/backoff for 5xx and robust error mapping."""
+		max_retries = kwargs.pop("_retries", API_MAX_RETRIES)
+		backoff = API_BACKOFF_INITIAL
+		attempt = 0
+		last_server_error = None
+		
+		while True:
+			attempt += 1
+			try:
+				# Use longer timeout for usage requests which can be slow
+				timeout_duration = API_TIMEOUT_USAGE if "/usage/" in url else API_TIMEOUT_DEFAULT
+				async with async_timeout.timeout(timeout_duration):
+					async with self._session.request(method, url, **kwargs) as resp:
+						_LOGGER.debug("%s %s -> %s", method, url, resp.status)
+						
+						if resp.status == 200:
+							ct = resp.headers.get("content-type", "")
+							if "application/json" in ct:
+								return await resp.json()
+							return await resp.text()
+						
+						if resp.status == 401:
+							raise InvalidAuth("Unauthorized (401)")
+						
+						text = await resp.text()
+						
+						# Retry on server errors
+						if 500 <= resp.status <= 599 and attempt <= (max_retries + 1):
+							last_server_error = (resp.status, url)
+							backoff = await self._handle_retry(
+								attempt, max_retries, backoff,
+								f"Server error {resp.status} on {url}"
+							)
+							continue
+						
+						# Log exhausted retries
+						if last_server_error:
+							_LOGGER.debug(
+								"Contact Energy API returned server error %s after %s retries for %s",
+								last_server_error[0], max_retries, last_server_error[1]
+							)
+						raise CannotConnect(f"Server error {resp.status}" if last_server_error else f"Unexpected status {resp.status}")
+						
+			except asyncio.TimeoutError as e:
+				_LOGGER.debug("Timeout calling %s (attempt %s/%s)", url, attempt, max_retries + 1)
+				if attempt <= (max_retries + 1):
+					backoff = await self._handle_retry(attempt, max_retries, backoff, f"Timeout calling {url}")
+					continue
+				_LOGGER.warning("Timeout calling %s after %s retries", url, max_retries)
+				raise CannotConnect("Timeout") from e
+				
+			except aiohttp.ClientError as e:
+				_LOGGER.debug("Client error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
+				if attempt <= (max_retries + 1):
+					backoff = await self._handle_retry(attempt, max_retries, backoff, f"Client error calling {url}: {e}")
+					continue
+				_LOGGER.warning("Client error calling %s after %s retries: %s", url, max_retries, e)
+				raise CannotConnect("Client error") from e
+				
+			except InvalidAuth:
+				# Do not retry invalid auth
+				raise
+				
+			except Exception as e:  # noqa: BLE001
+				_LOGGER.debug("Unexpected error calling %s (attempt %s/%s): %s", url, attempt, max_retries + 1, e)
+				if attempt <= (max_retries + 1):
+					backoff = await self._handle_retry(attempt, max_retries, backoff, f"Unexpected error calling {url}: {e}")
+					continue
+				# Log 502 errors at debug level since they're common and expected from Contact Energy API
+				if "502" in str(e):
+					_LOGGER.debug("Server error 502 calling %s after %s retries (API temporarily unavailable)", url, max_retries)
+				else:
+					_LOGGER.warning("Unexpected error calling %s after %s retries: %s", url, max_retries, e)
+				raise UnknownError("Unexpected error") from e
 
 	async def async_login(self) -> bool:
 		"""Login and store token."""
@@ -136,16 +151,11 @@ class ContactEnergyApi:
 
 	async def async_validate_account(self) -> bool:
 		"""Validate account access by fetching accounts summary."""
-		if not self._api_token:
-			ok = await self.async_login()
-			if not ok:
-				return False
+		if not self._api_token and not await self.async_login():
+			return False
+			
 		try:
-			data = await self._request(
-				"GET",
-				f"{self._url_base}/accounts/v2",
-				headers=self._headers(),
-			)
+			data = await self._request("GET", f"{self._url_base}/accounts/v2", headers=self._headers())
 			if isinstance(data, dict) and data.get("accountDetail"):
 				return True
 			_LOGGER.error("Account validation failed: missing accountDetail in response")
@@ -158,10 +168,8 @@ class ContactEnergyApi:
 
 	async def async_get_usage(self, year: str, month: str, day: str, account_id: str, contract_id: str) -> Any:
 		"""Get usage data for a specific date using the correct endpoint pattern."""
-		if not self._api_token:
-			ok = await self.async_login()
-			if not ok:
-				return None
+		if not self._api_token and not await self.async_login():
+			return None
 
 		date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
 		url = f"{self._url_base}/usage/v2/{contract_id}?ba={account_id}&interval=hourly&from={date_str}&to={date_str}"
@@ -169,11 +177,7 @@ class ContactEnergyApi:
 		_LOGGER.debug("Getting usage data for %s using correct endpoint", date_str)
 		
 		try:
-			data = await self._request(
-				"POST",
-				url,
-				headers=self._headers(),
-			)
+			data = await self._request("POST", url, headers=self._headers())
 			if data:
 				_LOGGER.debug("Successfully fetched usage data for %s: %d data points", date_str, len(data) if isinstance(data, list) else 1)
 				return data
@@ -182,15 +186,9 @@ class ContactEnergyApi:
 		except InvalidAuth:
 			_LOGGER.debug("Token expired during usage fetch, attempting to login again")
 			if await self.async_login():
-				# Retry the request with new token
 				return await self.async_get_usage(year, month, day, account_id, contract_id)
 			return None
-		except CannotConnect as error:
-			# Log server errors at debug level to reduce log spam - they're already logged in _request
-			_LOGGER.debug("Could not fetch usage data for %s: %s", date_str, error)
-			return None
-		except UnknownError as error:
-			# Log at debug level - detailed errors already logged in _request
+		except (CannotConnect, UnknownError) as error:
 			_LOGGER.debug("Could not fetch usage data for %s: %s", date_str, error)
 			return None
 		except Exception as error:
@@ -199,26 +197,18 @@ class ContactEnergyApi:
 
 	async def async_get_account_details(self) -> Any:
 		"""Get account details from the accounts/v2 endpoint."""
-		if not self._api_token:
-			ok = await self.async_login()
-			if not ok:
-				raise CannotConnect("Failed to authenticate")
+		if not self._api_token and not await self.async_login():
+			raise CannotConnect("Failed to authenticate")
 
 		try:
-			data = await self._request(
-				"GET",
-				f"{self._url_base}/accounts/v2",
-				headers=self._headers(),
-			)
+			data = await self._request("GET", f"{self._url_base}/accounts/v2", headers=self._headers())
 			return data
 		except InvalidAuth:
 			_LOGGER.debug("Token expired during account fetch, attempting to login again")
 			if await self.async_login():
-				# Retry the request with new token
 				return await self.async_get_account_details()
 			raise InvalidAuth("Failed to re-authenticate")
 		except (CannotConnect, InvalidAuth):
-			# Re-raise these specific errors
 			raise
 		except Exception as error:
 			_LOGGER.error("Failed to fetch account details: %s", error)

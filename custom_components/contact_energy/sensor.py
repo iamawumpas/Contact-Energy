@@ -1,10 +1,13 @@
-"""Contact Energy sensor platform."""
+"""Contact Energy sensor platform - Refactored for efficiency."""
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+import random
+import re
 from datetime import datetime, timedelta, date
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -16,10 +19,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics, statistics_during_period
+from homeassistant.components.recorder.statistics import (
+    async_add_external_statistics,
+    get_last_statistics,
+    statistics_during_period,
+)
 from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
-import random
-import re
 
 from .const import (
     DOMAIN,
@@ -29,10 +34,79 @@ from .const import (
     CONF_USAGE_DAYS,
     CONF_USAGE_MONTHS,
     months_to_days,
+    DEVICE_MANUFACTURER,
+    DEVICE_MODEL,
+    DEVICE_SW_VERSION,
+    CHART_HOURLY_DAYS,
+    CHART_DAILY_DAYS,
+    CHART_MONTHLY_START_YEAR,
+    STARTUP_DELAY_BASE_MAX,
+    STARTUP_DELAY_JITTER_MIN,
+    STARTUP_DELAY_JITTER_MAX,
+    CONVENIENCE_DELAY_BASE_MAX,
+    CONVENIENCE_DELAY_JITTER_MIN,
+    CONVENIENCE_DELAY_JITTER_MAX,
 )
 from .coordinator import ContactEnergyCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def safe_float(value: Any) -> float:
+    """Safely convert value to float."""
+    try:
+        return float(value) if value is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def sanitize_icp_for_statistic_id(icp: str) -> str:
+    """Convert ICP to a valid statistic ID component."""
+    safe_icp = re.sub(r'[^a-z0-9_]', '_', icp.lower())
+    if re.match(r'^[0-9]', safe_icp):
+        safe_icp = f"icp_{safe_icp}"
+    return safe_icp
+
+
+def get_statistic_ids(contract_icp: str) -> tuple[str, str, str]:
+    """Generate statistic IDs for a contract ICP."""
+    safe_icp = sanitize_icp_for_statistic_id(contract_icp)
+    return (
+        f"{DOMAIN}:energy_{safe_icp}",
+        f"{DOMAIN}:cost_{safe_icp}",
+        f"{DOMAIN}:free_energy_{safe_icp}",
+    )
+
+
+def calculate_startup_delay(contract_icp: str, is_convenience: bool = False) -> float:
+    """Calculate consistent startup delay based on ICP hash."""
+    icp_hash = int(hashlib.md5(contract_icp.encode()).hexdigest()[:8], 16)
+    if is_convenience:
+        base_delay = (icp_hash % CONVENIENCE_DELAY_BASE_MAX) / 10.0
+        jitter = random.uniform(CONVENIENCE_DELAY_JITTER_MIN, CONVENIENCE_DELAY_JITTER_MAX)
+    else:
+        base_delay = (icp_hash % STARTUP_DELAY_BASE_MAX) / 10.0
+        jitter = random.uniform(STARTUP_DELAY_JITTER_MIN, STARTUP_DELAY_JITTER_MAX)
+    return base_delay + jitter
+
+
+def get_device_info(contract_icp: str) -> dict[str, Any]:
+    """Get standardized device information."""
+    return {
+        "identifiers": {(DOMAIN, contract_icp)},
+        "name": f"{DEVICE_MANUFACTURER} ({contract_icp})",
+        "manufacturer": DEVICE_MANUFACTURER,
+        "model": DEVICE_MODEL,
+        "sw_version": DEVICE_SW_VERSION,
+    }
+
+
+# ============================================================================
+# SENSOR SETUP
+# ============================================================================
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -45,80 +119,90 @@ async def async_setup_entry(
     account_id = entry.data[CONF_ACCOUNT_ID]
     contract_id = entry.data[CONF_CONTRACT_ID]
     contract_icp = entry.data[CONF_CONTRACT_ICP]
+    
     # Prefer months setting; fall back to legacy days
     if CONF_USAGE_MONTHS in entry.data:
         usage_days = months_to_days(entry.data.get(CONF_USAGE_MONTHS))
     else:
         usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
 
-    # Create usage sensor for Energy Dashboard
-    entities = [
-        ContactEnergyUsageSensor(
-            coordinator,
-            account_id,
-            contract_id,
-            contract_icp,
-            usage_days,
-        )
+    # Generate statistic IDs once
+    kwh_stat_id, dollar_stat_id, free_stat_id = get_statistic_ids(contract_icp)
+
+    # Create all entities
+    entities = []
+    
+    # Main usage sensor for Energy Dashboard
+    entities.append(ContactEnergyUsageSensor(
+        coordinator, account_id, contract_id, contract_icp, usage_days
+    ))
+
+    # Account information sensors
+    account_sensors = [
+        ("balance", "Account Balance", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd"),
+        ("next_bill_date", "Next Bill Date", SensorDeviceClass.DATE, None, "mdi:calendar-clock"),
+        ("customer_name", "Customer Name", None, None, "mdi:account"),
+        ("plan_name", "Plan Name", None, None, "mdi:lightning-bolt"),
+        ("account_number", "Account Number", None, None, "mdi:identifier"),
+        ("service_address", "Service Address", None, None, "mdi:home"),
+        ("meter_serial", "Meter Serial", None, None, "mdi:counter"),
+        ("next_read_date", "Next Read Date", SensorDeviceClass.DATE, None, "mdi:calendar-arrow-right"),
+        ("last_read_date", "Last Read Date", SensorDeviceClass.DATE, None, "mdi:calendar-check"),
+        ("daily_charge_rate", "Daily Charge Rate", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd"),
+        ("peak_rate", "Peak Rate", SensorDeviceClass.MONETARY, "NZD/kWh", "mdi:trending-up"),
+        ("off_peak_rate", "Off Peak Rate", SensorDeviceClass.MONETARY, "NZD/kWh", "mdi:trending-down"),
+        ("free_hours", "Free Hours", None, None, "mdi:clock-time-eight"),
+        ("last_payment", "Last Payment", SensorDeviceClass.MONETARY, "NZD", "mdi:credit-card"),
+        ("estimated_next_bill", "Estimated Next Bill", SensorDeviceClass.MONETARY, "NZD", "mdi:receipt"),
     ]
+    
+    for sensor_type, name, device_class, unit, icon in account_sensors:
+        entities.append(ContactEnergyAccountSensor(
+            coordinator, contract_icp, sensor_type, name, device_class, unit, icon
+        ))
 
-    # Add account information sensors (read from coordinator account_details)
-    entities.extend([
-        ContactEnergyAccountBalanceSensor(coordinator, contract_icp),
-        ContactEnergyNextBillDateSensor(coordinator, contract_icp),
-        ContactEnergyCustomerNameSensor(coordinator, contract_icp),
-        ContactEnergyPlanNameSensor(coordinator, contract_icp),
-        ContactEnergyAccountNumberSensor(coordinator, contract_icp),
-        ContactEnergyServiceAddressSensor(coordinator, contract_icp),
-        ContactEnergyMeterSerialSensor(coordinator, contract_icp),
-        ContactEnergyNextReadDateSensor(coordinator, contract_icp),
-        ContactEnergyLastReadDateSensor(coordinator, contract_icp),
-        ContactEnergyDailyChargeRateSensor(coordinator, contract_icp),
-        ContactEnergyPeakRateSensor(coordinator, contract_icp),
-        ContactEnergyOffPeakRateSensor(coordinator, contract_icp),
-        ContactEnergyFreeHoursSensor(coordinator, contract_icp),
-        ContactEnergyLastPaymentSensor(coordinator, contract_icp),
-        ContactEnergyEstimatedNextBillSensor(coordinator, contract_icp),
-    ])
-
-    # Add convenience usage/cost sensors
-    convenience_entities = [
-        ContactEnergyTodayUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyYesterdayUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyLast7DaysUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyLast30DaysUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyCurrentMonthUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyLastMonthUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyTodayCostSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyYesterdayCostSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyCurrentMonthCostSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyLastMonthCostSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyTodayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
-        ContactEnergyYesterdayFreeUsageSensor(coordinator, account_id, contract_id, contract_icp),
+    # Convenience usage/cost sensors
+    convenience_sensors = [
+        ("today_usage", "Today Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar-today", "usage"),
+        ("yesterday_usage", "Yesterday Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar-minus", "usage"),
+        ("last_7_days_usage", "Last 7 Days Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar-week", "usage"),
+        ("last_30_days_usage", "Last 30 Days Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar-month", "usage"),
+        ("current_month_usage", "Current Month Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar", "usage"),
+        ("last_month_usage", "Last Month Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:calendar-arrow-left", "usage"),
+        ("today_cost", "Today Cost", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd", "cost"),
+        ("yesterday_cost", "Yesterday Cost", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd", "cost"),
+        ("current_month_cost", "Current Month Cost", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd", "cost"),
+        ("last_month_cost", "Last Month Cost", SensorDeviceClass.MONETARY, "NZD", "mdi:currency-usd", "cost"),
+        ("today_free_usage", "Today Free Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:gift", "free"),
+        ("yesterday_free_usage", "Yesterday Free Usage", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "mdi:gift", "free"),
     ]
+    
+    for sensor_type, name, device_class, unit, icon, metric in convenience_sensors:
+        entities.append(ContactEnergyConvenienceSensor(
+            coordinator, account_id, contract_id, contract_icp, sensor_type, name, device_class, unit, icon, metric
+        ))
 
-    # Add charting sensors for ApexCharts
-    # Build statistic ID from contract_icp
-    safe_icp = re.sub(r'[^a-z0-9_]', '_', contract_icp.lower())
-    if re.match(r'^[0-9]', safe_icp):
-        safe_icp = f"icp_{safe_icp}"
-    kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
-    free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
-
-    chart_entities = [
-        ContactEnergyChartHourlySensor(hass, kwh_stat_id, contract_icp),
-        ContactEnergyChartDailySensor(hass, kwh_stat_id, contract_icp),
-        ContactEnergyChartHourlyFreeSensor(hass, free_stat_id, contract_icp),
-        ContactEnergyChartDailyFreeSensor(hass, free_stat_id, contract_icp),
-        ContactEnergyChartMonthlySensor(hass, kwh_stat_id, contract_icp),
-        ContactEnergyChartMonthlyFreeSensor(hass, free_stat_id, contract_icp),
+    # Chart sensors for ApexCharts
+    chart_sensors = [
+        (kwh_stat_id, "hourly", "Chart Hourly", "hour", CHART_HOURLY_DAYS, "mdi:chart-bar"),
+        (kwh_stat_id, "daily", "Chart Daily", "day", CHART_DAILY_DAYS, "mdi:calendar"),
+        (free_stat_id, "hourly_free", "Chart Hourly Free", "hour", CHART_HOURLY_DAYS, "mdi:gift"),
+        (free_stat_id, "daily_free", "Chart Daily Free", "day", CHART_DAILY_DAYS, "mdi:gift"),
+        (kwh_stat_id, "monthly", "Chart Monthly", "month", None, "mdi:calendar-month"),
+        (free_stat_id, "monthly_free", "Chart Monthly Free", "month", None, "mdi:gift"),
     ]
+    
+    for stat_id, sensor_type, name, period, days, icon in chart_sensors:
+        entities.append(ContactEnergyChartSensor(
+            hass, contract_icp, stat_id, sensor_type, name, period, days, icon
+        ))
 
-    # Register all entities in a single call
-    all_entities = entities + convenience_entities + chart_entities
-    async_add_entities(all_entities, False)
+    async_add_entities(entities, False)
 
 
+# ============================================================================
+# MAIN USAGE SENSOR (Energy Dashboard Integration)
+# ============================================================================
 
 class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
     """Sensor for Contact Energy usage tracking with Energy Dashboard statistics."""
@@ -163,27 +247,14 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> dict[str, Any]:
         """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-            "sw_version": "1.0",
-        }
+        return get_device_info(self._contract_icp)
 
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to Home Assistant."""
         await super().async_added_to_hass()
 
         async def _kickoff_download(_event=None) -> None:
-            # Add randomized jitter based on contract ICP to spread out multiple accounts/contracts
-            # Use hash of ICP to generate consistent but distributed delays
-            import hashlib
-            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
-            base_delay = (icp_hash % 30) / 10.0  # 0-3 seconds based on ICP
-            jitter = random.uniform(0.5, 2.0)  # Additional random jitter
-            total_delay = base_delay + jitter
-            
+            total_delay = calculate_startup_delay(self._contract_icp, is_convenience=False)
             try:
                 await asyncio.sleep(total_delay)
             except Exception:  # noqa: BLE001
@@ -195,6 +266,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             await _kickoff_download()
         else:
             self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _kickoff_download)
+
     async def async_will_remove_from_hass(self) -> None:
         """Called when entity is about to be removed from Home Assistant."""
         if self._download_task and not self._download_task.done():
@@ -206,8 +278,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         now = datetime.now()
         
         # Only update if it's been 8+ hours since last update
-        if (self._last_usage_update and 
-            (now - self._last_usage_update) < timedelta(hours=8)):
+        if self._last_usage_update and (now - self._last_usage_update) < timedelta(hours=8):
             _LOGGER.debug("Skipping usage update, last update was recent")
             return
 
@@ -229,25 +300,20 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             start_date = today - timedelta(days=self._usage_days - 1)
             end_date = today
 
-            # Build statistic IDs and determine last recorded entries
-            import re as _re
-            safe_icp = _re.sub(r'[^a-z0-9_]', '_', self._contract_icp.lower())
-            if _re.match(r'^[0-9]', safe_icp):
-                safe_icp = f"icp_{safe_icp}"
-            kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
-            dollar_stat_id = f"{DOMAIN}:cost_{safe_icp}"
-            free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
+            # Build statistic IDs
+            kwh_stat_id, dollar_stat_id, free_stat_id = get_statistic_ids(self._contract_icp)
 
+            # Initialize base sums
             base_kwh_sum = 0.0
             base_dollar_sum = 0.0
             base_free_sum = 0.0
 
+            # Determine where to continue from
             try:
-                # get_last_statistics is synchronous; run in executor
                 last_stats = await self.hass.async_add_executor_job(
                     get_last_statistics, self.hass, 1, [kwh_stat_id, dollar_stat_id, free_stat_id]
                 )
-                # Determine the next start date from kWh series (canonical)
+                
                 if isinstance(last_stats, dict) and kwh_stat_id in last_stats and last_stats[kwh_stat_id]:
                     last_entry = last_stats[kwh_stat_id][0]
                     last_start = last_entry.get("start")
@@ -255,34 +321,25 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                         candidate = last_start.date() + timedelta(days=1)
                         if candidate > start_date:
                             start_date = candidate
-                    try:
-                        base_kwh_sum = float(last_entry.get("sum") or 0.0)
-                    except (TypeError, ValueError):
-                        base_kwh_sum = 0.0
+                    base_kwh_sum = safe_float(last_entry.get("sum"))
+                    
                 if isinstance(last_stats, dict) and dollar_stat_id in last_stats and last_stats[dollar_stat_id]:
-                    try:
-                        base_dollar_sum = float(last_stats[dollar_stat_id][0].get("sum") or 0.0)
-                    except (TypeError, ValueError):
-                        base_dollar_sum = 0.0
+                    base_dollar_sum = safe_float(last_stats[dollar_stat_id][0].get("sum"))
+                    
                 if isinstance(last_stats, dict) and free_stat_id in last_stats and last_stats[free_stat_id]:
-                    try:
-                        base_free_sum = float(last_stats[free_stat_id][0].get("sum") or 0.0)
-                    except (TypeError, ValueError):
-                        base_free_sum = 0.0
+                    base_free_sum = safe_float(last_stats[free_stat_id][0].get("sum"))
             except Exception as e:  # noqa: BLE001
                 _LOGGER.debug("Could not determine last statistics entries: %s", e)
 
-            # If nothing to do (already up to date), exit early
+            # If nothing to do, exit early
             if start_date > end_date:
                 _LOGGER.info("Statistics already up to date through %s; no download needed", end_date)
                 return
 
-            # Initialize statistics lists
+            # Initialize statistics lists and running totals
             kwh_statistics = []
             dollar_statistics = []
             free_kwh_statistics = []
-            
-            # Running totals for cumulative statistics
             kwh_running_sum = base_kwh_sum
             dollar_running_sum = base_dollar_sum
             free_kwh_running_sum = base_free_sum
@@ -309,9 +366,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                             if point.get('currency') and currency != point['currency']:
                                 currency = point['currency']
 
-                            # Safely convert values
-                            value_float = self._safe_float(point.get("value"))
-                            dollar_value_float = self._safe_float(point.get("dollarValue"))
+                            value_float = safe_float(point.get("value"))
+                            dollar_value_float = safe_float(point.get("dollarValue"))
                             offpeak_value_str = str(point.get("offpeakValue", "0.00"))
 
                             # If offpeak value is not '0.00', the energy is free
@@ -331,27 +387,20 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                             kwh_statistics.append(StatisticData(start=date_obj, sum=kwh_running_sum))
                             dollar_statistics.append(StatisticData(start=date_obj, sum=dollar_running_sum))
                             free_kwh_statistics.append(StatisticData(start=date_obj, sum=free_kwh_running_sum))
-
                     else:
                         _LOGGER.debug("No data available for %s (may not be released yet)", date_str)
 
                 except Exception as error:
                     error_type = type(error).__name__
                     if "timeout" in str(error).lower() or "504" in str(error):
-                        _LOGGER.warning("API timeout for %s - Contact Energy servers may be slow: %s", 
-                                      current_date.strftime("%Y-%m-%d"), error)
+                        _LOGGER.warning("API timeout for %s - Contact Energy servers may be slow: %s", date_str, error)
                     else:
-                        _LOGGER.warning("Failed to fetch data for %s (%s): %s", 
-                                      current_date.strftime("%Y-%m-%d"), error_type, error)
-                    # Continue with next date even if this one failed
+                        _LOGGER.warning("Failed to fetch data for %s (%s): %s", date_str, error_type, error)
 
-                # Move to next date
                 current_date += timedelta(days=1)
-                
-                # Small delay between requests to be nice to the API
                 await asyncio.sleep(0.5)
 
-            # Update Home Assistant statistics for missing period (even if partial)
+            # Update Home Assistant statistics
             if kwh_statistics:
                 await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency, free_kwh_running_sum)
                 _LOGGER.info("Usage data download completed. Added %d statistics entries, Total kWh: %.2f", 
@@ -359,17 +408,16 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             else:
                 _LOGGER.warning("No usage data retrieved - all API requests may have failed")
             
-            # Update sensor state to latest total
             self._state = kwh_running_sum
 
         except Exception as error:
             _LOGGER.exception("Usage data download failed: %s", error)
 
     async def _add_statistics(
-        self, 
-        kwh_stats: list, 
-        dollar_stats: list, 
-        free_kwh_stats: list, 
+        self,
+        kwh_stats: list,
+        dollar_stats: list,
+        free_kwh_stats: list,
         currency: str,
         free_kwh_total: float = 0
     ) -> None:
@@ -378,14 +426,9 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             _LOGGER.debug("No statistics to add")
             return
 
-
-        import re
-        safe_icp = re.sub(r'[^a-z0-9_]', '_', self._contract_icp.lower())
-        if re.match(r'^[0-9]', safe_icp):
-            safe_icp = f"icp_{safe_icp}"
+        kwh_stat_id, dollar_stat_id, free_stat_id = get_statistic_ids(self._contract_icp)
 
         # Main electricity consumption for Energy Dashboard
-        kwh_stat_id = f"{DOMAIN}:energy_{safe_icp}"
         kwh_metadata = StatisticMetaData(
             has_mean=False,
             has_sum=True,
@@ -399,7 +442,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Electricity cost
         if dollar_stats:
-            dollar_stat_id = f"{DOMAIN}:cost_{safe_icp}"
             dollar_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,
@@ -411,9 +453,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             )
             async_add_external_statistics(self.hass, dollar_metadata, dollar_stats)
 
-        # Free electricity (if any) - only add if we have meaningful data
+        # Free electricity (if any)
         if free_kwh_stats and free_kwh_total > 0:
-            free_stat_id = f"{DOMAIN}:free_energy_{safe_icp}"
             free_kwh_metadata = StatisticMetaData(
                 has_mean=False,
                 has_sum=True,
@@ -427,326 +468,126 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         _LOGGER.debug("Added statistics to Home Assistant")
 
-    @staticmethod
-    def _safe_float(value: Any) -> float:
-        """Safely convert value to float."""
-        try:
-            return float(value) if value is not None else 0.0
-        except (TypeError, ValueError):
-            return 0.0
 
+# ============================================================================
+# ACCOUNT INFORMATION SENSORS (Consolidated)
+# ============================================================================
 
-# -----------------------------
-# Account information sensors
-# -----------------------------
+class ContactEnergyAccountSensor(CoordinatorEntity, SensorEntity):
+    """Consolidated account information sensor."""
 
-class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
-    """Base for account info sensors that read from coordinator data."""
-
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(
+        self,
+        coordinator: ContactEnergyCoordinator,
+        contract_icp: str,
+        sensor_type: str,
+        name: str,
+        device_class: Optional[SensorDeviceClass],
+        unit: Optional[str],
+        icon: str,
+    ) -> None:
+        """Initialize account sensor."""
         super().__init__(coordinator)
         self._contract_icp = contract_icp
+        self._sensor_type = sensor_type
+        
+        self._attr_name = f"Contact Energy {name} ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_{sensor_type}"
+        self._attr_device_class = device_class
+        self._attr_native_unit_of_measurement = unit
+        self._attr_icon = icon
 
     @property
     def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
+        """Return device information."""
+        return get_device_info(self._contract_icp)
 
     @property
     def should_poll(self) -> bool:
+        """Entity doesn't poll."""
         return False
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # Entity is only available if coordinator has successfully fetched data at least once
         return self.coordinator.last_update_success and self.coordinator.data is not None
 
-    def _get_account_data(self) -> dict[str, Any]:
-        # Only try to access data if coordinator has completed at least one update
-        if not self.coordinator.last_update_success or self.coordinator.data is None:
-            return {}
+    @property
+    def native_value(self) -> Any:
+        """Return sensor value based on type."""
+        if not self.available:
+            return None
+            
+        account_data = self.coordinator.data.get("account_details", {})
+        contracts = account_data.get("contracts", [])
+        contract_data = next((c for c in contracts if c.get("icp") == self._contract_icp), {})
         
-        data = self.coordinator.data
-        account_details = data.get("account_details", {}) if isinstance(data, dict) else {}
-        return account_details
+        # Map sensor types to data extraction
+        value_map = {
+            "balance": lambda: safe_float(account_data.get("accountBalance", {}).get("currentBalance")),
+            "next_bill_date": lambda: self._parse_date(account_data.get("nextBill", {}).get("date")),
+            "customer_name": lambda: account_data.get("nickname"),
+            "plan_name": lambda: f"{contract_data.get('contractTypeLabel', 'Electricity')} Contract" if contract_data.get("contractTypeLabel") else None,
+            "account_number": lambda: account_data.get("id"),
+            "service_address": lambda: contract_data.get("premise", {}).get("supplyAddress", {}).get("shortForm"),
+            "meter_serial": lambda: contract_data.get("devices", [{}])[0].get("serialNumber") if contract_data.get("devices") else None,
+            "next_read_date": lambda: self._parse_date(contract_data.get("devices", [{}])[0].get("nextMeterReadDate")) if contract_data.get("devices") else None,
+            "last_read_date": lambda: self._parse_date_safe(contract_data),
+            "daily_charge_rate": lambda: safe_float(contract_data.get("planDetails", {}).get("dailyCharge")),
+            "peak_rate": lambda: safe_float(contract_data.get("planDetails", {}).get("unitRates", {}).get("peak")),
+            "off_peak_rate": lambda: safe_float(contract_data.get("planDetails", {}).get("unitRates", {}).get("offPeak")),
+            "free_hours": lambda: contract_data.get("planDetails", {}).get("unitRates", {}).get("freeHours"),
+            "last_payment": lambda: self._parse_payment(account_data),
+            "estimated_next_bill": lambda: safe_float(account_data.get("nextBill", {}).get("amount")),
+        }
+        
+        extractor = value_map.get(self._sensor_type)
+        return extractor() if extractor else None
 
-    def _get_contract_data(self) -> dict[str, Any]:
-        account = self._get_account_data()
-        contracts = account.get("contracts", []) or []
-        
-        for c in contracts:
-            contract_icp = c.get("icp")
-            if contract_icp == self._contract_icp:
-                return c
-        
-        # Only log warning if we have account data but no matching contract
-        if account:
-            _LOGGER.warning("No matching contract found for ICP %s. Available contracts: %s", 
-                           self._contract_icp, [c.get("icp") for c in contracts])
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra attributes for specific sensors."""
+        if self._sensor_type == "last_payment":
+            account_data = self.coordinator.data.get("account_details", {})
+            payments = account_data.get("payments", [])
+            if payments:
+                return {
+                    "date": payments[0].get("date"),
+                    "payment_method": account_data.get("paymentMethod"),
+                }
+        elif self._sensor_type == "estimated_next_bill":
+            account_data = self.coordinator.data.get("account_details", {})
+            next_bill = account_data.get("nextBill", {})
+            if next_bill:
+                return {"bill_date": next_bill.get("date")}
         return {}
 
-
-class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Account Balance ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_balance"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    @property
-    def native_value(self) -> float | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.accountBalance.currentBalance
-        account_balance = account_data.get("accountBalance", {})
-        bal = account_balance.get("currentBalance")
+    def _parse_date(self, date_str: Optional[str]) -> Optional[date]:
+        """Parse date string to date object."""
+        if not date_str:
+            return None
         try:
-            return float(bal) if bal is not None else None
+            return datetime.strptime(date_str, "%d %b %Y").date()
         except (ValueError, TypeError):
+            _LOGGER.warning("Could not parse date: %s", date_str)
             return None
 
-
-class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Next Bill Date ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_bill_date"
-        self._attr_device_class = SensorDeviceClass.DATE
-        self._attr_icon = "mdi:calendar-clock"
-
-    @property
-    def native_value(self) -> date | None:
-        account_data = self._get_account_data()
-        next_bill = account_data.get("nextBill", {})
-        date_str = next_bill.get("date")
-        if date_str:
-            try:
-                parsed_date = datetime.strptime(date_str, "%d %b %Y").date()
-                return parsed_date
-            except (ValueError, TypeError):
-                _LOGGER.warning("Could not parse next bill date: %s", date_str)
-                return None
-        return None
-
-
-class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Customer Name ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_customer_name"
-        self._attr_icon = "mdi:account"
-
-    @property
-    def native_value(self) -> str | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.nickname (seems to be the account name)
-        return account_data.get("nickname")
-
-
-class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Plan Name ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_plan_name"
-        self._attr_icon = "mdi:lightning-bolt"
-
-    @property
-    def native_value(self) -> str | None:
-        # Plan details don't seem to be in the basic account response
-        # May need a separate API call or different endpoint
-        contract = self._get_contract_data()
-        contract_type = contract.get("contractTypeLabel")  # "Electricity"
-        if contract_type:
-            return f"{contract_type} Contract"
-        return None
-
-
-class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Account Number ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_account_number"
-        self._attr_icon = "mdi:identifier"
-
-    @property
-    def native_value(self) -> str | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.id (this is the account number)
-        return account_data.get("id")
-
-
-class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Service Address ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_service_address"
-        self._attr_icon = "mdi:home"
-
-    @property
-    def native_value(self) -> str | None:
-        contract = self._get_contract_data()
-        # API structure: contracts[].premise.supplyAddress.shortForm
-        premise = contract.get("premise", {})
-        supply_address = premise.get("supplyAddress", {})
-        return supply_address.get("shortForm")
-
-
-class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Meter Serial ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_meter_serial"
-        self._attr_icon = "mdi:counter"
-
-    @property
-    def native_value(self) -> str | None:
-        contract = self._get_contract_data()
-        # API structure: contracts[].devices[0].serialNumber
-        devices = contract.get("devices", [])
-        if devices:
-            return devices[0].get("serialNumber")
-        return None
-
-
-class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Next Read Date ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_read_date"
-        self._attr_device_class = SensorDeviceClass.DATE
-        self._attr_icon = "mdi:calendar-arrow-right"
-
-    @property
-    def native_value(self) -> date | None:
-        contract = self._get_contract_data()
-        devices = contract.get("devices", [])
-        if devices:
-            date_str = devices[0].get("nextMeterReadDate")
-            if date_str:
-                try:
-                    parsed_date = datetime.strptime(date_str, "%d %b %Y").date()
-                    return parsed_date
-                except (ValueError, TypeError):
-                    _LOGGER.warning("Could not parse next read date: %s", date_str)
-                    return None
-        return None
-
-
-class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Last Read Date ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_read_date"
-        self._attr_device_class = SensorDeviceClass.DATE
-        self._attr_icon = "mdi:calendar-check"
-
-    @property
-    def native_value(self) -> date | None:
-        contract = self._get_contract_data()
-        devices = contract.get("devices", [])
+    def _parse_date_safe(self, contract_data: dict) -> Optional[date]:
+        """Parse last read date with additional safety."""
+        devices = contract_data.get("devices", [])
         if devices and devices[0].get("registers"):
             registers = devices[0].get("registers", [])
             if registers:
                 date_str = registers[0].get("previousMeterReadingDate")
                 if date_str and date_str != "Invalid date":
-                    try:
-                        parsed_date = datetime.strptime(date_str, "%d %b %Y").date()
-                        return parsed_date
-                    except (ValueError, TypeError):
-                        _LOGGER.warning("Could not parse last read date: %s", date_str)
-                        return None
+                    return self._parse_date(date_str)
         return None
 
-
-class ContactEnergyDailyChargeRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Daily Charge Rate ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_daily_charge_rate"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    @property
-    def native_value(self) -> float | None:
-        daily = self._get_contract_data().get("planDetails", {}).get("dailyCharge")
-        try:
-            return float(daily) if daily is not None else None
-        except (ValueError, TypeError):
-            return None
-
-
-class ContactEnergyPeakRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Peak Rate ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_peak_rate"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD/kWh"
-        self._attr_icon = "mdi:trending-up"
-
-    @property
-    def native_value(self) -> float | None:
-        peak = self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("peak")
-        try:
-            return float(peak) if peak is not None else None
-        except (ValueError, TypeError):
-            return None
-
-
-class ContactEnergyOffPeakRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Off Peak Rate ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_off_peak_rate"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD/kWh"
-        self._attr_icon = "mdi:trending-down"
-
-    @property
-    def native_value(self) -> float | None:
-        offp = self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("offPeak")
-        try:
-            return float(offp) if offp is not None else None
-        except (ValueError, TypeError):
-            return None
-
-
-class ContactEnergyFreeHoursSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Free Hours ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_free_hours"
-        self._attr_icon = "mdi:clock-time-eight"
-
-    @property
-    def native_value(self) -> str | None:
-        return self._get_contract_data().get("planDetails", {}).get("unitRates", {}).get("freeHours")
-
-
-class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Last Payment ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_payment"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:credit-card"
-
-    @property
-    def native_value(self) -> float | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.payments[0].amount (but it's a string like "$379.18")
-        payments = account_data.get("payments", []) or []
+    def _parse_payment(self, account_data: dict) -> Optional[float]:
+        """Parse payment amount from string."""
+        payments = account_data.get("payments", [])
         if payments:
             amt_str = payments[0].get("amount", "")
-            # Remove $ and convert to float
             try:
                 amt_clean = amt_str.replace("$", "").replace(",", "")
                 return float(amt_clean) if amt_clean else None
@@ -754,135 +595,152 @@ class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
                 return None
         return None
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        account_data = self._get_account_data()
-        payments = account_data.get("payments", []) or []
-        if payments:
-            return {
-                "date": payments[0].get("date"),
-                "payment_method": account_data.get("paymentMethod"),
-            }
-        return {}
 
+# ============================================================================
+# CONVENIENCE SENSORS (Consolidated)
+# ============================================================================
 
-class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
-        super().__init__(coordinator, contract_icp)
-        self._attr_name = f"Contact Energy Estimated Next Bill ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_estimated_next_bill"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:receipt"
+class ContactEnergyConvenienceSensor(CoordinatorEntity, SensorEntity):
+    """Consolidated convenience sensor for usage/cost calculations."""
 
-    @property
-    def native_value(self) -> float | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.nextBill.amount
-        next_bill = account_data.get("nextBill", {})
-        amt = next_bill.get("amount")
-        try:
-            return float(amt) if amt is not None else None
-        except (ValueError, TypeError):
-            return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        account_data = self._get_account_data()
-        next_bill = account_data.get("nextBill", {})
-        if next_bill:
-            return {"bill_date": next_bill.get("date")}
-        return {}
-
-
-# -----------------------------------------
-# Convenience usage and cost sensors
-# -----------------------------------------
-
-class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
-    """Base for convenience sensors that recompute on coordinator updates."""
-
-    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
+    def __init__(
+        self,
+        coordinator: ContactEnergyCoordinator,
+        account_id: str,
+        contract_id: str,
+        contract_icp: str,
+        sensor_type: str,
+        name: str,
+        device_class: SensorDeviceClass,
+        unit: str,
+        icon: str,
+        metric: str,  # "usage", "cost", or "free"
+    ) -> None:
+        """Initialize convenience sensor."""
         super().__init__(coordinator)
         self._account_id = account_id
         self._contract_id = contract_id
         self._contract_icp = contract_icp
+        self._sensor_type = sensor_type
+        self._metric = metric
         self._state = 0.0
+
+        self._attr_name = f"Contact Energy {name} ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_{sensor_type}"
+        self._attr_device_class = device_class
+        self._attr_state_class = SensorStateClass.TOTAL if "usage" in metric or "free" in metric else None
+        self._attr_native_unit_of_measurement = unit
+        self._attr_icon = icon
 
     @property
     def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
+        """Return device information."""
+        return get_device_info(self._contract_icp)
 
     @property
     def should_poll(self) -> bool:
+        """Entity doesn't poll."""
         return False
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # Entity is only available if coordinator has successfully fetched data at least once
         return self.coordinator.last_update_success and self.coordinator.data is not None
 
+    @property
+    def native_value(self) -> float:
+        """Return current state."""
+        return self._state
+
     async def async_added_to_hass(self) -> None:
+        """Called when entity is added to hass."""
         await super().async_added_to_hass()
-        # initial compute after HA start - but only after coordinator has data
+
         async def _delayed_recompute():
-            # Wait for coordinator to have data before computing
+            # Wait for coordinator to have data
             if not self.coordinator.last_update_success or self.coordinator.data is None:
-                # Wait for coordinator to have data (it's already refreshing from setup)
-                max_wait_time = 60  # Maximum wait time in seconds
-                wait_interval = 0.5  # Check every 0.5 seconds
+                max_wait_time = 60
+                wait_interval = 0.5
                 elapsed = 0
                 while (not self.coordinator.last_update_success or self.coordinator.data is None) and elapsed < max_wait_time:
                     await asyncio.sleep(wait_interval)
                     elapsed += wait_interval
             
-            import hashlib
-            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
-            base_delay = (icp_hash % 20) / 10.0  # 0-2 seconds based on ICP
-            jitter = random.uniform(0.1, 1.5)  # Additional random jitter
-            total_delay = base_delay + jitter
-            
+            total_delay = calculate_startup_delay(self._contract_icp, is_convenience=True)
             try:
                 await asyncio.sleep(total_delay)
             except Exception:  # noqa: BLE001
                 pass
             await self._recompute()
+
         self.hass.async_create_task(_delayed_recompute())
 
+    def _handle_coordinator_update(self) -> None:
+        """Recompute on coordinator refresh."""
+        self.hass.async_create_task(self._recompute())
+
     async def _recompute(self) -> None:
-        start, end = self._date_range()
-        kwh, cost, free_kwh = await self._get_usage_for_date_range(start, end)
-        self._apply_values(kwh, cost, free_kwh)
+        """Recompute sensor value."""
+        start, end = self._get_date_range()
+        kwh, cost, free_kwh = await self._fetch_usage_data(start, end)
+        
+        # Apply appropriate metric
+        if self._metric == "usage":
+            self._state = kwh
+        elif self._metric == "cost":
+            self._state = cost
+        elif self._metric == "free":
+            self._state = free_kwh
+            
         self.async_write_ha_state()
 
-    def _apply_values(self, kwh: float, cost: float, free_kwh: float) -> None:
-        # To be implemented by subclasses depending on metric
-        pass
+    def _get_date_range(self) -> tuple[date, date]:
+        """Get date range for sensor type."""
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        
+        range_map = {
+            "today_usage": (today, today),
+            "today_cost": (today, today),
+            "today_free_usage": (today, today),
+            "yesterday_usage": (yesterday, yesterday),
+            "yesterday_cost": (yesterday, yesterday),
+            "yesterday_free_usage": (yesterday, yesterday),
+            "last_7_days_usage": (yesterday - timedelta(days=6), yesterday),
+            "last_30_days_usage": (yesterday - timedelta(days=29), yesterday),
+            "current_month_usage": (today.replace(day=1), today),
+            "current_month_cost": (today.replace(day=1), today),
+            "last_month_usage": self._last_month_range(),
+            "last_month_cost": self._last_month_range(),
+        }
+        
+        return range_map.get(self._sensor_type, (today, today))
 
-    def _date_range(self) -> tuple[date, date]:
-        # To be implemented by subclasses
-        return (datetime.now().date(), datetime.now().date())
+    def _last_month_range(self) -> tuple[date, date]:
+        """Calculate last month's date range."""
+        today = datetime.now().date()
+        first_current = today.replace(day=1)
+        last_prev = first_current - timedelta(days=1)
+        first_prev = last_prev.replace(day=1)
+        return first_prev, last_prev
 
-    async def _get_usage_for_date_range(self, start_date: date, end_date: date) -> tuple[float, float, float]:
+    async def _fetch_usage_data(self, start_date: date, end_date: date) -> tuple[float, float, float]:
+        """Fetch usage data for date range."""
         total_kwh = 0.0
         total_cost = 0.0
         total_free_kwh = 0.0
+        
         current = start_date
         while current <= end_date:
             try:
                 resp = await self.coordinator.api.async_get_usage(
-                    str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
+                    str(current.year), str(current.month), str(current.day),
+                    self._account_id, self._contract_id
                 )
                 if isinstance(resp, list):
                     for p in resp:
-                        val = ContactEnergyUsageSensor._safe_float(p.get("value"))
-                        cost = ContactEnergyUsageSensor._safe_float(p.get("dollarValue"))
+                        val = safe_float(p.get("value"))
+                        cost = safe_float(p.get("dollarValue"))
                         off = str(p.get("offpeakValue", "0.00"))
                         if off == "0.00":
                             total_kwh += val
@@ -891,732 +749,154 @@ class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
                             total_free_kwh += val
             except Exception as e:  # noqa: BLE001
                 _LOGGER.debug("Convenience fetch failed for %s: %s", current, e)
+            
             current += timedelta(days=1)
             await asyncio.sleep(0)
+        
         return total_kwh, total_cost, total_free_kwh
 
-    def _handle_coordinator_update(self) -> None:
-        # Recompute on coordinator refresh
-        self.hass.async_create_task(self._recompute())
 
+# ============================================================================
+# CHART SENSORS (Consolidated)
+# ============================================================================
 
-class ContactEnergyTodayUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Today Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar-today"
+class ContactEnergyChartSensor(SensorEntity):
+    """Consolidated chart sensor for ApexCharts."""
 
-    def _date_range(self) -> tuple[date, date]:
-        today = datetime.now().date()
-        return today, today
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyYesterdayUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Yesterday Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar-minus"
-
-    def _date_range(self) -> tuple[date, date]:
-        y = datetime.now().date() - timedelta(days=1)
-        return y, y
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyLast7DaysUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Last 7 Days Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_7_days_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar-week"
-
-    def _date_range(self) -> tuple[date, date]:
-        end = datetime.now().date() - timedelta(days=1)
-        start = end - timedelta(days=6)
-        return start, end
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyLast30DaysUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Last 30 Days Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_30_days_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar-month"
-
-    def _date_range(self) -> tuple[date, date]:
-        end = datetime.now().date() - timedelta(days=1)
-        start = end - timedelta(days=29)
-        return start, end
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyCurrentMonthUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Current Month Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_current_month_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar"
-
-    def _date_range(self) -> tuple[date, date]:
-        today = datetime.now().date()
-        start = today.replace(day=1)
-        return start, today
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyLastMonthUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Last Month Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_month_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:calendar-arrow-left"
-
-    def _date_range(self) -> tuple[date, date]:
-        today = datetime.now().date()
-        first_current = today.replace(day=1)
-        last_prev = first_current - timedelta(days=1)
-        first_prev = last_prev.replace(day=1)
-        return first_prev, last_prev
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyTodayCostSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Today Cost ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_cost"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    def _date_range(self) -> tuple[date, date]:
-        t = datetime.now().date()
-        return t, t
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = cost
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyYesterdayCostSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Yesterday Cost ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_cost"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    def _date_range(self) -> tuple[date, date]:
-        y = datetime.now().date() - timedelta(days=1)
-        return y, y
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = cost
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyCurrentMonthCostSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Current Month Cost ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_current_month_cost"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    def _date_range(self) -> tuple[date, date]:
-        today = datetime.now().date()
-        start = today.replace(day=1)
-        return start, today
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = cost
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyLastMonthCostSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Last Month Cost ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_month_cost"
-        self._attr_device_class = SensorDeviceClass.MONETARY
-        self._attr_native_unit_of_measurement = "NZD"
-        self._attr_icon = "mdi:currency-usd"
-
-    def _date_range(self) -> tuple[date, date]:
-        today = datetime.now().date()
-        first_current = today.replace(day=1)
-        last_prev = first_current - timedelta(days=1)
-        first_prev = last_prev.replace(day=1)
-        return first_prev, last_prev
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = cost
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-class ContactEnergyTodayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Today Free Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_today_free_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:gift"
-
-    def _date_range(self) -> tuple[date, date]:
-        t = datetime.now().date()
-        return t, t
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = free_kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state
-
-
-# -----------------------------------------
-# Charting sensors for ApexCharts
-# -----------------------------------------
-
-class ContactEnergyChartHourlySensor(SensorEntity):
-    """Sensor exposing hourly usage data for ApexCharts."""
-    
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        contract_icp: str,
+        stat_id: str,
+        sensor_type: str,
+        name: str,
+        period: str,  # "hour", "day", or "month"
+        days: Optional[int],  # Days to query (None for monthly)
+        icon: str,
+    ) -> None:
+        """Initialize chart sensor."""
         self.hass = hass
-        self._stat_id = stat_id
         self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Hourly ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_hourly"
-        self._attr_icon = "mdi:chart-bar"
-        self._hourly_data: dict[str, float] = {}
+        self._stat_id = stat_id
+        self._sensor_type = sensor_type
+        self._period = period
+        self._days = days
+        self._data: dict[str, float] = {}
         self._last_update: Optional[datetime] = None
-        self._state = None
+        self._recorder_instance = None
+
+        self._attr_name = f"Contact Energy {name} ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_{sensor_type}"
+        self._attr_icon = icon
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """Return device information."""
+        return get_device_info(self._contract_icp)
 
     @property
     def state(self) -> Any:
-        # Return the most recent hour's usage
-        if self._hourly_data:
-            latest = max(self._hourly_data.keys())
-            return self._hourly_data[latest]
+        """Return most recent value."""
+        if self._data:
+            latest = max(self._data.keys())
+            return self._data[latest]
         return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return data as attributes."""
+        attr_name = f"{self._period}ly_data" if self._period != "month" else "monthly_data"
+        if "free" in self._sensor_type:
+            attr_name = attr_name.replace("_data", "_free_data")
+        
         return {
-            "hourly_data": self._hourly_data,
+            attr_name: self._data,
             "last_update": self._last_update.isoformat() if self._last_update else None,
         }
 
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
     async def async_update(self) -> None:
-        # Query last 14 days of hourly statistics (bounded to avoid large attributes)
+        """Update chart data from statistics."""
+        # Cache recorder instance
+        if not self._recorder_instance:
+            recorder = __import__("homeassistant.components.recorder").components.recorder
+            self._recorder_instance = recorder.get_instance(self.hass)
+
+        # Calculate time range
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=14)
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
+        if self._period == "month":
+            start_time = datetime(CHART_MONTHLY_START_YEAR, 1, 1)
+        else:
+            start_time = end_time - timedelta(days=self._days)
+
+        # Fetch statistics
+        stats = await self._recorder_instance.async_add_executor_job(
             statistics_during_period,
             self.hass,
             start_time,
-            end_time,
+            end_time if self._period != "month" else None,
             [self._stat_id],
-            "hour",
+            self._period,
             None,
             {"sum"}
         )
-        self._hourly_data = {}
+
+        self._data = {}
         if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
-                start_ts = entry.get("start")
-                val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Convert timestamp to datetime and store as ISO string for ApexCharts
-                    dt = datetime.fromtimestamp(start_ts)
-                    self._hourly_data[dt.isoformat()] = float(val)
+            if self._period == "day":
+                self._process_daily_stats(stats[self._stat_id])
+            elif self._period == "month":
+                self._process_monthly_stats(stats[self._stat_id])
+            else:  # hour
+                self._process_hourly_stats(stats[self._stat_id])
+
         self._last_update = datetime.now()
 
-
-class ContactEnergyChartDailySensor(SensorEntity):
-    """Sensor exposing daily usage data for ApexCharts."""
-    
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
-        self.hass = hass
-        self._stat_id = stat_id
-        self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Daily ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_daily"
-        self._attr_icon = "mdi:calendar"
-        self._daily_data: dict[str, float] = {}
-        self._last_update: Optional[datetime] = None
-        self._state = None
-
-    @property
-    def state(self) -> Any:
-        # Return the most recent day's usage
-        if self._daily_data:
-            latest = max(self._daily_data.keys())
-            return self._daily_data[latest]
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "daily_data": self._daily_data,
-            "last_update": self._last_update.isoformat() if self._last_update else None,
-        }
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    async def async_update(self) -> None:
-        # Query last 60 days of daily statistics to avoid database attribute size limits
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=60)
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
-            statistics_during_period,
-            self.hass,
-            start_time,
-            end_time,
-            [self._stat_id],
-            "day",
-            None,
-            {"sum"}
-        )
-        self._daily_data = {}
-        if self._stat_id in stats:
-            # Sort entries by timestamp to ensure correct delta calculation
-            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
-            prev_val = None
-            
-            for entry in sorted_entries:
-                start_ts = entry.get("start")
-                val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Convert timestamp to datetime and set to 23:59:59 (end of day)
-                    dt = datetime.fromtimestamp(start_ts)
+    def _process_daily_stats(self, entries: list) -> None:
+        """Process daily statistics with delta calculation."""
+        sorted_entries = sorted(entries, key=lambda x: x.get("start", 0))
+        prev_val = None
+        
+        for entry in sorted_entries:
+            start_ts = entry.get("start")
+            val = entry.get("sum")
+            if start_ts and val is not None:
+                dt = self._timestamp_to_datetime(start_ts)
+                if dt:
                     dt_end_of_day = dt.replace(hour=23, minute=59, second=59, microsecond=0)
-                    # Format as ISO 8601 with Z suffix
                     iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
                     
-                    # Calculate delta from previous value (absolute value, no negatives)
                     if prev_val is not None:
                         delta = abs(float(val) - prev_val)
                     else:
-                        # First entry: use the value as-is (or 0 if you prefer)
                         delta = float(val)
                     
-                    self._daily_data[iso_key] = delta
+                    self._data[iso_key] = delta
                     prev_val = float(val)
-        self._last_update = datetime.now()
 
+    def _process_monthly_stats(self, entries: list) -> None:
+        """Process monthly statistics."""
+        for entry in entries:
+            start_ts = entry.get("start")
+            val = entry.get("change", entry.get("sum"))
+            if start_ts and val is not None:
+                dt = self._timestamp_to_datetime(start_ts)
+                if dt:
+                    self._data[dt.strftime("%Y-%m-15")] = float(val)
 
-class ContactEnergyChartHourlyFreeSensor(SensorEntity):
-    """Sensor exposing hourly free usage data for ApexCharts."""
+    def _process_hourly_stats(self, entries: list) -> None:
+        """Process hourly statistics."""
+        for entry in entries:
+            start_ts = entry.get("start")
+            val = entry.get("sum")
+            if start_ts and val is not None:
+                dt = self._timestamp_to_datetime(start_ts)
+                if dt:
+                    self._data[dt.isoformat()] = float(val)
 
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
-        self.hass = hass
-        self._stat_id = stat_id
-        self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Hourly Free ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_hourly_free"
-        self._attr_icon = "mdi:gift"
-        self._hourly_free_data: dict[str, float] = {}
-        self._last_update: Optional[datetime] = None
-        self._state = None
-
-    @property
-    def state(self) -> Any:
-        # Return the most recent hour's free usage
-        if self._hourly_free_data:
-            latest = max(self._hourly_free_data.keys())
-            return self._hourly_free_data[latest]
+    def _timestamp_to_datetime(self, start_ts: Any) -> Optional[datetime]:
+        """Convert timestamp to datetime robustly."""
+        if isinstance(start_ts, (int, float)):
+            return datetime.fromtimestamp(start_ts)
+        elif isinstance(start_ts, datetime):
+            return start_ts
         return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "hourly_free_data": self._hourly_free_data,
-            "last_update": self._last_update.isoformat() if self._last_update else None,
-        }
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    async def async_update(self) -> None:
-        # Query last 14 days of hourly free statistics (bounded to avoid large attributes)
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=14)
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
-            statistics_during_period,
-            self.hass,
-            start_time,
-            end_time,
-            [self._stat_id],
-            "hour",
-            None,
-            {"sum"}
-        )
-        self._hourly_free_data = {}
-        if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
-                start_ts = entry.get("start")
-                val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Robustly handle both float and datetime
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    self._hourly_free_data[dt.isoformat()] = float(val)
-        self._last_update = datetime.now()
-
-
-class ContactEnergyChartDailyFreeSensor(SensorEntity):
-    """Sensor exposing daily free usage data for ApexCharts."""
-
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
-        self.hass = hass
-        self._stat_id = stat_id
-        self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Daily Free ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_daily_free"
-        self._attr_icon = "mdi:gift"
-        self._daily_free_data: dict[str, float] = {}
-        self._last_update: Optional[datetime] = None
-        self._state = None
-
-    @property
-    def state(self) -> Any:
-        # Return the most recent day's free usage
-        if self._daily_free_data:
-            latest = max(self._daily_free_data.keys())
-            return self._daily_free_data[latest]
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "daily_free_data": self._daily_free_data,
-            "last_update": self._last_update.isoformat() if self._last_update else None,
-        }
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    async def async_update(self) -> None:
-        # Query last 60 days of daily free statistics to avoid database attribute size limits
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=60)
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
-            statistics_during_period,
-            self.hass,
-            start_time,
-            end_time,
-            [self._stat_id],
-            "day",
-            None,
-            {"sum"}
-        )
-        self._daily_free_data = {}
-        if self._stat_id in stats:
-            # Sort entries by timestamp to ensure correct delta calculation
-            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
-            prev_val = None
-            
-            for entry in sorted_entries:
-                start_ts = entry.get("start")
-                val = entry.get("sum")
-                if start_ts and val is not None:
-                    # Robustly handle both float and datetime
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    
-                    # Set to 23:59:59 (end of day)
-                    dt_end_of_day = dt.replace(hour=23, minute=59, second=59, microsecond=0)
-                    # Format as ISO 8601 with Z suffix
-                    iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    
-                    # Calculate delta from previous value (absolute value, no negatives)
-                    if prev_val is not None:
-                        delta = abs(float(val) - prev_val)
-                    else:
-                        # First entry: use the value as-is (or 0 if you prefer)
-                        delta = float(val)
-                    
-                    self._daily_free_data[iso_key] = delta
-                    prev_val = float(val)
-        self._last_update = datetime.now()
-
-
-class ContactEnergyChartMonthlySensor(SensorEntity):
-    """Sensor exposing monthly usage data for ApexCharts."""
-
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
-        self.hass = hass
-        self._stat_id = stat_id
-        self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Monthly ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly"
-        self._attr_icon = "mdi:calendar-month"
-        self._monthly_data: dict[str, float] = {}
-        self._last_update: Optional[datetime] = None
-        self._state = None
-
-    @property
-    def state(self) -> Any:
-        # Return the most recent month's usage
-        if self._monthly_data:
-            latest = max(self._monthly_data.keys())
-            return self._monthly_data[latest]
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "monthly_data": self._monthly_data,
-            "last_update": self._last_update.isoformat() if self._last_update else None,
-        }
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    async def async_update(self) -> None:
-        # Query monthly statistics from the database. Some recorder helpers default to
-        # the last 12 months when start_time is None, so explicitly ask from a very
-        # early date to ensure we get the full history available for this statistic.
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        start_time = datetime(2000, 1, 1)
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
-            statistics_during_period,
-            self.hass,
-            start_time,
-            None,  # up to now
-            [self._stat_id],
-            "month",
-            None,
-            {"sum"}
-        )
-        self._monthly_data = {}
-        if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
-                start_ts = entry.get("start")
-                # Prefer the monthly change if provided by the statistics helper; fall back to sum
-                val = entry.get("change", entry.get("sum"))
-                if start_ts and val is not None:
-                    # Convert timestamp to datetime and store as year-month string
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_data[dt.strftime("%Y-%m-15")] = float(val)
-        self._last_update = datetime.now()
-
-
-class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
-    """Sensor exposing monthly free usage data for ApexCharts."""
-
-    def __init__(self, hass: HomeAssistant, stat_id: str, contract_icp: str) -> None:
-        self.hass = hass
-        self._stat_id = stat_id
-        self._contract_icp = contract_icp
-        self._attr_name = f"Contact Energy Chart Monthly Free ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_chart_monthly_free"
-        self._attr_icon = "mdi:gift"
-        self._monthly_free_data: dict[str, float] = {}
-        self._last_update: Optional[datetime] = None
-        self._state = None
-
-    @property
-    def state(self) -> Any:
-        # Return the most recent month's free usage
-        if self._monthly_free_data:
-            latest = max(self._monthly_free_data.keys())
-            return self._monthly_free_data[latest]
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "monthly_free_data": self._monthly_free_data,
-            "last_update": self._last_update.isoformat() if self._last_update else None,
-        }
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    async def async_update(self) -> None:
-        # Query monthly free statistics from the database with an explicit early start
-        # date to avoid any implicit 12-month limitation.
-        recorder = __import__("homeassistant.components.recorder").components.recorder
-        start_time = datetime(2000, 1, 1)
-        stats = await recorder.get_instance(self.hass).async_add_executor_job(
-            statistics_during_period,
-            self.hass,
-            start_time,
-            None,  # up to now
-            [self._stat_id],
-            "month",
-            None,
-            {"sum"}
-        )
-        self._monthly_free_data = {}
-        if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
-                start_ts = entry.get("start")
-                val = entry.get("change", entry.get("sum"))
-                if start_ts and val is not None:
-                    # Robustly handle both float and datetime
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
-        self._last_update = datetime.now()
-
-
-class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
-    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
-        super().__init__(coordinator, account_id, contract_id, contract_icp)
-        self._attr_name = f"Contact Energy Yesterday Free Usage ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_free_usage"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_icon = "mdi:gift"
-
-    def _date_range(self) -> tuple[date, date]:
-        y = datetime.now().date() - timedelta(days=1)
-        return y, y
-
-    def _apply_values(self, kwh, cost, free_kwh) -> None:
-        self._state = free_kwh
-
-    @property
-    def native_value(self) -> float:
-        return self._state

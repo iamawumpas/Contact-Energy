@@ -23,6 +23,36 @@ USAGE_MONTHS_MAX = 36
 # Default scan interval - 8 hours as requested
 DEFAULT_SCAN_INTERVAL = 28800  # 8 hours in seconds
 
+# Daily restart configuration
+RESTART_HOUR = 3
+RESTART_MINUTE_VARIANCE = 30
+
+# API Configuration
+API_BASE_URL = "https://api.contact-digital-prod.net"
+API_KEY = "z840P4lQCH9TqcjC9L2pP157DZcZJMcr5tVQCvyx"
+API_TIMEOUT_DEFAULT = 30
+API_TIMEOUT_USAGE = 60
+API_MAX_RETRIES = 2
+API_BACKOFF_INITIAL = 1
+
+# Chart sensor data retention (days)
+CHART_HOURLY_DAYS = 14
+CHART_DAILY_DAYS = 60
+CHART_MONTHLY_START_YEAR = 2000
+
+# Device information
+DEVICE_MANUFACTURER = "Contact Energy"
+DEVICE_MODEL = "Smart Meter"
+DEVICE_SW_VERSION = "1.0"
+
+# Sensor startup delays (seconds)
+STARTUP_DELAY_BASE_MAX = 30
+STARTUP_DELAY_JITTER_MIN = 0.5
+STARTUP_DELAY_JITTER_MAX = 2.0
+CONVENIENCE_DELAY_BASE_MAX = 20
+CONVENIENCE_DELAY_JITTER_MIN = 0.1
+CONVENIENCE_DELAY_JITTER_MAX = 1.5
+
 
 def _days_in_month(year: int, month: int) -> int:
 	"""Return number of days in a given year-month without external deps."""
