@@ -1207,13 +1207,27 @@ class ContactEnergyChartHourlySensor(SensorEntity):
         )
         self._hourly_data = {}
         if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
+            # Sort entries by timestamp to ensure correct delta calculation
+            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
+            prev_val = None
+            
+            for entry in sorted_entries:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
                 if start_ts and val is not None:
                     # Convert timestamp to datetime and store as ISO string for ApexCharts
                     dt = datetime.fromtimestamp(start_ts)
-                    self._hourly_data[dt.isoformat()] = float(val)
+                    
+                    # Calculate delta from previous value (no negatives, default to 0)
+                    if prev_val is not None:
+                        delta = float(val) - prev_val
+                        delta = max(0.0, delta)  # No negative values
+                    else:
+                        # First entry: treat as 0 (no prior data to compare)
+                        delta = 0.0
+                    
+                    self._hourly_data[dt.isoformat()] = delta
+                    prev_val = float(val)
         self._last_update = datetime.now()
 
 
@@ -1286,12 +1300,13 @@ class ContactEnergyChartDailySensor(SensorEntity):
                     # Format as ISO 8601 with Z suffix
                     iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
                     
-                    # Calculate delta from previous value (absolute value, no negatives)
+                    # Calculate delta from previous value (no negatives, default to 0)
                     if prev_val is not None:
-                        delta = abs(float(val) - prev_val)
+                        delta = float(val) - prev_val
+                        delta = max(0.0, delta)  # No negative values
                     else:
-                        # First entry: use the value as-is (or 0 if you prefer)
-                        delta = float(val)
+                        # First entry: treat as 0 (no prior data to compare)
+                        delta = 0.0
                     
                     self._daily_data[iso_key] = delta
                     prev_val = float(val)
@@ -1353,7 +1368,11 @@ class ContactEnergyChartHourlyFreeSensor(SensorEntity):
         )
         self._hourly_free_data = {}
         if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
+            # Sort entries by timestamp to ensure correct delta calculation
+            sorted_entries = sorted(stats[self._stat_id], key=lambda x: x.get("start", 0))
+            prev_val = None
+            
+            for entry in sorted_entries:
                 start_ts = entry.get("start")
                 val = entry.get("sum")
                 if start_ts and val is not None:
@@ -1364,7 +1383,17 @@ class ContactEnergyChartHourlyFreeSensor(SensorEntity):
                         dt = start_ts
                     else:
                         continue
-                    self._hourly_free_data[dt.isoformat()] = float(val)
+                    
+                    # Calculate delta from previous value (no negatives, default to 0)
+                    if prev_val is not None:
+                        delta = float(val) - prev_val
+                        delta = max(0.0, delta)  # No negative values
+                    else:
+                        # First entry: treat as 0 (no prior data to compare)
+                        delta = 0.0
+                    
+                    self._hourly_free_data[dt.isoformat()] = delta
+                    prev_val = float(val)
         self._last_update = datetime.now()
 
 
@@ -1444,12 +1473,13 @@ class ContactEnergyChartDailyFreeSensor(SensorEntity):
                     # Format as ISO 8601 with Z suffix
                     iso_key = dt_end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
                     
-                    # Calculate delta from previous value (absolute value, no negatives)
+                    # Calculate delta from previous value (no negatives, default to 0)
                     if prev_val is not None:
-                        delta = abs(float(val) - prev_val)
+                        delta = float(val) - prev_val
+                        delta = max(0.0, delta)  # No negative values
                     else:
-                        # First entry: use the value as-is (or 0 if you prefer)
-                        delta = float(val)
+                        # First entry: treat as 0 (no prior data to compare)
+                        delta = 0.0
                     
                     self._daily_free_data[iso_key] = delta
                     prev_val = float(val)

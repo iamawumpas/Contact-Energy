@@ -20,14 +20,7 @@ series:
       const entries = Object.entries(entity.attributes.hourly_data || {})
         .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 16 && !isNaN(Date.parse(dt)))
         .sort(([a], [b]) => a.localeCompare(b));
-      let prev = null;
-      return entries.map(([dt, value], i) => {
-        const v = Number(value);
-        let usage = null;
-        if (prev !== null) usage = v - prev;
-        prev = v;
-        return usage !== null ? [dt, usage] : null;
-      }).filter(x => x);
+      return entries.map(([dt, value]) => [dt, Number(value)]);
   - entity: sensor.contact_energy_chart_hourly_free_0000000966tr348
     name: Free Usage (kWh)
     show:
@@ -36,14 +29,7 @@ series:
       const entries = Object.entries(entity.attributes.hourly_free_data || {})
         .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 16 && !isNaN(Date.parse(dt)))
         .sort(([a], [b]) => a.localeCompare(b));
-      let prev = null;
-      return entries.map(([dt, value], i) => {
-        const v = Number(value);
-        let usage = null;
-        if (prev !== null) usage = v - prev;
-        prev = v;
-        return usage !== null ? [dt, usage] : null;
-      }).filter(x => x);
+      return entries.map(([dt, value]) => [dt, Number(value)]);
 apex_config:
   chart:
     height: 200px
