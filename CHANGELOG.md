@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.11
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - Changed daily chart sensors to use ISO 8601 datetime format with timestamps at 23:59:59
+  - Converted chart sensor values from cumulative totals to delta values (daily usage)
+  - Delta values use absolute values (no negative numbers)
+
+#### Documentation
+  - Documentation updates and improvements
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Added example configurations for hourly, daily, and monthly charts
+
+#### Metadata
+  - Added cloud_polling IoT class designation
+
+
 ## 0.4.10
 
 ### Changes
