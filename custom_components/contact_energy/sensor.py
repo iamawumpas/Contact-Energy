@@ -437,7 +437,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             statistic_id=kwh_stat_id,
             unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             unit_class="energy",
-            mean_type="arithmetic",
         )
         async_add_external_statistics(self.hass, kwh_metadata, kwh_stats)
 
@@ -450,8 +449,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 source=DOMAIN,
                 statistic_id=dollar_stat_id,
                 unit_of_measurement=currency,
-                unit_class="monetary",
-                mean_type="arithmetic",
             )
             async_add_external_statistics(self.hass, dollar_metadata, dollar_stats)
 
@@ -465,7 +462,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 statistic_id=free_stat_id,
                 unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
                 unit_class="energy",
-                mean_type="arithmetic",
             )
             async_add_external_statistics(self.hass, free_kwh_metadata, free_kwh_stats)
 

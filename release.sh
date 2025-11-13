@@ -156,6 +156,22 @@ build_changelog_from_range() {
     const_diff=$(git diff $range -- custom_components/contact_energy/const.py)
     local const_additions=""
     
+    # Net-change heuristic for const.py
+    local const_numstat ins del net
+    const_numstat=$(git diff --numstat $range -- custom_components/contact_energy/const.py 2>/dev/null || true)
+    if [[ -n "$const_numstat" ]]; then
+      ins=$(echo "$const_numstat" | awk '{print $1}')
+      del=$(echo "$const_numstat" | awk '{print $2}')
+      if [[ "$ins" =~ ^[0-9]+$ && "$del" =~ ^[0-9]+$ ]]; then
+        net=$((ins - del))
+        if (( net > 20 )); then
+          const_additions+="  - Significant expansion: +${net} net lines (added ${ins}, deleted ${del})\n"
+        elif (( net < -20 )); then
+          const_additions+="  - Code reduction: ${net} net lines (deleted ${del}, added ${ins})\n"
+        fi
+      fi
+    fi
+    
     # Count new constants added
     local new_constants
     new_constants=$(echo "$const_diff" | grep -cE '^\+[A-Z_]+ = ' || true)
@@ -224,6 +240,22 @@ build_changelog_from_range() {
     api_diff=$(git diff $range -- custom_components/contact_energy/api.py)
     local api_additions=""
     
+    # Net-change heuristic for api.py
+    local api_numstat ins del net
+    api_numstat=$(git diff --numstat $range -- custom_components/contact_energy/api.py 2>/dev/null || true)
+    if [[ -n "$api_numstat" ]]; then
+      ins=$(echo "$api_numstat" | awk '{print $1}')
+      del=$(echo "$api_numstat" | awk '{print $2}')
+      if [[ "$ins" =~ ^[0-9]+$ && "$del" =~ ^[0-9]+$ ]]; then
+        net=$((ins - del))
+        if (( net > 50 )); then
+          api_additions+="  - Significant expansion: +${net} net lines (added ${ins}, deleted ${del})\n"
+        elif (( net < -50 )); then
+          api_additions+="  - Code reduction: ${net} net lines (deleted ${del}, added ${ins})\n"
+        fi
+      fi
+    fi
+    
     if echo "$api_diff" | grep -q "def _handle_retry\|async def _handle_retry"; then
       api_additions+="  - Extracted _handle_retry() method to eliminate duplicate retry/backoff logic\n"
     fi
@@ -259,10 +291,26 @@ build_changelog_from_range() {
     coord_diff=$(git diff $range -- custom_components/contact_energy/coordinator.py)
     local coord_additions=""
     
+    # Net-change heuristic for coordinator.py
+    local coord_numstat ins del net
+    coord_numstat=$(git diff --numstat $range -- custom_components/contact_energy/coordinator.py 2>/dev/null || true)
+    if [[ -n "$coord_numstat" ]]; then
+      ins=$(echo "$coord_numstat" | awk '{print $1}')
+      del=$(echo "$coord_numstat" | awk '{print $2}')
+      if [[ "$ins" =~ ^[0-9]+$ && "$del" =~ ^[0-9]+$ ]]; then
+        net=$((ins - del))
+        if (( net > 30 )); then
+          coord_additions+="  - Significant expansion: +${net} net lines (added ${ins}, deleted ${del})\n"
+        elif (( net < -30 )); then
+          coord_additions+="  - Code reduction: ${net} net lines (deleted ${del}, added ${ins})\n"
+        fi
+      fi
+    fi
+    
     if echo "$coord_diff" | grep -q "dt_util\.utcnow\|from.*dt_util"; then
       coord_additions+="  - Improved timezone handling using dt_util.utcnow() for consistency\n"
     fi
-    if echo "$coord_diff" | grep -q "return.*\{.*account.*usage"; then
+    if echo "$coord_diff" | grep -q "return.*{.*account.*usage"; then
       coord_additions+="  - Simplified coordinator data structure returned to sensors\n"
     fi
     if echo "$coord_diff" | grep -q "if not.*is_authenticated.*return\|is_authenticated.*or.*return"; then
@@ -341,6 +389,9 @@ build_changelog_from_range() {
     if echo "$sensor_diff" | grep -q "mean_type"; then
       sensor_additions+="  - Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11+ compatibility\n"
     fi
+    if echo "$sensor_diff" | grep -q "unit_class"; then
+      sensor_additions+="  - Added unit_class to StatisticMetaData (energy / monetary) for HA 2026.11+ compatibility\n"
+    fi
     if echo "$sensor_diff" | grep -q "len(response) > 0\|response.*and.*len"; then
       sensor_additions+="  - Added validation to only process API responses containing actual data points\n"
       sensor_additions+="  - Statistics entries now only created when Contact Energy has released data for that date\n"
@@ -406,6 +457,22 @@ build_changelog_from_range() {
     init_diff=$(git diff $range -- custom_components/contact_energy/__init__.py)
     local init_additions=""
     
+    # Net-change heuristic for __init__.py
+    local init_numstat ins del net
+    init_numstat=$(git diff --numstat $range -- custom_components/contact_energy/__init__.py 2>/dev/null || true)
+    if [[ -n "$init_numstat" ]]; then
+      ins=$(echo "$init_numstat" | awk '{print $1}')
+      del=$(echo "$init_numstat" | awk '{print $2}')
+      if [[ "$ins" =~ ^[0-9]+$ && "$del" =~ ^[0-9]+$ ]]; then
+        net=$((ins - del))
+        if (( net > 30 )); then
+          init_additions+="  - Significant expansion: +${net} net lines (added ${ins}, deleted ${del})\n"
+        elif (( net < -30 )); then
+          init_additions+="  - Code reduction: ${net} net lines (deleted ${del}, added ${ins})\n"
+        fi
+      fi
+    fi
+    
     # Check for specific bug fixes
     if echo "$init_diff" | grep -q "async def _restart_wrapper\|_restart_wrapper"; then
       init_additions+="  - Fixed async thread safety issue with hass.async_create_task in daily restart scheduler\n"
@@ -419,6 +486,10 @@ build_changelog_from_range() {
     fi
     if echo "$init_diff" | grep -qE "^-.*RESTART_HOUR\|^-.*RESTART_MINUTE"; then
       init_additions+="  - Moved restart configuration constants to const.py\n"
+    fi
+    # Explicitly detect removal of async_config_entry_first_refresh during setup
+    if echo "$init_diff" | grep -qE "^-.*async_config_entry_first_refresh\("; then
+      init_additions+="  - Removed async_config_entry_first_refresh() call during setup to avoid LOADED-state warning; entities handle initial fetch\n"
     fi
     
     # Generic changes (only add if no specific changes detected)
@@ -567,21 +638,16 @@ build_changelog_from_range() {
 
   local entry=""
   if [[ -n "$detailed_changes" ]]; then
-    # Check if we have structured sections (contains ####)
-    if echo "$detailed_changes" | grep -q "^####"; then
-      # Major refactoring format - add header and use structured format
+    # Use Major Refactoring header only when actual refactoring patterns detected
+    if [[ -n "$has_major_refactoring" ]]; then
       entry+=$'### Major Refactoring - Code Efficiency and Maintainability Improvements\n\n'
       entry+=$'This release represents comprehensive refactoring of the integration codebase.\n\n'
-      # Convert bullet character • to standard Markdown dash -
-      detailed_changes=$(echo "$detailed_changes" | sed 's/^•/-/g' | sed 's/^\([[:space:]]*\)•/\1-/g')
-      entry+="$detailed_changes"
     else
-      # Simple changes format
       entry+=$'### Changes\n\n'
-      # Convert bullet character • to standard Markdown dash -
-      detailed_changes=$(echo "$detailed_changes" | sed 's/^•/-/g' | sed 's/^\([[:space:]]*\)•/\1-/g')
-      entry+="$detailed_changes"
     fi
+    # Convert bullet character • to standard Markdown dash -
+    detailed_changes=$(echo "$detailed_changes" | sed 's/^•/-/g' | sed 's/^\([[:space:]]*\)•/\1-/g')
+    entry+="$detailed_changes"
   fi
 
   if [[ -z "$entry" ]]; then
