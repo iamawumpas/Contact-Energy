@@ -23,6 +23,7 @@
   - [Energy Usage Statistics](#1-energy-usage-statistics)
   - [Account & Billing Information](#2-account--billing-information-sensors)
   - [Chart Sensors for ApexCharts](#3-chart-sensors-for-apexcharts)
+  - [Phase 3: Forecasts & Alerts](#phase-3-forecasts--alerts)
 - [Limitations](#limitations)
 - [Free to Use](#free-to-use)
 - [Installation](#installation)
@@ -96,6 +97,29 @@ These sensors provide pre-formatted data for charting with ApexCharts card:
   - **Monthly sensors**: Last 12 months of usage totals (paid and free energy)
   
 These sensors store data in their attributes for easy use with the ApexCharts custom card. See the ApexCharts Card Examples section below for configuration examples.
+
+## Phase 3: Forecasts & Alerts
+
+Phase 3 adds proactive insights and notifications:
+
+- "Contact Energy Forecast Daily Usage (…ICP…)" sensor
+  - Forecasts the next day's paid usage using EMA over the last 30 complete days
+  - Attributes include method (EMA), window (30 days), alpha, mean/std, and a 2-sigma band
+  - Unit: kWh; no state_class (derived metric)
+
+- "Contact Energy Usage Anomaly (…ICP…)" binary sensor
+  - Flags today's paid usage as anomalous if its z-score exceeds 2.5 vs the last 30 complete days
+  - Attributes: z_score, threshold (default 2.5), baseline_days (30), baseline_mean/std, today_usage
+  - Device class: problem
+
+### Alerting Options
+
+You can notify in multiple ways; choose the service that fits your setup:
+
+- Persistent notification (built-in): `persistent_notification.create`
+- Mobile app notify: e.g. `notify.mobile_app_your_phone`
+
+See the example in `custom_components/contact_energy/assets/Automation - Usage Anomaly Alert.yaml` and replace the `action` with your preferred notify service. The example shows both approaches and comments on how to switch.
 
 
 ## Limitations

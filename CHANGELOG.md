@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+### Changes
+
+#### Phase 3: Forecasting, Anomaly Detection, Alerts
+  - Added Forecast Daily Usage sensor: EMA-based next-day forecast over last 30 complete days (alpha = 2/(N+1))
+  - Added Usage Anomaly binary sensor: flags today's usage when z-score > 2.5 vs last 30 complete days
+  - Added example automation: `Automation - Usage Anomaly Alert.yaml` demonstrating persistent_notification and mobile notify options
+  - Updated README with Phase 3 documentation and alerting guidance
+  - Added strings for new entities explaining methods and alert options
+
 ## 0.6.2
 
 ### Changes

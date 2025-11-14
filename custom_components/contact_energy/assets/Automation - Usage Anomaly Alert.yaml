@@ -1,0 +1,31 @@
+alias: Contact Energy - Usage Anomaly Alert (Example)
+description: >-
+  Example automation that alerts when Contact Energy usage anomaly is detected.
+  Choose ONE of the actions below (persistent notification or mobile app notify)
+  and disable the other. Replace phone notify target to match your system.
+mode: single
+trigger:
+  - platform: state
+    entity_id: binary_sensor.contact_energy_usage_anomaly_0000000966tr348
+    to: 'on'
+condition: []
+action:
+  # Option 1: Persistent notification (built-in)
+  - service: persistent_notification.create
+    data:
+      title: "Usage Anomaly Detected"
+      message: >-
+        Contact Energy has detected a usage anomaly for {{ now().date() }}.
+        z-score={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'z_score') | round(2) }},
+        threshold={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'threshold') }},
+        today={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'today_usage') | round(2) }} kWh,
+        baseline_mean={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'baseline_mean') | round(2) }} kWh.
+
+  # Option 2: Mobile app notify (example target)
+  # - service: notify.mobile_app_your_phone
+  #   data:
+  #     title: "Usage Anomaly Detected"
+  #     message: >-
+  #       z={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'z_score') | round(2) }},
+  #       today={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'today_usage') | round(2) }}kWh,
+  #       vs μ={{ state_attr('binary_sensor.contact_energy_usage_anomaly_0000000966tr348', 'baseline_mean') | round(2) }}kWh.

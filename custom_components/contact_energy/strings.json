@@ -39,5 +39,19 @@
 				}
 			}
 		}
+	},
+	"entity": {
+		"sensor": {
+			"forecast_daily_usage": {
+				"name": "Contact Energy Forecast Daily Usage",
+				"description": "Forecasts next day's paid usage in kWh using EMA over the last 30 complete days (alpha = 2/(N+1)). Attributes include method, window_days, alpha, mean/std, and 2-sigma band."
+			}
+		},
+		"binary_sensor": {
+			"usage_anomaly": {
+				"name": "Contact Energy Usage Anomaly",
+				"description": "Flags today's paid usage as anomalous when z-score exceeds threshold (default 2.5) vs last 30 complete days. Choose your preferred alert method (persistent_notification or notify.mobile_app) in your automations."
+			}
+		}
 	}
 }

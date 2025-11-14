@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
+from homeassistant.helpers.typing import StateType
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics, statistics_during_period
 from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED, CONF_EMAIL
@@ -90,6 +91,8 @@ async def async_setup_entry(
         ContactEnergyAverageDailyUsage30DaysSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyUsageTrendSensor(coordinator, account_id, contract_id, contract_icp),
         ContactEnergyCostPerKwhSensor(coordinator, account_id, contract_id, contract_icp),
+        # Phase 3: Forecasting sensor
+        ContactEnergyForecastDailyUsageSensor(coordinator, account_id, contract_id, contract_icp),
     ])
 
     # Add convenience usage/cost sensors
@@ -1264,6 +1267,122 @@ class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
             "total_cost": round(self._total_cost, 2),
             "calculation": "Total cost / Total kWh (paid usage only)",
         }
+
+
+# -----------------------------------------
+# Phase 3: Forecasting sensor (EMA)
+# -----------------------------------------
+
+class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
+    """Forecast next day's usage using EMA over last 30 complete days."""
+
+    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
+        super().__init__(coordinator)
+        self._account_id = account_id
+        self._contract_id = contract_id
+        self._contract_icp = contract_icp
+        self._state: float | None = None
+        self._window_days = 30
+        # alpha = 2/(N+1)
+        self._alpha = round(2.0 / (self._window_days + 1.0), 4)
+        self._mean: float | None = None
+        self._std: float | None = None
+        self._last_observation: float | None = None
+
+        self._attr_name = f"Contact Energy Forecast Daily Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_forecast_daily_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:chart-timeline-variant"
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
+    def native_value(self) -> StateType:
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "method": "EMA",
+            "window_days": self._window_days,
+            "alpha": self._alpha,
+            "mean_30d": round(self._mean, 3) if self._mean is not None else None,
+            "std_30d": round(self._std, 3) if self._std is not None else None,
+            "last_observation": round(self._last_observation, 3) if self._last_observation is not None else None,
+            "lower_2sigma": round(max(0.0, (self._mean or 0.0) - 2 * (self._std or 0.0)), 3) if self._mean is not None and self._std is not None else None,
+            "upper_2sigma": round((self._mean or 0.0) + 2 * (self._std or 0.0), 3) if self._mean is not None and self._std is not None else None,
+            "calculation": "EMA forecast of next day based on last 30 complete days (paid usage only)",
+        }
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        await self._recompute()
+
+    def _handle_coordinator_update(self) -> None:
+        self.hass.async_create_task(self._recompute())
+
+    async def _fetch_daily_paid_usage(self, for_date: date) -> float:
+        total = 0.0
+        try:
+            resp = await self.coordinator.api.async_get_usage(
+                str(for_date.year), str(for_date.month), str(for_date.day), self._account_id, self._contract_id
+            )
+            if isinstance(resp, list):
+                for p in resp:
+                    val = ContactEnergyUsageSensor._safe_float(p.get("value"))
+                    off = str(p.get("offpeakValue", "0.00"))
+                    if off == "0.00":
+                        total += val
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.debug("Forecast fetch failed for %s: %s", for_date, e)
+        return total
+
+    async def _recompute(self) -> None:
+        # Build last 30 complete days series (yesterday back)
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=self._window_days - 1)
+        series: list[float] = []
+        current = start
+        while current <= end:
+            kwh = await self._fetch_daily_paid_usage(current)
+            series.append(kwh)
+            current += timedelta(days=1)
+            await asyncio.sleep(0)
+
+        if not series:
+            self._state = None
+            self.async_write_ha_state()
+            return
+
+        # Compute mean and std over the window
+        n = len(series)
+        mean_val = sum(series) / float(n)
+        var = sum((x - mean_val) ** 2 for x in series) / float(n)
+        std = var ** 0.5
+
+        # Compute EMA forecast: initialize with first observation
+        ema = series[0]
+        alpha = self._alpha
+        for x in series[1:]:
+            ema = alpha * x + (1 - alpha) * ema
+
+        self._mean = mean_val
+        self._std = std
+        self._last_observation = series[-1]
+        self._state = round(ema, 3)
+        self.async_write_ha_state()
 
 
 # -----------------------------------------
