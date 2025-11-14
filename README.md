@@ -63,7 +63,7 @@ So time for some digging and hopefully patching.
 
 All it does is download the current energy usage and billing information from your Contact Energy account in the same way that the smartphone app gathers your data for you to view.
 
-The integration creates three groups of entities:
+The integration creates four groups of entities:
 
 ### 1. Energy Usage Statistics
 The ***energy usage*** and ***free energy usage*** sensors (if you take advantage of the free energy option). This data is stored in the Home Assistant statistics database and is visualized in the Energy Dashboard.
@@ -77,8 +77,19 @@ These sensors expose the following information to dashboard cards:
   - Next reading date
   - Account balance
   - Contract details
+  - Payment history
+  - Full address details
+  - Meter register information
 
-### 3. Chart Sensors for ApexCharts
+### 3. Usage Analytics & Insights Sensors
+These sensors provide intelligent analysis of your energy consumption:
+  - **Average Daily Usage**: 7-day and 30-day averages for pattern analysis
+  - **Usage Trend**: Percentage change comparing recent vs previous periods
+  - **Cost Per kWh**: Actual average cost efficiency over time
+  
+These analytics sensors automatically calculate insights from your historical usage data to help you understand consumption patterns and optimize energy costs.
+
+### 4. Chart Sensors for ApexCharts
 These sensors provide pre-formatted data for charting with ApexCharts card:
   - **Hourly sensors**: Last 14 days of hourly usage (paid and free energy)
   - **Daily sensors**: Last 30 days of daily usage (paid and free energy)
