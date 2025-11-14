@@ -199,11 +199,11 @@ build_changelog_from_range() {
         detailed_changes+="  - Total: Added $new_constants+ new constants for better maintainability\n"
       fi
       detailed_changes+="\n"
+    # Report any changes to const.py even if no specific patterns match
+    elif [[ -n "$const_numstat" ]]; then
+      detailed_changes+="#### const.py - Configuration Updates\n"
+      detailed_changes+="  - Configuration constants updated\n\n"
     fi
-  # Report any changes to const.py even if no specific patterns match
-  elif [[ -n "$const_numstat" ]]; then
-    detailed_changes+="#### const.py - Configuration Updates\n"
-    detailed_changes+="  - Configuration constants updated\n\n"
   fi
   
   # Check config_flow.py changes
