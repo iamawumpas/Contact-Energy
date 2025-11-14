@@ -4,11 +4,14 @@
 
 ### Changes
 
-#### Assets
-  - Updated ApexCharts card configuration examples
+#### Documentation
+  - Added new Markdown Card Example section to README demonstrating Account Details Summary card
+  - Card displays comprehensive account information: customer details, billing, rates, and usage statistics
+  - Documentation includes feature highlights: automatic formatting, highlighted sensors, custom styling
 
-#### Visual Assets
-  - Updated integration screenshots and visual assets
+#### Assets
+  - Added Account Details Summary Example.yaml template file for markdown card configuration
+  - Created image-4.png screenshot showing the Account Details Summary card with selectively blurred sensitive information (address, email, IDs)
 
 
 ## 0.5.1
