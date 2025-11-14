@@ -54,6 +54,13 @@ apex_config:
     position: top
     horizontalAlign: center
     offsetY: 20
+    inverseOrder: true
+    markers:
+      width: 12
+      height: 12
+      radius: 0
+  markers:
+    shape: square
   fill:
     type: gradient
     gradient:
