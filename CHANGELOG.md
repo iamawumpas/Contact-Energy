@@ -4,18 +4,11 @@
 
 ### Changes
 
-#### Phase 1: Enhanced Account Information
-  - Added Payment History sensor showing last 5 payments with dates, amounts, and methods
-  - Added Full Address sensor with detailed address components (street, suburb, city, postcode)
-  - Added Meter Register sensor with current/previous readings and register details
-  - Added Contract Details sensor with contract status, dates, and plan information
-  - All new sensors extract data from existing API response (no additional API calls)
+#### sensor.py - Major Consolidation
+  - Code expansion: +175 net lines (added 175, deleted 0)
 
-#### Benefits
-  - Better payment tracking and history visibility
-  - Detailed property address information
-  - Meter reading transparency
-  - Complete contract information at a glance
+#### Metadata
+  - Added cloud_polling IoT class designation
 
 
 ## 0.4.17
