@@ -4,23 +4,64 @@
 
 ### Changes
 
-#### Documentation
-  - Added comprehensive Table of Contents navigation
-  - Updated documentation to reflect 60-day data collection capability
-  - Updated hourly chart documentation for 14-day retention
-  - Updated daily usage chart screenshot with current visualization
-  - Added comprehensive ApexCharts Card Examples section
-  - Added documentation for multiple properties and accounts support
-  - Documented sensor naming with ICP suffixes for multi-instance setups
-  - Added use case examples (rental properties, holiday homes, family accounts)
+#### Documentation - GitHub Wiki Migration
+  - **Created comprehensive 12-page GitHub Wiki** for improved documentation organization and discoverability
+  - **Streamlined README** to concise landing page with navigation links to wiki
+  - **Wiki structure:**
+    - **Home:** Overview and navigation hub with links to all documentation pages
+    - **Installation:** HACS and manual installation guides with compatibility notes
+    - **Configuration:** Setup wizard instructions including multiple properties/accounts support
+    - **Energy-Dashboard-Setup:** Step-by-step Energy Dashboard integration guide
+    - **Sensor-Reference:** Complete documentation of 40+ sensors organized by category (Energy Usage Statistics, Account & Billing, Convenience, Analytics, Forecasting & Anomaly Detection, Chart Sensors)
+    - **Forecasting-and-Alerts:** Detailed EMA forecast and z-score anomaly detection documentation with attribute explanations
+    - **Dashboard-Examples:** UI card configurations (entity, gauge, markdown, conditional cards)
+    - **ApexCharts-Examples:** Advanced charting with embedded YAML in collapsible sections for easy copy/paste
+    - **Automation-Examples:** Automation templates for anomaly alerts and notifications
+    - **Limitations:** Data delay constraints, daily restart behavior, API limitations
+    - **Troubleshooting:** Common issues and solutions (sensor unavailable, missing data, authentication errors)
+    - **FAQ:** Frequently asked questions about data delays, forecasting accuracy, multiple properties, Energy Dashboard
+  - **Embedded YAML code blocks** in wiki pages using collapsible `<details>` sections for immediate access without external file navigation
+  - **Removed historical Phase 1/2/3/4 references** from user-facing documentation (internal development phases not relevant to users)
+  - **Preserved Changelog and Attribution sections** in README with links to detailed version history
+  - **Improved navigation:** Each wiki page includes breadcrumb links and "See Also" sections for related topics
+  - **Better accessibility:** All YAML examples (ApexCharts cards, automation templates) embedded directly in documentation instead of requiring separate file downloads
+
+#### Why These Changes?
+The previous README had grown to 523 lines with detailed sensor documentation, making it difficult to navigate. Moving comprehensive documentation to a structured wiki improves discoverability, allows topic-based navigation, and keeps the README focused as a landing page. Embedded YAML code blocks eliminate the need to click through to separate files, improving user experience.
 
 
 ## 0.7.2
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - Code expansion: +39 net lines (added 42, deleted 3)
+#### Performance Optimization - State Persistence for Forecast and Anomaly Sensors
+  - **Critical fix:** Eliminated "Setup taking over 10 seconds" warnings during Home Assistant restarts
+  - **Implemented state persistence** using `RestoreEntity` mixin for forecast and anomaly sensors
+  - **Smart recalculation logic:** Only recomputes when data is stale (>1 day old) or missing
+  - **Added timestamp tracking:** New `last_computed` attribute (ISO format datetime) tracks when values were last calculated
+  - **Instant restarts:** After initial computation, sensors restore cached state instantly on restart without fetching 30 days of historical data
+
+#### Technical Details - ContactEnergyForecastDailyUsageSensor
+  - **Inheritance:** Added `RestoreEntity` mixin alongside `CoordinatorEntity` and `SensorEntity`
+  - **State restoration:** `async_added_to_hass()` restores `state`, `mean_30d`, `std_30d`, `last_observation`, `last_computed` from `last_state.attributes`
+  - **Conditional recomputation:** Only triggers 5-second delayed `_recompute()` if data is missing or `last_computed` is >1 day old
+  - **Attribute persistence:** All computed values stored in `extra_state_attributes` for restoration across restarts
+  - **Update optimization:** `_handle_coordinator_update()` only recomputes when coordinator has fresh data and current values are stale
+
+#### Technical Details - ContactEnergyHistoricalAnomalyBinarySensor
+  - **Inheritance:** Added `RestoreEntity` mixin alongside `CoordinatorEntity` and `BinarySensorEntity`
+  - **State restoration:** `async_added_to_hass()` restores `is_on`, `z_score`, `baseline_mean`, `baseline_std`, `today_usage`, `last_computed`
+  - **Conditional recomputation:** Only triggers `_recompute()` if last computed >1 day ago or attributes missing
+  - **Binary state preservation:** Anomaly detection state persists across restarts without refetching 30 days of data
+  - **Timestamp tracking:** `last_computed` ensures anomaly checks only run when delayed Contact Energy data arrives
+
+#### Performance Impact
+  - **Before:** Both sensors fetched 30 days of statistics from database on every Home Assistant restart (~10+ seconds)
+  - **After:** Sensors restore cached state instantly (~50ms), only recompute when data refresh needed (once daily when new Contact Energy data arrives)
+  - **User benefit:** Eliminates slow startup warnings, improves restart time, reduces database queries
+
+#### Why These Changes?
+Contact Energy data is delayed 24-72 hours, so refetching 30 days of historical data on every restart was unnecessary. State persistence with smart staleness detection ensures sensors only recompute when new data arrives, dramatically improving performance while maintaining accuracy.
 
 
 ## 0.7.1
