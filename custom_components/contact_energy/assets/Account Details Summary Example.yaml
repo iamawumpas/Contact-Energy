@@ -4,6 +4,7 @@ content: |-
 
   {# Define all entity names that should be formatted as currency ($X.XX) #}
   {% set currency_names = [
+    'Cost Per kWh (30 Days)',
     'Outstanding Balance',
     'Current Month\'s Cost so far',
     'Daily Charge Rate',
@@ -18,6 +19,8 @@ content: |-
 
   {# Define all entity names that should have the kWh unit appended #}
   {% set usage_names = [
+    'Average Daily Usage (7 Days)',
+    'Average Daily Usage (30 Days)',
     'Current Month Usage',
     'Last 7 days\' usage',
     'Last 30 days\' usage',
@@ -86,6 +89,12 @@ content: |-
       ('Last Month\'s Usage', 'sensor.contact_energy_last_month_usage_0000000966tr348'),
       ('Meter Register', 'sensor.contact_energy_meter_register_0000000966tr348'),
       ('Usage', 'sensor.contact_energy_usage')
+    ]),
+    ('Analytics & Insights', [
+      ('Average Daily Usage (7 Days)', 'sensor.contact_energy_average_daily_usage_7_days_0000000966tr348'),
+      ('Average Daily Usage (30 Days)', 'sensor.contact_energy_average_daily_usage_30_days_0000000966tr348'),
+      ('Usage Trend', 'sensor.contact_energy_usage_trend_0000000966tr348'),
+      ('Cost Per kWh (30 Days)', 'sensor.contact_energy_cost_per_kwh_30_days_0000000966tr348')
     ])
   ] %}
   {% set content_html = namespace(rows="") %}
@@ -126,6 +135,15 @@ content: |-
         {# Handle Payment History - show count #}
         {% elif name == 'Payment History' %}
           {% set formatted_value = (value | string) + ' payments' %}
+        
+        {# Handle Usage Trend - show percentage with sign #}
+        {% elif name == 'Usage Trend' %}
+          {% set num_value = value | float(0) %}
+          {% if num_value > 0 %}
+            {% set formatted_value = '+' + ('%.1f' | format(num_value)) + '%' %}
+          {% else %}
+            {% set formatted_value = ('%.1f' | format(num_value)) + '%' %}
+          {% endif %}
         
         {# Removed Customer Name formatting logic #}
         {% endif %}
