@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.16
+
+### Changes
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Added example configurations for hourly, daily, and monthly charts
+
+
 ## 0.4.15
 
 ### Changes
