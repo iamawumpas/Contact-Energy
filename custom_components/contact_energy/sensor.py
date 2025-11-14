@@ -1328,7 +1328,14 @@ class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        await self._recompute()
+        # Defer initial computation to avoid blocking HA startup (fetches 30 days of data)
+        async def _delayed_recompute() -> None:
+            try:
+                await asyncio.sleep(5)
+            except Exception:  # noqa: BLE001
+                pass
+            await self._recompute()
+        self.hass.async_create_task(_delayed_recompute())
 
     def _handle_coordinator_update(self) -> None:
         self.hass.async_create_task(self._recompute())
