@@ -990,6 +990,111 @@ class ContactEnergyContractDetailsSensor(ContactEnergyAccountSensorBase):
 
 
 # -----------------------------------------
+# Convenience Sensor Base Class
+# -----------------------------------------
+
+class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
+    """Base for convenience sensors that recompute on coordinator updates."""
+
+    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
+        super().__init__(coordinator)
+        self._account_id = account_id
+        self._contract_id = contract_id
+        self._contract_icp = contract_icp
+        self._state = 0.0
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Entity is only available if coordinator has successfully fetched data at least once
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # initial compute after HA start - but only after coordinator has data
+        async def _delayed_recompute():
+            # Wait for coordinator to have data before computing
+            if not self.coordinator.last_update_success or self.coordinator.data is None:
+                # Wait for coordinator to have data (it's already refreshing from setup)
+                max_wait_time = 60  # Maximum wait time in seconds
+                wait_interval = 0.5  # Check every 0.5 seconds
+                elapsed = 0
+                while (not self.coordinator.last_update_success or self.coordinator.data is None) and elapsed < max_wait_time:
+                    await asyncio.sleep(wait_interval)
+                    elapsed += wait_interval
+            
+            import hashlib
+            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
+            base_delay = (icp_hash % 20) / 10.0  # 0-2 seconds based on ICP
+            jitter = random.uniform(0.1, 1.5)  # Additional random jitter
+            total_delay = base_delay + jitter
+            
+            try:
+                await asyncio.sleep(total_delay)
+            except Exception:  # noqa: BLE001
+                pass
+            await self._recompute()
+        self.hass.async_create_task(_delayed_recompute())
+
+    async def _recompute(self) -> None:
+        start, end = self._date_range()
+        kwh, cost, free_kwh = await self._get_usage_for_date_range(start, end)
+        self._apply_values(kwh, cost, free_kwh)
+        self.async_write_ha_state()
+
+    def _apply_values(self, kwh: float, cost: float, free_kwh: float) -> None:
+        # To be implemented by subclasses depending on metric
+        pass
+
+    def _date_range(self) -> tuple[date, date]:
+        # To be implemented by subclasses
+        return (datetime.now().date(), datetime.now().date())
+
+    async def _get_usage_for_date_range(self, start_date: date, end_date: date) -> tuple[float, float, float]:
+        total_kwh = 0.0
+        total_cost = 0.0
+        total_free_kwh = 0.0
+        current = start_date
+        while current <= end_date:
+            try:
+                resp = await self.coordinator.api.async_get_usage(
+                    str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
+                )
+                if isinstance(resp, list):
+                    for p in resp:
+                        val = ContactEnergyUsageSensor._safe_float(p.get("value"))
+                        cost = ContactEnergyUsageSensor._safe_float(p.get("dollarValue"))
+                        off = str(p.get("offpeakValue", "0.00"))
+                        if off == "0.00":
+                            total_kwh += val
+                            total_cost += cost
+                        else:
+                            total_free_kwh += val
+            except Exception as e:  # noqa: BLE001
+                _LOGGER.debug("Convenience fetch failed for %s: %s", current, e)
+            current += timedelta(days=1)
+            await asyncio.sleep(0)
+        return total_kwh, total_cost, total_free_kwh
+
+    def _handle_coordinator_update(self) -> None:
+        # Recompute on coordinator refresh
+        self.hass.async_create_task(self._recompute())
+
+
+# -----------------------------------------
 # Phase 2: Analytics sensors
 # -----------------------------------------
 
@@ -1168,107 +1273,6 @@ class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
 # -----------------------------------------
 # Convenience usage and cost sensors
 # -----------------------------------------
-
-class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
-    """Base for convenience sensors that recompute on coordinator updates."""
-
-    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._contract_id = contract_id
-        self._contract_icp = contract_icp
-        self._state = 0.0
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, self._contract_icp)},
-            "name": f"Contact Energy ({self._contract_icp})",
-            "manufacturer": "Contact Energy",
-            "model": "Smart Meter",
-        }
-
-    @property
-    def should_poll(self) -> bool:
-        return False
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        # Entity is only available if coordinator has successfully fetched data at least once
-        return self.coordinator.last_update_success and self.coordinator.data is not None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # initial compute after HA start - but only after coordinator has data
-        async def _delayed_recompute():
-            # Wait for coordinator to have data before computing
-            if not self.coordinator.last_update_success or self.coordinator.data is None:
-                # Wait for coordinator to have data (it's already refreshing from setup)
-                max_wait_time = 60  # Maximum wait time in seconds
-                wait_interval = 0.5  # Check every 0.5 seconds
-                elapsed = 0
-                while (not self.coordinator.last_update_success or self.coordinator.data is None) and elapsed < max_wait_time:
-                    await asyncio.sleep(wait_interval)
-                    elapsed += wait_interval
-            
-            import hashlib
-            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
-            base_delay = (icp_hash % 20) / 10.0  # 0-2 seconds based on ICP
-            jitter = random.uniform(0.1, 1.5)  # Additional random jitter
-            total_delay = base_delay + jitter
-            
-            try:
-                await asyncio.sleep(total_delay)
-            except Exception:  # noqa: BLE001
-                pass
-            await self._recompute()
-        self.hass.async_create_task(_delayed_recompute())
-
-    async def _recompute(self) -> None:
-        start, end = self._date_range()
-        kwh, cost, free_kwh = await self._get_usage_for_date_range(start, end)
-        self._apply_values(kwh, cost, free_kwh)
-        self.async_write_ha_state()
-
-    def _apply_values(self, kwh: float, cost: float, free_kwh: float) -> None:
-        # To be implemented by subclasses depending on metric
-        pass
-
-    def _date_range(self) -> tuple[date, date]:
-        # To be implemented by subclasses
-        return (datetime.now().date(), datetime.now().date())
-
-    async def _get_usage_for_date_range(self, start_date: date, end_date: date) -> tuple[float, float, float]:
-        total_kwh = 0.0
-        total_cost = 0.0
-        total_free_kwh = 0.0
-        current = start_date
-        while current <= end_date:
-            try:
-                resp = await self.coordinator.api.async_get_usage(
-                    str(current.year), str(current.month), str(current.day), self._account_id, self._contract_id
-                )
-                if isinstance(resp, list):
-                    for p in resp:
-                        val = ContactEnergyUsageSensor._safe_float(p.get("value"))
-                        cost = ContactEnergyUsageSensor._safe_float(p.get("dollarValue"))
-                        off = str(p.get("offpeakValue", "0.00"))
-                        if off == "0.00":
-                            total_kwh += val
-                            total_cost += cost
-                        else:
-                            total_free_kwh += val
-            except Exception as e:  # noqa: BLE001
-                _LOGGER.debug("Convenience fetch failed for %s: %s", current, e)
-            current += timedelta(days=1)
-            await asyncio.sleep(0)
-        return total_kwh, total_cost, total_free_kwh
-
-    def _handle_coordinator_update(self) -> None:
-        # Recompute on coordinator refresh
-        self.hass.async_create_task(self._recompute())
-
 
 class ContactEnergyTodayUsageSensor(ContactEnergyConvenienceSensorBase):
     def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
