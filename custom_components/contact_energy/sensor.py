@@ -80,6 +80,11 @@ async def async_setup_entry(
         ContactEnergyFreeHoursSensor(coordinator, contract_icp),
         ContactEnergyLastPaymentSensor(coordinator, contract_icp),
         ContactEnergyEstimatedNextBillSensor(coordinator, contract_icp),
+        # Phase 1: Enhanced sensors
+        ContactEnergyPaymentHistorySensor(coordinator, contract_icp),
+        ContactEnergyFullAddressSensor(coordinator, contract_icp),
+        ContactEnergyMeterRegisterSensor(coordinator, contract_icp),
+        ContactEnergyContractDetailsSensor(coordinator, contract_icp),
     ])
 
     # Add convenience usage/cost sensors
@@ -807,6 +812,176 @@ class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
         if next_bill:
             return {"bill_date": next_bill.get("date")}
         return {}
+
+
+# -----------------------------------------
+# Phase 1: Enhanced account sensors
+# -----------------------------------------
+
+class ContactEnergyPaymentHistorySensor(ContactEnergyAccountSensorBase):
+    """Sensor showing payment history with last 5 payments as attributes."""
+    
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Payment History ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_payment_history"
+        self._attr_icon = "mdi:history"
+
+    @property
+    def native_value(self) -> int:
+        """Return count of payments in history."""
+        account_data = self._get_account_data()
+        payments = account_data.get("payments", []) or []
+        return len(payments)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return last 5 payments as attributes."""
+        account_data = self._get_account_data()
+        payments = account_data.get("payments", []) or []
+        
+        attributes = {
+            "payment_method": account_data.get("paymentMethod"),
+            "total_payments": len(payments),
+        }
+        
+        # Add last 5 payments
+        for idx, payment in enumerate(payments[:5]):
+            payment_num = idx + 1
+            amt_str = payment.get("amount", "")
+            # Clean amount string
+            try:
+                amt_clean = amt_str.replace("$", "").replace(",", "")
+                amount = float(amt_clean) if amt_clean else 0.0
+            except (ValueError, TypeError):
+                amount = 0.0
+            
+            attributes[f"payment_{payment_num}_date"] = payment.get("date")
+            attributes[f"payment_{payment_num}_amount"] = amount
+            attributes[f"payment_{payment_num}_method"] = payment.get("method", account_data.get("paymentMethod"))
+        
+        return attributes
+
+
+class ContactEnergyFullAddressSensor(ContactEnergyAccountSensorBase):
+    """Sensor showing full address with individual components."""
+    
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Full Address ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_full_address"
+        self._attr_icon = "mdi:map-marker"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return full address."""
+        contract = self._get_contract_data()
+        premise = contract.get("premise", {})
+        supply_address = premise.get("supplyAddress", {})
+        return supply_address.get("fullForm") or supply_address.get("shortForm")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return address components as attributes."""
+        contract = self._get_contract_data()
+        premise = contract.get("premise", {})
+        supply_address = premise.get("supplyAddress", {})
+        
+        return {
+            "short_form": supply_address.get("shortForm"),
+            "full_form": supply_address.get("fullForm"),
+            "street_number": supply_address.get("streetNumber"),
+            "street_name": supply_address.get("streetName"),
+            "street_type": supply_address.get("streetType"),
+            "suburb": supply_address.get("suburb"),
+            "city": supply_address.get("city"),
+            "postcode": supply_address.get("postcode"),
+            "region": supply_address.get("region"),
+            "premise_type": premise.get("premiseType"),
+        }
+
+
+class ContactEnergyMeterRegisterSensor(ContactEnergyAccountSensorBase):
+    """Sensor showing meter register readings."""
+    
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Meter Register ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_meter_register"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_icon = "mdi:gauge"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return current meter reading."""
+        contract = self._get_contract_data()
+        devices = contract.get("devices", [])
+        if devices and devices[0].get("registers"):
+            registers = devices[0].get("registers", [])
+            if registers:
+                current_reading = registers[0].get("currentMeterReading")
+                try:
+                    return float(current_reading) if current_reading is not None else None
+                except (ValueError, TypeError):
+                    return None
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return register details as attributes."""
+        contract = self._get_contract_data()
+        devices = contract.get("devices", [])
+        
+        attributes = {}
+        
+        if devices and devices[0].get("registers"):
+            registers = devices[0].get("registers", [])
+            
+            for idx, register in enumerate(registers[:3]):  # Show up to 3 registers
+                reg_num = idx + 1
+                attributes[f"register_{reg_num}_type"] = register.get("registerType")
+                attributes[f"register_{reg_num}_current"] = register.get("currentMeterReading")
+                attributes[f"register_{reg_num}_previous"] = register.get("previousMeterReading")
+                attributes[f"register_{reg_num}_reading_date"] = register.get("previousMeterReadingDate")
+                attributes[f"register_{reg_num}_multiplier"] = register.get("multiplier")
+        
+        return attributes
+
+
+class ContactEnergyContractDetailsSensor(ContactEnergyAccountSensorBase):
+    """Sensor showing contract details and status."""
+    
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Contract Details ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_contract_details"
+        self._attr_icon = "mdi:file-document"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return contract status."""
+        contract = self._get_contract_data()
+        return contract.get("status") or contract.get("contractStatus") or "active"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return contract details as attributes."""
+        contract = self._get_contract_data()
+        
+        return {
+            "contract_id": contract.get("id"),
+            "contract_type": contract.get("contractType"),
+            "contract_type_label": contract.get("contractTypeLabel"),
+            "icp": contract.get("icp"),
+            "start_date": contract.get("startDate"),
+            "end_date": contract.get("endDate"),
+            "term_length": contract.get("termLength"),
+            "network_provider": contract.get("networkProvider"),
+            "meter_type": contract.get("meterType"),
+            "plan_code": contract.get("planCode"),
+            "plan_name": contract.get("planName"),
+        }
 
 
 # -----------------------------------------

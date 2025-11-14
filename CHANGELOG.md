@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0
+
+### Changes
+
+#### Phase 1: Enhanced Account Information
+  - Added Payment History sensor showing last 5 payments with dates, amounts, and methods
+  - Added Full Address sensor with detailed address components (street, suburb, city, postcode)
+  - Added Meter Register sensor with current/previous readings and register details
+  - Added Contract Details sensor with contract status, dates, and plan information
+  - All new sensors extract data from existing API response (no additional API calls)
+
+#### Benefits
+  - Better payment tracking and history visibility
+  - Detailed property address information
+  - Meter reading transparency
+  - Complete contract information at a glance
+
+
 ## 0.4.17
 
 ### Changes
