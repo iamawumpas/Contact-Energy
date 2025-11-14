@@ -6,28 +6,44 @@ graph_span: 8d
 span:
   start: day
   offset: "-9d"
-update_interval: 12h
+update_interval: 6h
 header:
   show: true
   title: Hourly Usage over the last 8 days
   show_states: false
 series:
-  - entity: sensor.contact_energy_chart_hourly_0000000966tr348
-    name: Usage (kWh)
+  - entity: sensor.contact_energy_chart_hourly_free_0000000966tr348
+    name: Free
+    color: "#008FFB"
     show:
       legend_value: false
     data_generator: |
-      const entries = Object.entries(entity.attributes.hourly_data || {})
-        .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 16 && !isNaN(Date.parse(dt)))
+      const now = new Date();
+      const startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 10);
+      const entries = Object.entries(entity.attributes.hourly_free_data || {})
+        .filter(([dt, value]) => {
+          if (typeof dt !== 'string' || dt.length < 16 || isNaN(Date.parse(dt))) return false;
+          const entryDate = new Date(dt);
+          return entryDate >= startDate;
+        })
         .sort(([a], [b]) => a.localeCompare(b));
       return entries.map(([dt, value]) => [dt, Number(value)]);
-  - entity: sensor.contact_energy_chart_hourly_free_0000000966tr348
-    name: Free Usage (kWh)
+  - entity: sensor.contact_energy_chart_hourly_0000000966tr348
+    name: Paid
+    color: "#FEB019"
     show:
       legend_value: false
     data_generator: |
-      const entries = Object.entries(entity.attributes.hourly_free_data || {})
-        .filter(([dt, value]) => typeof dt === 'string' && dt.length >= 16 && !isNaN(Date.parse(dt)))
+      const now = new Date();
+      const startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 10);
+      const entries = Object.entries(entity.attributes.hourly_data || {})
+        .filter(([dt, value]) => {
+          if (typeof dt !== 'string' || dt.length < 16 || isNaN(Date.parse(dt))) return false;
+          const entryDate = new Date(dt);
+          return entryDate >= startDate;
+        })
         .sort(([a], [b]) => a.localeCompare(b));
       return entries.map(([dt, value]) => [dt, Number(value)]);
 apex_config:
@@ -82,11 +98,21 @@ card_mod:
       margin-top: -15px !important; 
     } 
 
-    /* RESPONSIVE FIX: Center X-Axis Day Labels */ .apexcharts-xaxis-texts-g
-    text {
+    /* FIX 3: Center X-Axis Day Labels */ .apexcharts-xaxis-texts-g text {
       text-anchor: middle !important; 
       transform: translateX(6.25%) !important; 
       
       /* NEW FIX: Override the default bolding for month boundaries */
       font-weight: normal !important;
+    }
+
+    ha-card {
+      /*
+        Creates a linear gradient background from top (#383e4a) to bottom (#1e212b).
+        !important is used to ensure it overrides the default background variable.
+      */
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      
+      /* Optional: remove the default shadow */
+      box-shadow: none;
     }
