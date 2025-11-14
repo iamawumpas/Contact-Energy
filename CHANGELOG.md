@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.14
+
+### Changes
+
+#### Documentation
+  - Documentation updates and improvements
+
+
 ## 0.4.13
 
 ### Changes
