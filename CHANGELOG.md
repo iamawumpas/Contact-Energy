@@ -4,24 +4,11 @@
 
 ### Changes
 
-#### Phase 2: Usage Analytics & Insights Sensors
-  - Added **Average Daily Usage (7 Days)** sensor calculating mean daily consumption over the last week
-  - Added **Average Daily Usage (30 Days)** sensor for monthly usage patterns
-  - Added **Usage Trend** sensor comparing last 7 days vs previous 7 days with percentage change
-  - Added **Cost Per kWh (30 Days)** sensor showing actual average cost efficiency over time
+#### sensor.py - Major Consolidation
+  - Code expansion: +181 net lines (added 181, deleted 0)
 
-#### Technical Details
-  - All analytics sensors leverage existing statistics data (no additional API calls)
-  - Sensors automatically recalculate on coordinator updates
-  - Provide actionable insights through state attributes (period comparisons, trend direction, calculations)
-  - Support multi-property setups with unique ICP identification
-  - Foundation for future Phase 3 features (forecasting, anomaly detection, alerts)
-
-#### Benefits
-  - ✅ **Usage Insights:** Understand daily consumption patterns and trends
-  - ✅ **Cost Analysis:** Track actual cost per kWh to verify pricing and identify savings opportunities
-  - ✅ **Trend Detection:** Automatically detect increasing or decreasing usage patterns
-  - ✅ **Data-Driven Decisions:** Rich attributes provide context for energy management decisions
+#### Metadata
+  - Added cloud_polling IoT class designation
 
 
 ## 0.5.2
