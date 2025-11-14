@@ -6,9 +6,6 @@
 
 #### Assets
   - Updated ApexCharts card configuration examples
-
-#### Assets
-  - Updated ApexCharts card configuration examples
   - Added example configurations for hourly, daily, and monthly charts
 
 
