@@ -17,7 +17,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics, statistics_during_period
-from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED
+from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED, CONF_EMAIL
 import random
 import re
 
@@ -591,9 +591,8 @@ class ContactEnergyEmailSensor(ContactEnergyAccountSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        account_data = self._get_account_data()
-        # API structure: accountDetail.email
-        return account_data.get("email")
+        # Email comes from the config entry (login credentials), not the API
+        return self.coordinator.config_entry.data.get(CONF_EMAIL)
 
 
 class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
