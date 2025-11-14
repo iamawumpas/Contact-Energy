@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.12
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11+ compatibility
+  - Added unit_class to StatisticMetaData (energy / monetary) for HA 2026.11+ compatibility
+
+#### __init__.py - Cleaner Restart Logic
+  - Removed async_config_entry_first_refresh() call during setup to avoid LOADED-state warning; entities handle initial fetch
+  - Simplified daily restart scheduling logic
+
+
 ## 0.4.11
 
 ### Changes
