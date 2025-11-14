@@ -82,8 +82,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         usage_days,
     )
 
-    # Perform initial data fetch without blocking setup
-    hass.async_create_task(coordinator.async_config_entry_first_refresh())
+    # Perform initial data fetch during setup
+    await coordinator.async_config_entry_first_refresh()
 
     # Calculate random restart time around 3am
     restart_hour, restart_minute = await _calculate_next_restart_time()
