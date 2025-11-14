@@ -976,48 +976,21 @@ main() {
   elif [[ -n "${AGENT_CHANGE_SUMMARY:-}" ]]; then
     entry_text="${AGENT_CHANGE_SUMMARY}"
   else
-    # Try to extract existing CHANGELOG.md entry for this version
-    if [[ -f CHANGELOG.md ]]; then
-      local extracted_entry
-      extracted_entry=$(awk -v ver="## $version" '
-        BEGIN {found=0; content=""}
-        $0==ver {found=1; next}
-        found && /^## [0-9]+\.[0-9]+\.[0-9]+/ {exit}
-        found {content = content $0 "\n"}
-        END {print content}
-      ' CHANGELOG.md)
-      
-      # If we found content in CHANGELOG.md, use it
-      if [[ -n "$extracted_entry" && "$extracted_entry" != $'\n'* ]]; then
-        entry_text="$extracted_entry"
-      else
-        # Fallback: Compute changelog from code analysis
-        local prev_tag
-        prev_tag=$(git tag --sort=version:refname | tail -n 1 || true)
-        local range
-        if [[ -n "$prev_tag" ]]; then
-          range="$prev_tag..HEAD"
-        else
-          range="$(git hash-object -t tree /dev/null)..HEAD"
-        fi
-        if git diff --quiet && git diff --cached --quiet; then
-          entry_text=$(build_changelog_from_range "$range")
-        else
-          entry_text=$(build_changelog_from_working_changes "$range")
-        fi
-      fi
+    # Fallback: Compute changelog from code analysis
+    local prev_tag
+    prev_tag=$(git tag --sort=version:refname | tail -n 1 || true)
+    local range
+    if [[ -n "$prev_tag" ]]; then
+      range="$prev_tag..HEAD"
     else
-      # Fallback: Compute changelog from code analysis
-      local prev_tag
-      prev_tag=$(git tag --sort=version:refname | tail -n 1 || true)
-      local range
-      if [[ -n "$prev_tag" ]]; then
-        range="$prev_tag..HEAD"
-      else
-        range="$(git hash-object -t tree /dev/null)..HEAD"
-      fi
-      if git diff --quiet && git diff --cached --quiet; then
-        entry_text=$(build_changelog_from_range "$range")
+      range="$(git hash-object -t tree /dev/null)..HEAD"
+    fi
+    if git diff --quiet && git diff --cached --quiet; then
+      entry_text=$(build_changelog_from_range "$range")
+    else
+      entry_text=$(build_changelog_from_working_changes "$range")
+    fi
+  fi
       else
         entry_text=$(build_changelog_from_working_changes "$range")
       fi
