@@ -160,7 +160,7 @@ content: |2
         {% endif %}
         
         {# Using the <small> tag to force a reduced font size via standard HTML structure #}
-        {% set content_html.rows = content_html.rows + '<tr style="' + row_style + '"><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
+        {% set content_html.rows = content_html.rows + '<tr style="' + row_style + '"><td style="text-align: left; padding: 4px 8px; white-space: nowrap;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
       {% endfor %}
     {% endfor %}
 
