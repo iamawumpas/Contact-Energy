@@ -4,12 +4,27 @@
 
 ### Changes
 
-#### Phase 3: Forecasting, Anomaly Detection, Alerts
-  - Added Forecast Daily Usage sensor: EMA-based next-day forecast over last 30 complete days (alpha = 2/(N+1))
-  - Added Usage Anomaly binary sensor: flags today's usage when z-score > 2.5 vs last 30 complete days
-  - Added example automation: `Automation - Usage Anomaly Alert.yaml` demonstrating persistent_notification and mobile notify options
-  - Updated README with Phase 3 documentation and alerting guidance
-  - Added strings for new entities explaining methods and alert options
+#### sensor.py - Major Consolidation
+  - Code expansion: +119 net lines (added 119, deleted 0)
+
+#### __init__.py - Cleaner Restart Logic
+  - Added automatic daily restart at 3:00 AM (±30 minutes) for reliable API connections
+  - Simplified daily restart scheduling logic
+
+#### Translations
+  - Updated user interface strings and translations
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Modified 3 asset files
+
+#### Documentation
+  - Added comprehensive ApexCharts Card Examples section
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Added example configurations for hourly, daily, and monthly charts
+
 
 ## 0.6.2
 
