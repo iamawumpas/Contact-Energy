@@ -199,10 +199,6 @@ build_changelog_from_range() {
         detailed_changes+="  - Total: Added $new_constants+ new constants for better maintainability\n"
       fi
       detailed_changes+="\n"
-    # Report any changes to const.py even if no specific patterns match
-    elif [[ -n "$const_numstat" ]]; then
-      detailed_changes+="#### const.py - Configuration Updates\n"
-      detailed_changes+="  - Configuration constants updated\n\n"
     fi
   fi
   
@@ -235,10 +231,6 @@ build_changelog_from_range() {
       detailed_changes+="#### config_flow.py - Simplified Validation\n"
       detailed_changes+="$config_additions"
       detailed_changes+="  - Improved code organization and readability\n\n"
-    # Report any changes to config_flow.py even if no specific patterns match
-    else
-      detailed_changes+="#### config_flow.py - Configuration Flow Updates\n"
-      detailed_changes+="  - Configuration flow improvements\n\n"
     fi
   fi
   
@@ -290,10 +282,6 @@ build_changelog_from_range() {
       detailed_changes+="#### api.py - Simplified API Client\n"
       detailed_changes+="$api_additions"
       detailed_changes+="  - Improved code readability and maintainability\n\n"
-    # Report any changes to api.py even if no specific patterns match
-    else
-      detailed_changes+="#### api.py - API Client Updates\n"
-      detailed_changes+="  - API client improvements\n\n"
     fi
   fi
   
@@ -339,10 +327,6 @@ build_changelog_from_range() {
       detailed_changes+="#### coordinator.py - Streamlined Data Flow\n"
       detailed_changes+="$coord_additions"
       detailed_changes+="  - Cleaner, more predictable data flow to all sensor entities\n\n"
-    # Report any changes to coordinator.py even if no specific patterns match
-    else
-      detailed_changes+="#### coordinator.py - Coordinator Updates\n"
-      detailed_changes+="  - Data coordinator improvements\n\n"
     fi
   fi
 
@@ -463,12 +447,7 @@ build_changelog_from_range() {
       sensor_additions+="  - **Performance optimizations**:\n$perf_additions\n"
     fi
     
-    # Generic changes (only if no specific changes detected)
-    if [[ -z "$sensor_additions" ]]; then
-      if echo "$sensor_diff" | grep -q "StatisticData\|StatisticMetaData\|async_add_external_statistics"; then
-        sensor_additions+="  - Energy Dashboard sensor implementation and statistics integration\n"
-      fi
-    fi
+
     
     if [[ -n "$line_reduction" || -n "$sensor_additions" ]]; then
       detailed_changes+="#### sensor.py - Major Consolidation"
@@ -522,20 +501,10 @@ build_changelog_from_range() {
       init_additions+="  - Removed async_config_entry_first_refresh() call during setup to avoid LOADED-state warning; entities handle initial fetch\n"
     fi
     
-    # Generic changes (only add if no specific changes detected)
-    if [[ -z "$init_additions" ]] && echo "$init_diff" | grep -q "async_setup_entry\|async_unload_entry"; then
-      init_additions+="  - Enhanced integration setup and unload procedures\n"
-      init_additions+="  - Improved coordinator and platform initialization\n"
-    fi
-    
     if [[ -n "$init_additions" ]]; then
       detailed_changes+="#### __init__.py - Cleaner Restart Logic\n"
       detailed_changes+="$init_additions"
       detailed_changes+="  - Simplified daily restart scheduling logic\n\n"
-    # Report any changes to __init__.py even if no specific patterns match
-    else
-      detailed_changes+="#### __init__.py - Integration Updates\n"
-      detailed_changes+="  - Integration setup improvements\n\n"
     fi
   fi
   
@@ -657,34 +626,6 @@ build_changelog_from_range() {
     detailed_changes+="  - 🔄 **Same behavior** - Identical user experience and API interactions\n\n"
   fi
 
-  # If no specific changes detected, use generic analysis
-  if [[ -z "$detailed_changes" ]]; then
-    local files
-    mapfile -t files < <(git diff --name-only $range)
-    local have_config="" have_api="" have_setup="" have_consts="" have_meta="" have_i18n="" have_docs="" have_sensors="" have_coordinator=""
-    for f in "${files[@]}"; do
-      [[ "$f" =~ ^custom_components/contact_energy/config_flow\.py$ ]] && have_config=1
-      [[ "$f" =~ ^custom_components/contact_energy/api\.py$ ]] && have_api=1
-      [[ "$f" =~ ^custom_components/contact_energy/__init__\.py$ ]] && have_setup=1
-      [[ "$f" =~ ^custom_components/contact_energy/const\.py$ ]] && have_consts=1
-      [[ "$f" =~ ^(custom_components/contact_energy/manifest\.json|hacs\.json)$ ]] && have_meta=1
-      [[ "$f" =~ ^(custom_components/contact_energy/(strings\.json|translations/.+\.json))$ ]] && have_i18n=1
-      [[ "$f" =~ ^README\.md$ || "$f" =~ ^CHANGELOG\.md$ ]] && have_docs=1
-      [[ "$f" =~ ^custom_components/contact_energy/sensor\.py$ ]] && have_sensors=1
-      [[ "$f" =~ ^custom_components/contact_energy/coordinator\.py$ ]] && have_coordinator=1
-    done
-
-    if [[ -n "${have_config}" ]]; then detailed_changes+="- Config flow and validation improvements\n"; fi
-    if [[ -n "${have_api}" ]]; then detailed_changes+="- API client updates and enhancements\n"; fi
-    if [[ -n "${have_setup}" ]]; then detailed_changes+="- Integration setup/unload adjustments\n"; fi
-    if [[ -n "${have_consts}" ]]; then detailed_changes+="- Constants and configuration updates\n"; fi
-    if [[ -n "${have_meta}" ]]; then detailed_changes+="- Metadata and manifest updates\n"; fi
-    if [[ -n "${have_i18n}" ]]; then detailed_changes+="- User interface translations updated\n"; fi
-    if [[ -n "${have_docs}" ]]; then detailed_changes+="- Documentation updates\n"; fi
-    if [[ -n "${have_sensors}" ]]; then detailed_changes+="- Sensor platform implementation\n"; fi
-    if [[ -n "${have_coordinator}" ]]; then detailed_changes+="- Data coordination updates\n"; fi
-  fi
-
   local entry=""
   if [[ -n "$detailed_changes" ]]; then
     # Use Major Refactoring header only when actual refactoring patterns detected
@@ -700,7 +641,7 @@ build_changelog_from_range() {
   fi
 
   if [[ -z "$entry" ]]; then
-    entry="### Changes\n\nNo relevant changes detected."
+    entry="### Changes\n\n**Note:** Changes detected but require manual changelog entry for detailed description.\n"
   fi
   echo -e "$entry"
 }
@@ -716,7 +657,7 @@ build_changelog_from_working_changes() {
   local all_changed_files
   mapfile -t all_changed_files < <(git diff --name-only $range 2>/dev/null; git status --porcelain | awk '{print $2}')
   
-  # Check each file type for specific changes
+  # Check each file type for specific changes - only report if specific patterns found
   for file in "${all_changed_files[@]}"; do
     [[ -z "$file" ]] && continue
     case "$file" in
@@ -728,30 +669,12 @@ build_changelog_from_working_changes() {
         if git diff $range HEAD -- "$file" 2>/dev/null | grep -q "duplicate.*import\|import.*duplicate" || git diff HEAD -- "$file" 2>/dev/null | grep -q "duplicate.*import"; then
           detailed_changes+="- Removed duplicate import statements in config flow\n"
         fi
-        if [[ -z "$detailed_changes" ]]; then
-          detailed_changes+="- Config flow validation and UI improvements\n"
-        fi
-        ;;
-      custom_components/contact_energy/api.py)
-        detailed_changes+="- API client enhancements and authentication improvements\n"
-        ;;
-      custom_components/contact_energy/sensor.py)
-        detailed_changes+="- Energy Dashboard sensor implementation and statistics integration\n"
-        ;;
-      custom_components/contact_energy/coordinator.py)
-        detailed_changes+="- DataUpdateCoordinator implementation with 8-hour polling\n"
-        ;;
-      custom_components/contact_energy/__init__.py)
-        detailed_changes+="- Integration setup and platform initialization\n"
         ;;
       custom_components/contact_energy/strings.json|custom_components/contact_energy/translations/*)
         detailed_changes+="- User interface strings and translations updated\n"
         ;;
-      custom_components/contact_energy/manifest.json|hacs.json)
-        detailed_changes+="- Integration metadata and version updates\n"
-        ;;
-      README.md|CHANGELOG.md)
-        detailed_changes+="- Documentation and changelog updates\n"
+      README.md)
+        detailed_changes+="- Documentation updates\n"
         ;;
     esac
   done
@@ -770,7 +693,7 @@ build_changelog_from_working_changes() {
   fi
 
   if [[ -z "$entry" ]]; then
-    entry="No relevant changes."
+    entry="**Note:** Changes detected but require manual changelog entry for detailed description.\n"
   fi
   echo -e "$entry"
 }
