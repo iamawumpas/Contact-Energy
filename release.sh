@@ -200,6 +200,10 @@ build_changelog_from_range() {
       fi
       detailed_changes+="\n"
     fi
+  # Report any changes to const.py even if no specific patterns match
+  elif [[ -n "$const_numstat" ]]; then
+    detailed_changes+="#### const.py - Configuration Updates\n"
+    detailed_changes+="  - Configuration constants updated\n\n"
   fi
   
   # Check config_flow.py changes
@@ -231,6 +235,10 @@ build_changelog_from_range() {
       detailed_changes+="#### config_flow.py - Simplified Validation\n"
       detailed_changes+="$config_additions"
       detailed_changes+="  - Improved code organization and readability\n\n"
+    # Report any changes to config_flow.py even if no specific patterns match
+    else
+      detailed_changes+="#### config_flow.py - Configuration Flow Updates\n"
+      detailed_changes+="  - Configuration flow improvements\n\n"
     fi
   fi
   
@@ -282,6 +290,10 @@ build_changelog_from_range() {
       detailed_changes+="#### api.py - Simplified API Client\n"
       detailed_changes+="$api_additions"
       detailed_changes+="  - Improved code readability and maintainability\n\n"
+    # Report any changes to api.py even if no specific patterns match
+    else
+      detailed_changes+="#### api.py - API Client Updates\n"
+      detailed_changes+="  - API client improvements\n\n"
     fi
   fi
   
@@ -327,6 +339,10 @@ build_changelog_from_range() {
       detailed_changes+="#### coordinator.py - Streamlined Data Flow\n"
       detailed_changes+="$coord_additions"
       detailed_changes+="  - Cleaner, more predictable data flow to all sensor entities\n\n"
+    # Report any changes to coordinator.py even if no specific patterns match
+    else
+      detailed_changes+="#### coordinator.py - Coordinator Updates\n"
+      detailed_changes+="  - Data coordinator improvements\n\n"
     fi
   fi
 
@@ -348,7 +364,21 @@ build_changelog_from_range() {
         # Consider "major" if net reduction exceeds 100 lines
         if (( net > 100 )); then
           line_reduction="  - Significant code reduction in sensor.py: -${net} net lines (deleted ${del}, added ${ins})\n"
+        # Report any net change of 10+ lines
+        elif (( net > 10 )); then
+          sensor_additions+="  - Code reduction: -${net} net lines (deleted ${del}, added ${ins})\n"
+        elif (( net < -10 )); then
+          sensor_additions+="  - Code expansion: +${net#-} net lines (added ${ins}, deleted ${del})\n"
         fi
+      fi
+    fi
+    
+    # Detect new sensor classes
+    if echo "$sensor_diff" | grep -qE "^\\+class.*Sensor.*:\\|^\\+class Contact.*Sensor"; then
+      local new_sensors
+      new_sensors=$(echo "$sensor_diff" | grep -E "^\\+class.*Sensor.*:" | sed 's/^+class //; s/(.*://' | tr '\n' ',' | sed 's/,$//')
+      if [[ -n "$new_sensors" ]]; then
+        sensor_additions+="  - Added new sensor(s): $new_sensors\n"
       fi
     fi
     
@@ -502,6 +532,10 @@ build_changelog_from_range() {
       detailed_changes+="#### __init__.py - Cleaner Restart Logic\n"
       detailed_changes+="$init_additions"
       detailed_changes+="  - Simplified daily restart scheduling logic\n\n"
+    # Report any changes to __init__.py even if no specific patterns match
+    else
+      detailed_changes+="#### __init__.py - Integration Updates\n"
+      detailed_changes+="  - Integration setup improvements\n\n"
     fi
   fi
   
@@ -511,10 +545,22 @@ build_changelog_from_range() {
     has_major_refactoring="1"
   fi
   
-  # Check strings/translations changes
+  # Check strings/translations changes (always report if changed)
   if git diff $range --name-only | grep -q "strings.json\|translations"; then
     detailed_changes+="#### Translations\n"
     detailed_changes+="  - Updated user interface strings and translations\n\n"
+  fi
+  
+  # Check assets folder changes (always report if changed)
+  if git diff $range --name-only | grep -q "custom_components/contact_energy/assets/"; then
+    local assets_changes
+    assets_changes=$(git diff $range --name-only | grep "custom_components/contact_energy/assets/" | wc -l)
+    detailed_changes+="#### Assets\n"
+    detailed_changes+="  - Updated ApexCharts card configuration examples\n"
+    if (( assets_changes > 1 )); then
+      detailed_changes+="  - Modified $assets_changes asset files\n"
+    fi
+    detailed_changes+="\n"
   fi
   
   # Check README and documentation changes

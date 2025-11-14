@@ -4,7 +4,10 @@
 
 ### Changes
 
-- Sensor platform implementation
+#### sensor.py - Major Consolidation
+  - Added new sensor(s): ContactEnergyEmailSensor
+  - New sensor displays account email address from API
+  - Email sensor available for use in templates and UI dashboards
 
 
 ## 0.4.12
