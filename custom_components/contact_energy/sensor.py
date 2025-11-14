@@ -1108,7 +1108,6 @@ class ContactEnergyAverageDailyUsage7DaysSensor(ContactEnergyConvenienceSensorBa
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_icon = "mdi:chart-line"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
 
     def _date_range(self) -> tuple[date, date]:
         end = datetime.now().date() - timedelta(days=1)
@@ -1141,7 +1140,6 @@ class ContactEnergyAverageDailyUsage30DaysSensor(ContactEnergyConvenienceSensorB
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_icon = "mdi:chart-line"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
 
     def _date_range(self) -> tuple[date, date]:
         end = datetime.now().date() - timedelta(days=1)
@@ -1173,7 +1171,6 @@ class ContactEnergyUsageTrendSensor(ContactEnergyConvenienceSensorBase):
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_usage_trend"
         self._attr_icon = "mdi:trending-up"
         self._attr_native_unit_of_measurement = "%"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._previous_period_kwh = 0.0
         self._current_period_kwh = 0.0
 
@@ -1238,7 +1235,6 @@ class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
         self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_native_unit_of_measurement = "NZD/kWh"
         self._attr_icon = "mdi:cash"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._total_kwh = 0.0
         self._total_cost = 0.0
 
