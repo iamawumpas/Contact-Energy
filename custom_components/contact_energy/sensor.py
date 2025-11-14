@@ -85,6 +85,11 @@ async def async_setup_entry(
         ContactEnergyFullAddressSensor(coordinator, contract_icp),
         ContactEnergyMeterRegisterSensor(coordinator, contract_icp),
         ContactEnergyContractDetailsSensor(coordinator, contract_icp),
+        # Phase 2: Analytics sensors
+        ContactEnergyAverageDailyUsage7DaysSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyAverageDailyUsage30DaysSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyUsageTrendSensor(coordinator, account_id, contract_id, contract_icp),
+        ContactEnergyCostPerKwhSensor(coordinator, account_id, contract_id, contract_icp),
     ])
 
     # Add convenience usage/cost sensors
@@ -981,6 +986,182 @@ class ContactEnergyContractDetailsSensor(ContactEnergyAccountSensorBase):
             "meter_type": contract.get("meterType"),
             "plan_code": contract.get("planCode"),
             "plan_name": contract.get("planName"),
+        }
+
+
+# -----------------------------------------
+# Phase 2: Analytics sensors
+# -----------------------------------------
+
+class ContactEnergyAverageDailyUsage7DaysSensor(ContactEnergyConvenienceSensorBase):
+    """Sensor showing average daily usage over the last 7 days."""
+    
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Average Daily Usage (7 Days) ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_avg_daily_usage_7d"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:chart-line"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    def _date_range(self) -> tuple[date, date]:
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=6)
+        return start, end
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        # Calculate average (7 days of data)
+        self._state = round(kwh / 7.0, 2) if kwh > 0 else 0.0
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "period": "7 days",
+            "calculation": "Average daily usage over last 7 complete days",
+        }
+
+
+class ContactEnergyAverageDailyUsage30DaysSensor(ContactEnergyConvenienceSensorBase):
+    """Sensor showing average daily usage over the last 30 days."""
+    
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Average Daily Usage (30 Days) ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_avg_daily_usage_30d"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:chart-line"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    def _date_range(self) -> tuple[date, date]:
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=29)
+        return start, end
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        # Calculate average (30 days of data)
+        self._state = round(kwh / 30.0, 2) if kwh > 0 else 0.0
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "period": "30 days",
+            "calculation": "Average daily usage over last 30 complete days",
+        }
+
+
+class ContactEnergyUsageTrendSensor(ContactEnergyConvenienceSensorBase):
+    """Sensor showing usage trend (comparing last 7 days vs previous 7 days)."""
+    
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Usage Trend ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_usage_trend"
+        self._attr_icon = "mdi:trending-up"
+        self._attr_native_unit_of_measurement = "%"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._previous_period_kwh = 0.0
+        self._current_period_kwh = 0.0
+
+    def _date_range(self) -> tuple[date, date]:
+        # Return last 14 days to get both periods
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=13)
+        return start, end
+
+    async def _recompute(self) -> None:
+        # Get last 14 days split into two periods
+        end = datetime.now().date() - timedelta(days=1)
+        
+        # Current period: last 7 days
+        current_start = end - timedelta(days=6)
+        current_end = end
+        current_kwh, _, _ = await self._get_usage_for_date_range(current_start, current_end)
+        
+        # Previous period: 7 days before that
+        previous_start = end - timedelta(days=13)
+        previous_end = end - timedelta(days=7)
+        previous_kwh, _, _ = await self._get_usage_for_date_range(previous_start, previous_end)
+        
+        self._current_period_kwh = current_kwh
+        self._previous_period_kwh = previous_kwh
+        
+        # Calculate percentage change
+        if previous_kwh > 0:
+            change = ((current_kwh - previous_kwh) / previous_kwh) * 100
+            self._state = round(change, 1)
+        else:
+            self._state = 0.0
+        
+        self.async_write_ha_state()
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        # Not used - we override _recompute instead
+        pass
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        trend_direction = "increasing" if self._state > 0 else "decreasing" if self._state < 0 else "stable"
+        return {
+            "current_period_kwh": round(self._current_period_kwh, 2),
+            "previous_period_kwh": round(self._previous_period_kwh, 2),
+            "trend_direction": trend_direction,
+            "period_comparison": "Last 7 days vs previous 7 days",
+        }
+
+
+class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
+    """Sensor showing average cost per kWh over the last 30 days."""
+    
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Cost Per kWh (30 Days) ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_cost_per_kwh"
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_native_unit_of_measurement = "NZD/kWh"
+        self._attr_icon = "mdi:cash"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._total_kwh = 0.0
+        self._total_cost = 0.0
+
+    def _date_range(self) -> tuple[date, date]:
+        end = datetime.now().date() - timedelta(days=1)
+        start = end - timedelta(days=29)
+        return start, end
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._total_kwh = kwh
+        self._total_cost = cost
+        # Calculate cost per kWh (excluding free energy)
+        if kwh > 0:
+            self._state = round(cost / kwh, 4)
+        else:
+            self._state = 0.0
+
+    @property
+    def native_value(self) -> float:
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "period": "30 days",
+            "total_kwh": round(self._total_kwh, 2),
+            "total_cost": round(self._total_cost, 2),
+            "calculation": "Total cost / Total kWh (paid usage only)",
         }
 
 
