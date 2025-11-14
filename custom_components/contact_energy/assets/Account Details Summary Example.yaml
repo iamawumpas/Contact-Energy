@@ -1,0 +1,167 @@
+type: markdown
+content: |-
+  {% set address = states('sensor.contact_energy_service_address_0000000966tr348') %}
+
+  {# Define all entity names that should be formatted as currency ($X.XX) #}
+  {% set currency_names = [
+    'Outstanding Balance',
+    'Current Month\'s Cost so far',
+    'Daily Charge Rate',
+    'Estimated Next Bill Amount',
+    'Last Month\'s Cost',
+    'Last Payment Amount',
+    'Off Peak Rate',
+    'Peak Rate',
+    'Today Cost',
+    'Yesterday Cost'
+  ] %}
+
+  {# Define all entity names that should have the kWh unit appended #}
+  {% set usage_names = [
+    'Current Month Usage',
+    'Last 7 days\' usage',
+    'Last 30 days\' usage',
+    'Last Month\'s Usage',
+    'Today Free Usage',
+    'Today Usage',
+    'Usage',
+    'Yesterday Free Usage',
+    'Yesterday Usage',
+    'Meter Register'
+  ] %}
+
+  {# Define all entity names that should be formatted as a human-readable date #}
+  {% set date_names = [
+    'Next Bill Date',
+    'Next Reading Date',
+    'Last Read Date'
+  ] %}
+
+  {# Define entity names that should be highlighted in light blue #}
+  {% set highlight_names = [
+    'Payment History',
+    'Full Address',
+    'Meter Register',
+    'Contract Details'
+  ] %}
+
+  {# RESTRUCTURED: Define groups and their entities #}
+  {% set groups = [
+    ('Account Details', [
+      ('Customer Name', 'sensor.contact_energy_customer_name_0000000966tr348'),
+      ('Email', 'sensor.contact_energy_email_0000000966tr348'),
+      ('Account Number', 'sensor.contact_energy_account_number_0000000966tr348'),
+      ('Plan Name', 'sensor.contact_energy_plan_name_0000000966tr348'),
+      ('Meter Number', 'sensor.contact_energy_meter_serial_0000000966tr348'),
+      ('Full Address', 'sensor.contact_energy_full_address_0000000966tr348'),
+      ('Contract Details', 'sensor.contact_energy_contract_details_0000000966tr348')
+    ]),
+    ('Billing', [
+      ('Outstanding Balance', 'sensor.contact_energy_account_balance_0000000966tr348'),
+      ('Estimated Next Bill Amount', 'sensor.contact_energy_estimated_next_bill_0000000966tr348'),
+      ('Next Bill Date', 'sensor.contact_energy_next_bill_date'),
+      ('Next Reading Date', 'sensor.contact_energy_next_read_date_0000000966tr348'),
+      ('Last Read Date', 'sensor.contact_energy_last_read_date_0000000966tr348'),
+      ('Last Payment Amount', 'sensor.contact_energy_last_payment_0000000966tr348'),
+      ('Payment History', 'sensor.contact_energy_payment_history_0000000966tr348')
+    ]),
+    ('Rates', [
+      ('Daily Charge Rate', 'sensor.contact_energy_daily_charge_rate_0000000966tr348'),
+      ('Peak Rate', 'sensor.contact_energy_peak_rate_0000000966tr348'),
+      ('Off Peak Rate', 'sensor.contact_energy_off_peak_rate_0000000966tr348'),
+      ('Free Hours', 'sensor.contact_energy_free_hours_0000000966tr348')
+    ]),
+    ('Usage Summary', [
+      ('Current Month\'s Cost so far', 'sensor.contact_energy_current_month_cost_0000000966tr348'),
+      ('Current Month Usage', 'sensor.contact_energy_current_month_usage_0000000966tr348'),
+      ('Today Cost', 'sensor.contact_energy_today_cost_0000000966tr348'),
+      ('Today Usage', 'sensor.contact_energy_today_usage_0000000966tr348'),
+      ('Today Free Usage', 'sensor.contact_energy_today_free_usage_0000000966tr348'),
+      ('Yesterday Cost', 'sensor.contact_energy_yesterday_cost_0000000966tr348'),
+      ('Yesterday Usage', 'sensor.contact_energy_yesterday_usage_0000000966tr348'),
+      ('Yesterday Free Usage', 'sensor.contact_energy_yesterday_free_usage_0000000966tr348'),
+      ('Last 7 days\' usage', 'sensor.contact_energy_last_7_days_usage_0000000966tr348'),
+      ('Last 30 days\' usage', 'sensor.contact_energy_last_30_days_usage_0000000966tr348'),
+      ('Last Month\'s Cost', 'sensor.contact_energy_last_month_cost_0000000966tr348'),
+      ('Last Month\'s Usage', 'sensor.contact_energy_last_month_usage_0000000966tr348'),
+      ('Meter Register', 'sensor.contact_energy_meter_register_0000000966tr348'),
+      ('Usage', 'sensor.contact_energy_usage')
+    ])
+  ] %}
+  {% set content_html = namespace(rows="") %}
+
+  {# Iterate over groups and their entities #}
+  {% for group_name, entities in groups %}
+    
+    {# Add an empty row for separation, but skip it for the very first group #}
+    {% if not loop.first %}
+      {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="padding: 0px 8px;"><br></td></tr>' %}
+    {% endif %}
+
+    {# Insert a full-width header row for the group name (Simple bold header with gray background) #}
+    {% set header_style = 'text-align: left; padding: 6px 8px; font-weight: bold; background-color: rgba(120, 120, 120, 0.1);' %}
+    {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="' + header_style + '"><strong>' + group_name + '</strong></td></tr>' %}
+    
+    {# Iterate over the entities within the current group #}
+    {% for name, entity_id in entities %}
+      {% set value = states(entity_id) %}
+      
+      {% set formatted_value = value %}
+
+      {# Special Formatting Logic #}
+      {% if value not in ['unknown', 'unavailable', 'none'] and value is not none %}
+        {# Handle Currency Formatting ($X.XX) #}
+        {% if name in currency_names %}
+          {% set formatted_value = ('$ %.2f' | format(value | float(0))) %}
+        
+        {# Handle Usage Formatting (X kWh) #}
+        {% elif name in usage_names %}
+          {% set formatted_value = ((value | float(0)) | string) + ' kWh' %}
+
+        {# Handle Date Formatting (D MMM YYYY) #}
+        {% elif name in date_names %}
+          {# Use the format '18 Oct 2025' - Home Assistant automatically manages timezones here #}
+          {% set formatted_value = (value | as_timestamp(default=0) | timestamp_custom('%e %b %Y')) if value not in ['unknown','unavailable'] else '—' %}
+        
+        {# Handle Payment History - show count #}
+        {% elif name == 'Payment History' %}
+          {% set formatted_value = (value | string) + ' payments' %}
+        
+        {# Removed Customer Name formatting logic #}
+        {% endif %}
+      {% else %}
+        {% set formatted_value = '—' %}
+      {% endif %}
+      
+      {# Apply light blue background to new sensors #}
+      {% if name in highlight_names %}
+        {% set row_style = 'background-color: rgba(173, 216, 230, 0.3);' %}
+      {% else %}
+        {% set row_style = '' %}
+      {% endif %}
+      
+      {# Using the <small> tag to force a reduced font size via standard HTML structure #}
+      {% set content_html.rows = content_html.rows + '<tr style="' + row_style + '"><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
+    {% endfor %}
+  {% endfor %}
+
+  {# APPLY ADDRESS FORMATTING HERE: Replaces ", " with ",<br>" to force line breaks after commas #}
+
+
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+    <tr>
+      <th> </th><th align="right">  <h3>{{ address | replace(', ','<br>') }}</h3>
+    </tr>
+    </tr>
+    <tbody>
+      {{ content_html.rows }}
+    </tbody>
+  </table>
+text_only: true
+card_mod:
+  style:
+    .: |
+      ha-card {
+        height: 250px !important;
+        overflow-y: auto !important;
+      }
