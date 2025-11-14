@@ -4,13 +4,43 @@
 
 ### Changes
 
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Modified 5 asset files
+#### Documentation - Wiki Enhancements & Comprehensive YAML Examples
+  - **Created "Sensor YAML Examples" wiki page** with ready-to-use YAML snippets for all 40+ sensors organized by category:
+    - Usage Statistics (Daily Usage, Yesterday Usage, Today Usage, Free Usage sensors)
+    - Analytics (Average Daily Usage 7/30 days, Usage Trend, Cost Per kWh)
+    - Forecasting & Anomaly Detection (Forecast Daily Usage, Historical Usage Anomaly)
+    - Account & Billing (Account Balance, Estimated Next Bill, Next Bill Date, Payment History, Contract Details)
+    - Convenience (Service Address, Full Address, Plan Name, Customer Name, Email, Account Number)
+    - Chart Sensors (Hourly/Daily/Monthly Paid/Free Usage)
+  - **"When to use" guidance** added to each category explaining optimal use cases and scenarios
+  - **[ICP] replacement helper section** with step-by-step instructions and link to Configuration page for finding ICP suffix
+  - **Added "Account Details Summary Card" wiki page** with complete markdown card template featuring:
+    - Comprehensive account information table (customer details, billing, rates, usage statistics)
+    - Collapsible YAML code block for easy copy/paste
+    - Instructions for ICP replacement
+    - Link to raw YAML file download
+    - Cross-referenced from Dashboard Examples and Sensor YAML Examples pages
+  - **Enhanced cross-linking**: Added "See Also" links across wiki pages (Home, Dashboard-Examples, Forecasting-and-Alerts, Sensor-Reference) for improved navigation and discoverability
 
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Added example configurations for hourly, daily, and monthly charts
+#### Assets - Repository Cleanup
+  - **Removed duplicate YAML examples** from repo assets (migrated to wiki):
+    - ApexCharts Card - Daily usage example.yaml
+    - ApexCharts Card - Hourly usage example.yaml
+    - ApexCharts Card - Monthly usage example.yaml
+    - Automation - Usage Anomaly Alert.yaml
+    - Account Details Summary Example.yaml
+  - **Retained visual assets**: All images (image.png, image-1.png, image-2.png, image-4.png) and logo.svg kept in assets for wiki/documentation references
+  - **Centralized documentation**: All YAML examples now embedded in wiki pages using collapsible `<details>` sections
+
+#### Benefits
+  - **Single source of truth**: Wiki hosts all examples, eliminating duplication between repo files and documentation
+  - **Improved copy/paste workflow**: Collapsible code blocks in wiki pages provide immediate access without file navigation
+  - **Better discoverability**: Categorized examples with "When to use" notes help users find the right sensor for their needs
+  - **Easier maintenance**: Updating examples requires only wiki edits, no repo commits needed
+  - **Leaner repository**: Reduced asset directory clutter while maintaining essential visual resources
+
+#### Why These Changes?
+Previously, YAML examples existed in both repo assets and wiki pages, causing duplication and risk of drift between versions. The 0.7.3 wiki migration moved documentation but left asset files untouched. This release completes the migration by centralizing all YAML examples in the wiki, making them easier to discover, copy, and maintain while keeping the repository focused on integration code and essential visual assets.
 
 
 ## 0.7.4
