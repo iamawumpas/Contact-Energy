@@ -1,7 +1,6 @@
 type: custom:apexcharts-card
 all_series_config:
   stroke_width: 2
-  type: column
 update_interval: 6h
 header:
   show: true
@@ -61,6 +60,7 @@ apex_config:
 series:
   - entity: sensor.contact_energy_chart_daily_0000000966tr348
     name: Paid Usage (kWh)
+    type: column
     show:
       legend_value: false
     data_generator: |
@@ -76,6 +76,7 @@ series:
       });
   - entity: sensor.contact_energy_chart_daily_free_0000000966tr348
     name: Free Usage (kWh)
+    type: column
     show:
       legend_value: false
     data_generator: |
@@ -91,6 +92,15 @@ series:
         date.setUTCHours(0, 0, 0, 0);
         return [date.getTime(), parseFloat(deltaValue.toFixed(1))];
       });
+  - entity: sensor.contact_energy_average_daily_usage_7_days_0000000966tr348
+    name: 7-Day Average
+    type: line
+    stroke_width: 3
+    color: green
+    show:
+      legend_value: false
+      in_header: false
+    curve: smooth
 card_mod:
   style: |
     .apexcharts-xaxis-label {
