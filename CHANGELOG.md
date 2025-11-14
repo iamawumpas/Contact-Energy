@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.15
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - Energy Dashboard sensor implementation and statistics integration
+
+
 ## 0.4.14
 
 ### Changes
