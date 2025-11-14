@@ -5,11 +5,11 @@
 ### Changes
 
 #### Assets
-  - Updated ApexCharts card configuration examples
-
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Added example configurations for hourly, daily, and monthly charts
+  - Fixed hourly usage chart example to use delta values directly (removed incorrect delta calculation)
+  - Added date filtering to optimize y-axis auto-scaling for visible data range
+  - Swapped series order so Paid usage displays on top of Free usage
+  - Added explicit color mapping: Paid (orange), Free (blue)
+  - Changed update interval from 12h to 6h for more frequent updates
 
 
 ## 0.4.15
