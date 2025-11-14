@@ -4,7 +4,15 @@
 
 ### Changes
 
-**Note:** Changes detected but require manual changelog entry for detailed description.
+#### Bug Fix: Phase 2 Sensor State Class Warnings
+  - Fixed Home Assistant warnings for Phase 2 analytics sensors using incompatible `state_class='measurement'`
+  - Removed `state_class` from Average Daily Usage (7 Days) sensor
+  - Removed `state_class` from Average Daily Usage (30 Days) sensor
+  - Removed `state_class` from Usage Trend sensor
+  - Removed `state_class` from Cost Per kWh (30 Days) sensor
+  - These sensors represent computed averages and ratios, not cumulative measurements
+  - Home Assistant requires `state_class='total'` or `'total_increasing'` for energy/monetary device classes, or no state_class for calculated values
+  - Resolves warnings: "Entity is using state class 'measurement' which is impossible considering device class"
 
 
 ## 0.6.1
