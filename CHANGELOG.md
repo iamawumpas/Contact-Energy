@@ -4,17 +4,14 @@
 
 ### Changes
 
-#### Documentation - Wiki Enhancements
-  - Added "Sensor YAML Examples" wiki page with per-sensor YAML snippets, categorized sections, and "When to use" notes
-  - Added "[ICP] replacement" helper with Configuration link and example
-  - Cross-linked related pages (Dashboard-Examples, Forecasting-and-Alerts) to the new page
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Modified 5 asset files
 
-#### Assets - Repo Cleanup
-  - Removed ApexCharts YAML examples and Usage Anomaly Alert automation from repo assets; examples now live in the wiki
-  - Kept Account Details Summary Example.yaml and all images/logo assets
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Added example configurations for hourly, daily, and monthly charts
 
-#### Why These Changes?
-Centralizes examples in the wiki to reduce duplication and drift, keeps the repository lean, and improves discoverability and copy-paste workflow.
 
 ## 0.7.4
 
