@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2
+
+### Changes
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+
+#### Visual Assets
+  - Updated integration screenshots and visual assets
+
+
 ## 0.5.1
 
 ### Changes
