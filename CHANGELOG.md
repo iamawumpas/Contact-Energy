@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - **Performance optimizations**:
+    - Optimized startup delays using consistent MD5 hashing
+
+
+#### Documentation
+  - Updated hourly chart documentation for 14-day retention
+
+
 ## 0.6.0
 
 ### Changes
