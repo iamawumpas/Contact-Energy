@@ -69,6 +69,7 @@ async def async_setup_entry(
         ContactEnergyCustomerNameSensor(coordinator, contract_icp),
         ContactEnergyPlanNameSensor(coordinator, contract_icp),
         ContactEnergyAccountNumberSensor(coordinator, contract_icp),
+        ContactEnergyEmailSensor(coordinator, contract_icp),
         ContactEnergyServiceAddressSensor(coordinator, contract_icp),
         ContactEnergyMeterSerialSensor(coordinator, contract_icp),
         ContactEnergyNextReadDateSensor(coordinator, contract_icp),
@@ -579,6 +580,20 @@ class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
         account_data = self._get_account_data()
         # API structure: accountDetail.id (this is the account number)
         return account_data.get("id")
+
+
+class ContactEnergyEmailSensor(ContactEnergyAccountSensorBase):
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        super().__init__(coordinator, contract_icp)
+        self._attr_name = f"Contact Energy Email ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_email"
+        self._attr_icon = "mdi:email"
+
+    @property
+    def native_value(self) -> str | None:
+        account_data = self._get_account_data()
+        # API structure: accountDetail.email
+        return account_data.get("email")
 
 
 class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
