@@ -892,14 +892,18 @@ main() {
   # Enforce release guardrails
   check_release_guards "$version"
 
-  # Step 1: Use agent-provided summary if available
+  # Step 1: Generate or load changelog entry
   local entry_text=""
+  local summary_draft_file=".release_summary_${version}.txt"
+  
   if [[ -n "$summary_file" && -f "$summary_file" ]]; then
+    # Use provided summary file
     entry_text=$(cat "$summary_file")
   elif [[ -n "${AGENT_CHANGE_SUMMARY:-}" ]]; then
+    # Use environment variable summary
     entry_text="${AGENT_CHANGE_SUMMARY}"
   else
-    # Fallback: Compute changelog from code analysis
+    # Generate changelog from code analysis
     local prev_tag
     prev_tag=$(git tag --sort=version:refname | tail -n 1 || true)
     local range
@@ -913,19 +917,77 @@ main() {
     else
       entry_text=$(build_changelog_from_working_changes "$range")
     fi
+    
+    # Save draft for review
+    echo -e "$entry_text" > "$summary_draft_file"
   fi
 
-  # Step 2: Write changelog with the agent summary or fallback
+  # Step 2: Interactive approval (unless RELEASE_APPROVED=1)
+  if [[ "${RELEASE_APPROVED:-}" != "1" && -f "$summary_draft_file" ]]; then
+    echo "╔════════════════════════════════════════════════════════════════════════════╗"
+    echo "║                        📋 CHANGELOG DRAFT FOR v${version}                        ║"
+    echo "╚════════════════════════════════════════════════════════════════════════════╝"
+    echo ""
+    cat "$summary_draft_file"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "📝 Review the changelog above. You can:"
+    echo "   1. Type 'approve' or 'a' to continue with this changelog"
+    echo "   2. Type 'improve' or 'i' to ask GitHub Copilot to enhance it"
+    echo "   3. Edit $summary_draft_file manually, then type 'approve'"
+    echo "   4. Press Ctrl+C to cancel the release"
+    echo ""
+    echo -n "Your choice (approve/improve/edit): "
+    read -r user_choice
+    
+    case "${user_choice,,}" in
+      approve|a)
+        echo "✅ Changelog approved. Continuing with release..."
+        entry_text=$(cat "$summary_draft_file")
+        ;;
+      improve|i)
+        echo ""
+        echo "🤖 To improve the changelog:"
+        echo "   1. Copy the content from $summary_draft_file"
+        echo "   2. Ask GitHub Copilot: 'Improve this changelog entry for v${version}'"
+        echo "   3. Paste the improved version back into $summary_draft_file"
+        echo "   4. Run: RELEASE_APPROVED=1 ./release.sh $version"
+        echo ""
+        echo "📄 Draft saved to: $summary_draft_file"
+        exit 0
+        ;;
+      edit|e)
+        echo ""
+        echo "📝 Edit $summary_draft_file then run:"
+        echo "   RELEASE_APPROVED=1 ./release.sh $version"
+        echo ""
+        exit 0
+        ;;
+      *)
+        echo "❌ Invalid choice. Release cancelled."
+        exit 1
+        ;;
+    esac
+  elif [[ -f "$summary_draft_file" ]]; then
+    # RELEASE_APPROVED=1, use the draft
+    entry_text=$(cat "$summary_draft_file")
+  fi
+
+  # Step 3: Write changelog with the approved summary
   write_changelog_section "$version" "$entry_text"
 
-  # Step 3: Update version numbers in files
+  # Step 4: Update version numbers in files
   update_version_in_files "$version"
 
-  # Step 4: Commit all changes including the changelog
+  # Step 5: Commit all changes including the changelog
   commit_and_release "$version" "$entry_text"
 
-  # Cleanup approval file to avoid accidental re-use
-  rm -f .allow_release || true
+  # Step 6: Cleanup temporary files
+  rm -f .allow_release "$summary_draft_file" 2>/dev/null || true
+  
+  echo ""
+  echo "🎉 Release v${version} complete!"
 }
 
 main "$@"
