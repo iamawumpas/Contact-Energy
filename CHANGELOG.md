@@ -4,20 +4,9 @@
 
 ### Changes
 
-#### Performance: State Persistence for Phase 3 Sensors
-  - **State restoration implemented:** Both forecast and anomaly sensors now persist computed values across Home Assistant restarts using `RestoreEntity`.
-  - **Smart recalculation:** Sensors only recalculate when data is stale (>1 day old) or never computed, dramatically improving restart performance.
-  - **Timestamp tracking:** Added `last_computed` attribute to both sensors showing when data was last calculated (ISO format).
-  - **Instant restarts:** After initial computation, subsequent HA restarts no longer fetch 30 days of historical data unless necessary.
-  - **Eliminated blocking warnings:** Resolves "Setup taking over 10 seconds" warnings by deferring initial computation and caching results.
+#### sensor.py - Major Consolidation
+  - Code expansion: +39 net lines (added 42, deleted 3)
 
-#### Technical Details
-  - Forecast sensor: Restores state, mean_30d, std_30d, last_observation, and last_computed timestamp
-  - Anomaly sensor: Restores is_on state, z_score, baseline statistics, today_usage, and last_computed timestamp
-  - Both sensors check timestamp on coordinator updates and skip unnecessary recomputation
-  - 5-second deferred initialization only triggers if data is missing or >24 hours old
-
-This release significantly improves integration performance, especially for users with frequent HA restarts or automations that reload integrations.
 
 ## 0.7.1
 
