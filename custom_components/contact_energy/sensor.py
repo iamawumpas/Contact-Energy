@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorDeviceClass,
@@ -1273,7 +1274,7 @@ class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
 # Phase 3: Forecasting sensor (EMA)
 # -----------------------------------------
 
-class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
+class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, RestoreEntity, SensorEntity):
     """Forecast next day's usage using EMA over last 30 complete days."""
 
     def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
@@ -1288,6 +1289,7 @@ class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
         self._mean: float | None = None
         self._std: float | None = None
         self._last_observation: float | None = None
+        self._last_computed: datetime | None = None
 
         self._attr_name = f"Contact Energy Forecast Daily Usage ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_forecast_daily_usage"
@@ -1323,22 +1325,51 @@ class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
             "last_observation": round(self._last_observation, 3) if self._last_observation is not None else None,
             "lower_2sigma": round(max(0.0, (self._mean or 0.0) - 2 * (self._std or 0.0)), 3) if self._mean is not None and self._std is not None else None,
             "upper_2sigma": round((self._mean or 0.0) + 2 * (self._std or 0.0), 3) if self._mean is not None and self._std is not None else None,
+            "last_computed": self._last_computed.isoformat() if self._last_computed else None,
             "calculation": "EMA forecast of next day based on last 30 complete days (paid usage only)",
         }
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        # Defer initial computation to avoid blocking HA startup (fetches 30 days of data)
-        async def _delayed_recompute() -> None:
+        
+        # Restore previous state if available
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (None, "unknown", "unavailable"):
             try:
-                await asyncio.sleep(5)
-            except Exception:  # noqa: BLE001
-                pass
-            await self._recompute()
-        self.hass.async_create_task(_delayed_recompute())
+                self._state = float(last_state.state)
+                attrs = last_state.attributes
+                self._mean = attrs.get("mean_30d")
+                self._std = attrs.get("std_30d")
+                self._last_observation = attrs.get("last_observation")
+                last_computed_str = attrs.get("last_computed")
+                if last_computed_str:
+                    self._last_computed = datetime.fromisoformat(last_computed_str)
+                _LOGGER.debug("Restored forecast state from %s", last_computed_str)
+            except (ValueError, TypeError) as e:
+                _LOGGER.warning("Could not restore forecast state: %s", e)
+        
+        # Schedule recompute: immediately if never computed or stale (>1 day), else defer
+        should_recompute_now = (
+            self._last_computed is None or 
+            (datetime.now() - self._last_computed) > timedelta(days=1)
+        )
+        
+        if should_recompute_now:
+            async def _delayed_recompute() -> None:
+                try:
+                    await asyncio.sleep(5)
+                except Exception:  # noqa: BLE001
+                    pass
+                await self._recompute()
+            self.hass.async_create_task(_delayed_recompute())
+        else:
+            # Data is fresh, just update display
+            self.async_write_ha_state()
 
     def _handle_coordinator_update(self) -> None:
-        self.hass.async_create_task(self._recompute())
+        # Only recompute if data is stale (>1 day old)
+        if self._last_computed is None or (datetime.now() - self._last_computed) > timedelta(days=1):
+            self.hass.async_create_task(self._recompute())
 
     async def _fetch_daily_paid_usage(self, for_date: date) -> float:
         total = 0.0
@@ -1389,6 +1420,7 @@ class ContactEnergyForecastDailyUsageSensor(CoordinatorEntity, SensorEntity):
         self._std = std
         self._last_observation = series[-1]
         self._state = round(ema, 3)
+        self._last_computed = datetime.now()
         self.async_write_ha_state()
 
 

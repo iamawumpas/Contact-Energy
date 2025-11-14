@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, CONF_ACCOUNT_ID, CONF_CONTRACT_ID, CONF_CONTRACT_ICP
 from .coordinator import ContactEnergyCoordinator
@@ -38,7 +39,7 @@ async def async_setup_entry(
     async_add_entities(entities, False)
 
 
-class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, RestoreEntity, BinarySensorEntity):
     """Binary sensor that flags historical usage anomalies (z-score) when new data arrives."""
 
     def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
@@ -53,6 +54,7 @@ class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensor
         self._baseline_mean: Optional[float] = None
         self._baseline_std: Optional[float] = None
         self._today_usage: Optional[float] = None
+        self._last_computed: Optional[datetime] = None
 
         self._attr_name = f"Contact Energy Historical Usage Anomaly ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_historical_usage_anomaly"
@@ -81,6 +83,7 @@ class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensor
             "baseline_mean": round(self._baseline_mean, 3) if self._baseline_mean is not None else None,
             "baseline_std": round(self._baseline_std, 3) if self._baseline_std is not None else None,
             "today_usage": round(self._today_usage, 3) if self._today_usage is not None else None,
+            "last_computed": self._last_computed.isoformat() if self._last_computed else None,
             "calculation": "Historical anomaly detected when new delayed usage data arrives and z-score exceeds threshold vs last 30 complete days.",
         }
 
@@ -90,17 +93,46 @@ class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensor
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        # Defer initial computation until after HA startup to avoid blocking
-        async def _delayed_recompute() -> None:
+        
+        # Restore previous state if available
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (None, "unknown", "unavailable"):
             try:
-                await asyncio.sleep(5)
-            except Exception:  # noqa: BLE001
-                pass
-            await self._recompute()
-        self.hass.async_create_task(_delayed_recompute())
+                self._is_on = last_state.state == "on"
+                attrs = last_state.attributes
+                self._z_score = attrs.get("z_score")
+                self._baseline_mean = attrs.get("baseline_mean")
+                self._baseline_std = attrs.get("baseline_std")
+                self._today_usage = attrs.get("today_usage")
+                last_computed_str = attrs.get("last_computed")
+                if last_computed_str:
+                    self._last_computed = datetime.fromisoformat(last_computed_str)
+                _LOGGER.debug("Restored anomaly state from %s", last_computed_str)
+            except (ValueError, TypeError) as e:
+                _LOGGER.warning("Could not restore anomaly state: %s", e)
+        
+        # Schedule recompute: immediately if never computed or stale (>1 day), else defer
+        should_recompute_now = (
+            self._last_computed is None or 
+            (datetime.now() - self._last_computed) > timedelta(days=1)
+        )
+        
+        if should_recompute_now:
+            async def _delayed_recompute() -> None:
+                try:
+                    await asyncio.sleep(5)
+                except Exception:  # noqa: BLE001
+                    pass
+                await self._recompute()
+            self.hass.async_create_task(_delayed_recompute())
+        else:
+            # Data is fresh, just update display
+            self.async_write_ha_state()
 
     def _handle_coordinator_update(self) -> None:
-        self.hass.async_create_task(self._recompute())
+        # Only recompute if data is stale (>1 day old)
+        if self._last_computed is None or (datetime.now() - self._last_computed) > timedelta(days=1):
+            self.hass.async_create_task(self._recompute())
 
     async def _fetch_daily_paid_usage(self, for_date: date) -> float:
         total = 0.0
@@ -154,4 +186,5 @@ class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensor
             z = 0.0
         self._z_score = z
         self._is_on = z > self._threshold
+        self._last_computed = datetime.now()
         self.async_write_ha_state()
