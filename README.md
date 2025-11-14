@@ -132,6 +132,26 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 
 Once configured, the integration will begin fetching and displaying your account and usage data.
 
+### Multiple Properties or Accounts
+
+**The integration fully supports multiple instances** - you can monitor multiple properties or accounts simultaneously. All sensors are dynamically created with unique IDs based on the ICP number.
+
+#### Option 1: Multiple ICPs on Same Account
+If you have multiple properties under one Contact Energy account:
+1. Add the integration again (**Settings → Devices & Services → + Add Integration**)
+2. Enter the same email and password
+3. Select a different ICP number
+4. Each instance creates separate sensors: `sensor.contact_energy_usage_<icp1>`, `sensor.contact_energy_usage_<icp2>`, etc.
+
+#### Option 2: Different Accounts
+If you manage multiple Contact Energy accounts (e.g., rental properties, family members):
+1. Add the integration again
+2. Enter different email credentials for each account
+3. Select the ICP for that account
+4. All sensors remain completely independent
+
+**All sensors are uniquely identified by ICP number**, so there are no conflicts between multiple instances. You'll get a complete set of account, billing, usage, and chart sensors for each property.
+
 ### Modifying Settings After Installation
 
 You can change the **Usage Months** setting after installation:
