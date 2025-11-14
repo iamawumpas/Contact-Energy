@@ -174,11 +174,8 @@ content: |-
       {{ content_html.rows }}
     </tbody>
   </table>
-text_only: true
 card_mod:
   style:
-    .: |
-      ha-card {
-        height: 250px !important;
-        overflow-y: auto !important;
-      }
+    ha-card: |
+      height: 250px !important;
+      overflow-y: auto !important;
