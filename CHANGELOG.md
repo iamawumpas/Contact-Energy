@@ -4,12 +4,52 @@
 
 ### Changes
 
-#### Assets
-  - Updated ApexCharts card configuration examples
+#### Forecasting Visualization - ApexCharts Integration
+  - **Added forecast line to daily usage chart:** Tomorrow's predicted usage now displays as a purple line on the ApexCharts daily usage card
+  - **Confidence band visualization:** Added semi-transparent purple area showing ±2σ confidence range around forecast
+  - **Automatic date calculation:** Chart automatically positions forecast point for tomorrow's date
+  - **Visual distinction:** Forecast line uses purple color with 0.7 opacity to differentiate from historical data (green 7-day average, stacked columns for actual usage)
+  - **Smart data generator:** JavaScript generator extracts forecast value and confidence bands from `sensor.contact_energy_forecast_daily_usage_[ICP]` attributes
 
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Added example configurations for hourly, daily, and monthly charts
+#### Technical Implementation
+  - **Forecast line series:**
+    - Entity: `sensor.contact_energy_forecast_daily_usage_[ICP]`
+    - Type: line (stroke_width: 3, color: purple, opacity: 0.7)
+    - Data generator: Calculates tomorrow's timestamp, returns single point `[timestamp, forecast_value]`
+    - Reads `state` (forecast value in kWh) from forecast sensor
+  - **Confidence band series:**
+    - Same forecast sensor entity, rendered as area chart
+    - Type: area (stroke_width: 0, color: purple, opacity: 0.15)
+    - Data generator: Reads `lower_2sigma` and `upper_2sigma` attributes
+    - Returns two points creating shaded region: `[[timestamp, lower], [timestamp, upper]]`
+    - Represents statistical uncertainty (±2 standard deviations from mean)
+  - **Chart compatibility:**
+    - Works alongside existing series: paid/free usage columns, 7-day average line
+    - Uses same datetime x-axis scale for proper alignment
+    - Legend displays "Tomorrow's Forecast" and "Forecast Range (±2σ)"
+    - No visual clutter: legend_value hidden, in_header disabled
+
+#### User Benefits
+  - **Visual forecasting:** See tomorrow's expected usage directly on your daily usage chart
+  - **Uncertainty awareness:** Confidence band shows realistic range of possible outcomes
+  - **Planning tool:** Use forecast to plan energy-intensive activities or adjust consumption
+  - **Trend context:** Compare forecast against 7-day average to see if usage is trending up/down
+  - **Single chart view:** All insights (historical usage, averages, forecast) in one visualization
+
+#### Example Use Cases
+  - **Pre-emptive alerts:** Set automations to alert if forecast exceeds budget threshold before usage occurs
+  - **Load balancing:** Schedule high-energy tasks (laundry, EV charging, heat pump) when forecast shows lower usage
+  - **Anomaly detection:** Large deviation from forecast may indicate appliance issues or unusual patterns
+  - **Usage optimization:** Shift discretionary usage to days with lower forecast to smooth demand
+
+#### Documentation Updates
+  - Updated ApexCharts-Examples wiki page with new forecast line configuration
+  - Added explanation of confidence bands and statistical significance
+  - Included troubleshooting tips for missing forecast (sensor unavailable, insufficient historical data)
+  - Documented customization options (colors, opacity, line width, legend display)
+
+#### Why This Change?
+The forecast sensor (added in 0.7.0) provided numeric predictions but required separate cards to visualize. Integrating the forecast directly into the daily usage chart creates a unified view where users can see historical patterns, current trends, and future predictions together. The confidence band helps users understand forecast uncertainty, making it a more actionable planning tool.
 
 
 ## 0.7.3
