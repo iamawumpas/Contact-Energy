@@ -102,6 +102,59 @@ series:
       in_header: false
     curve: straight
     extend_to: now
+  - entity: sensor.contact_energy_forecast_daily_usage_0000000966tr348
+    name: Tomorrow's Forecast
+    type: line
+    stroke_width: 3
+    color: purple
+    opacity: 0.7
+    show:
+      legend_value: false
+      in_header: false
+    curve: straight
+    data_generator: |
+      // Get the forecast value and confidence bands
+      const forecastValue = parseFloat(entity.state);
+      const lower2sigma = entity.attributes.lower_2sigma;
+      const upper2sigma = entity.attributes.upper_2sigma;
+      
+      if (isNaN(forecastValue)) return [];
+      
+      // Create tomorrow's date at midnight
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setUTCHours(0, 0, 0, 0);
+      
+      // Return single point for tomorrow's forecast
+      return [[tomorrow.getTime(), forecastValue]];
+  - entity: sensor.contact_energy_forecast_daily_usage_0000000966tr348
+    name: Forecast Range (±2σ)
+    type: area
+    stroke_width: 0
+    color: purple
+    opacity: 0.15
+    show:
+      legend_value: false
+      in_header: false
+    curve: straight
+    data_generator: |
+      // Show confidence band (2 standard deviations) for forecast
+      const forecastValue = parseFloat(entity.state);
+      const lower2sigma = entity.attributes.lower_2sigma;
+      const upper2sigma = entity.attributes.upper_2sigma;
+      
+      if (isNaN(forecastValue) || lower2sigma === null || upper2sigma === null) return [];
+      
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setUTCHours(0, 0, 0, 0);
+      const timestamp = tomorrow.getTime();
+      
+      // Return two points for the area fill (lower and upper bounds)
+      return [
+        [timestamp, lower2sigma],
+        [timestamp, upper2sigma]
+      ];
 card_mod:
   style: |
     .apexcharts-xaxis-label {
