@@ -100,7 +100,8 @@ series:
     show:
       legend_value: false
       in_header: false
-    curve: smooth
+    curve: straight
+    extend_to: now
 card_mod:
   style: |
     .apexcharts-xaxis-label {
