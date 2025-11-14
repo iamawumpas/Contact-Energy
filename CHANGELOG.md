@@ -4,11 +4,16 @@
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - Code expansion: +175 net lines (added 175, deleted 0)
+#### Phase 1: Enhanced Account Information Sensors
+  - Added **Payment History** sensor displaying total payment count with last 5 payments as attributes (dates, amounts, methods)
+  - Added **Full Address** sensor with complete property address breakdown (street number/name/type, suburb, city, postcode, region, premise type)
+  - Added **Meter Register** sensor showing current meter reading with up to 3 register details (current/previous readings, types, multipliers, dates)
+  - Added **Contract Details** sensor displaying contract status with comprehensive attributes (contract ID, dates, term length, network provider, meter type, plan information)
 
-#### Metadata
-  - Added cloud_polling IoT class designation
+#### Technical Details
+  - All new sensors extract data from existing `/accounts/v2` API response (zero additional API calls)
+  - Maintains backward compatibility with existing sensors
+  - Foundation for Phase 2 analytics features
 
 
 ## 0.4.17
