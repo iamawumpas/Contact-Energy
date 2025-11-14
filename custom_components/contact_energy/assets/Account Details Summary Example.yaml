@@ -177,5 +177,5 @@ content: |-
 card_mod:
   style:
     ha-card: |
-      height: 250px !important;
-      overflow-y: auto !important;
+      height: 250px;
+      overflow-y: auto;
