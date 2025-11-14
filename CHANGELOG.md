@@ -5,11 +5,7 @@
 ### Changes
 
 #### Assets
-  - Updated ApexCharts card configuration examples
-
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Added example configurations for hourly, daily, and monthly charts
+  - Added legend marker configuration to hourly usage chart example (square markers with inverseOrder)
 
 
 ## 0.4.16
