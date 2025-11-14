@@ -10,7 +10,7 @@
   </tr>
   <tr>
     <td colspan="2" style="border: none; vertical-align: top;">
-  <strong>version:</strong> 0.7.0
+  <strong>version:</strong> 0.7.1
     </td>
   </tr>
 </table>
@@ -64,65 +64,317 @@ So time for some digging and hopefully patching.
 
 All it does is download the current energy usage and billing information from your Contact Energy account in the same way that the smartphone app gathers your data for you to view.
 
-The integration creates four groups of entities:
+The integration creates multiple groups of entities, each serving different purposes for monitoring, analysis, and automation.
 
-### 1. Energy Usage Statistics
-The ***energy usage*** and ***free energy usage*** sensors (if you take advantage of the free energy option). This data is stored in the Home Assistant statistics database and is visualized in the Energy Dashboard.
+---
+
+## Sensors Overview
+
+### 1. Energy Usage Statistics (Energy Dashboard Integration)
+
+**Primary Usage Sensor:**
+- `sensor.contact_energy_usage_[ICP]` - Total electricity consumption (kWh)
+  - **Purpose:** Tracks cumulative paid electricity usage for the Energy Dashboard
+  - **Dashboard Use:** Automatically integrated with Home Assistant Energy Dashboard
+  - **Automation Use:** Track total consumption, compare periods, trigger on usage thresholds
+  - **Data Source:** Statistics database with hourly granularity
+
+**Free Energy Sensor (if applicable):**
+- `sensor.contact_energy_free_usage_[ICP]` - Free electricity consumption (kWh)
+  - **Purpose:** Tracks cumulative free electricity usage (e.g., off-peak hours, free weekends)
+  - **Dashboard Use:** Add to Energy Dashboard as separate consumption source
+  - **Automation Use:** Monitor free energy utilization, optimize usage during free periods
+  - **Data Source:** Statistics database with hourly granularity
+
+**How to Use:**
+1. Go to **Settings → Dashboards → Energy**
+2. Click **"Add Consumption"** and select the usage sensor(s)
+3. Optionally track costs with static or dynamic pricing
+
+---
 
 ### 2. Account & Billing Information Sensors
-These sensors expose the following information to dashboard cards:
-  - Current bill amount
-  - Current bill due date
-  - Next bill amount
-  - Next bill due date
-  - Next reading date
-  - Account balance
-  - Contract details
-  - Payment history
-  - Full address details
-  - Meter register information
 
-### 3. Usage Analytics & Insights Sensors
-These sensors provide intelligent analysis of your energy consumption:
-  - **Average Daily Usage**: 7-day and 30-day averages for pattern analysis
-  - **Usage Trend**: Percentage change comparing recent vs previous periods
-  - **Cost Per kWh**: Actual average cost efficiency over time
+These sensors display account details and are ideal for dashboard cards showing billing status:
+
+**Financial Sensors:**
+- `sensor.contact_energy_account_balance_[ICP]` - Current account balance (NZD)
+- `sensor.contact_energy_estimated_next_bill_[ICP]` - Estimated next bill amount (NZD)
+- `sensor.contact_energy_last_payment_[ICP]` - Last payment amount (NZD)
+
+**Date Sensors:**
+- `sensor.contact_energy_next_bill_date_[ICP]` - Next billing date
+- `sensor.contact_energy_next_read_date_[ICP]` - Next meter reading date
+- `sensor.contact_energy_last_read_date_[ICP]` - Last meter reading date
+
+**Account Details:**
+- `sensor.contact_energy_customer_name_[ICP]` - Account holder name
+- `sensor.contact_energy_email_[ICP]` - Account email address
+- `sensor.contact_energy_account_number_[ICP]` - Account number
+- `sensor.contact_energy_plan_name_[ICP]` - Current plan type
+
+**Rates & Charges:**
+- `sensor.contact_energy_daily_charge_rate_[ICP]` - Daily fixed charge (NZD)
+- `sensor.contact_energy_peak_rate_[ICP]` - Peak electricity rate (NZD/kWh)
+- `sensor.contact_energy_off_peak_rate_[ICP]` - Off-peak rate (NZD/kWh)
+- `sensor.contact_energy_free_hours_[ICP]` - Free power hours schedule
+
+**Property & Meter:**
+- `sensor.contact_energy_service_address_[ICP]` - Service address (short form)
+- `sensor.contact_energy_full_address_[ICP]` - Complete address with attributes
+- `sensor.contact_energy_meter_serial_[ICP]` - Meter serial number
+- `sensor.contact_energy_meter_register_[ICP]` - Current meter reading (kWh)
+
+**Enhanced Details:**
+- `sensor.contact_energy_payment_history_[ICP]` - Payment count (with last 5 payments in attributes)
+- `sensor.contact_energy_contract_details_[ICP]` - Contract status and details
+
+**Dashboard Use:**
+- Add to entity cards, markdown cards, or custom dashboards
+- Group related sensors (billing, rates, property info) into sections
+- Use in conditional cards to highlight overdue balances or upcoming dates
+
+**Automation Use:**
+- Trigger notifications before bill due dates
+- Alert when account balance exceeds threshold
+- Track payment history and schedule reminders
+
+See the [Markdown Card Example](#markdown-card-example) section for a comprehensive account summary card.
+
+---
+
+### 3. Convenience Usage & Cost Sensors
+
+These sensors provide quick access to common usage periods without querying the statistics database:
+
+**Usage Sensors (kWh):**
+- `sensor.contact_energy_today_usage_[ICP]` - Today's paid usage
+- `sensor.contact_energy_yesterday_usage_[ICP]` - Yesterday's paid usage
+- `sensor.contact_energy_last_7_days_usage_[ICP]` - Last 7 days total
+- `sensor.contact_energy_last_30_days_usage_[ICP]` - Last 30 days total
+- `sensor.contact_energy_current_month_usage_[ICP]` - Current month total
+- `sensor.contact_energy_last_month_usage_[ICP]` - Last month total
+
+**Free Usage Sensors (kWh):**
+- `sensor.contact_energy_today_free_usage_[ICP]` - Today's free usage
+- `sensor.contact_energy_yesterday_free_usage_[ICP]` - Yesterday's free usage
+
+**Cost Sensors (NZD):**
+- `sensor.contact_energy_today_cost_[ICP]` - Today's electricity cost
+- `sensor.contact_energy_yesterday_cost_[ICP]` - Yesterday's cost
+- `sensor.contact_energy_current_month_cost_[ICP]` - Current month cost
+- `sensor.contact_energy_last_month_cost_[ICP]` - Last month cost
+
+**Dashboard Use:**
+- Display in gauge cards to show daily/weekly/monthly consumption at a glance
+- Add to entity cards or picture-elements cards
+- Create conditional cards that change color based on usage thresholds
+- Show cost breakdowns in markdown tables
+
+**Automation Use:**
+- Trigger notifications when daily usage exceeds typical amounts
+- Send weekly/monthly usage summaries
+- Compare current vs previous periods for usage alerts
+
+---
+
+### 4. Analytics & Insights Sensors
+
+These sensors provide intelligent analysis to help you understand consumption patterns:
+
+**Average Usage Sensors:**
+- `sensor.contact_energy_average_daily_usage_7_days_[ICP]` - 7-day daily average (kWh)
+  - **Purpose:** Short-term usage pattern analysis
+  - **Dashboard Use:** Display in gauge or history graph to track recent trends
+  - **Automation Use:** Alert when current usage deviates from 7-day average
   
-These analytics sensors automatically calculate insights from your historical usage data to help you understand consumption patterns and optimize energy costs.
+- `sensor.contact_energy_average_daily_usage_30_days_[ICP]` - 30-day daily average (kWh)
+  - **Purpose:** Monthly usage baseline for comparison
+  - **Dashboard Use:** Compare against shorter periods to identify changes
+  - **Automation Use:** Set baseline thresholds for anomaly detection
 
-### 4. Chart Sensors for ApexCharts
-These sensors provide pre-formatted data for charting with ApexCharts card:
-  - **Hourly sensors**: Last 14 days of hourly usage (paid and free energy)
-  - **Daily sensors**: Last 30 days of daily usage (paid and free energy)
-  - **Monthly sensors**: Last 12 months of usage totals (paid and free energy)
+**Trend Analysis:**
+- `sensor.contact_energy_usage_trend_[ICP]` - Usage trend percentage (%)
+  - **Purpose:** Compares last 7 days vs previous 7 days
+  - **State:** Positive % = increasing usage, Negative % = decreasing usage
+  - **Attributes:** `current_period_kwh`, `previous_period_kwh`, `trend_direction`
+  - **Dashboard Use:** Display in entity card with color coding (red for increase, green for decrease)
+  - **Automation Use:** Alert on significant increases (e.g., trend > 20%)
+
+**Cost Efficiency:**
+- `sensor.contact_energy_cost_per_kwh_[ICP]` - Actual cost per kWh (NZD/kWh)
+  - **Purpose:** Shows real average cost including all charges over 30 days
+  - **Attributes:** `total_kwh`, `total_cost`, `period` (30 days)
+  - **Dashboard Use:** Compare against advertised rates to see actual cost efficiency
+  - **Automation Use:** Alert if cost per kWh exceeds expected rate
+
+**Dashboard Use Examples:**
+```yaml
+# Gauge showing 7-day average
+type: gauge
+entity: sensor.contact_energy_average_daily_usage_7_days_[ICP]
+min: 0
+max: 50
+needle: true
+segments:
+  - from: 0
+    color: green
+  - from: 30
+    color: orange
+  - from: 40
+    color: red
+
+# Trend card with conditional color
+type: entity
+entity: sensor.contact_energy_usage_trend_[ICP]
+card_mod:
+  style: |
+    :host {
+      --card-mod-icon-color: {% if states('sensor.contact_energy_usage_trend_[ICP]')|float > 0 %}red{% else %}green{% endif %};
+    }
+```
+
+---
+
+### 5. Forecasting & Anomaly Detection (Phase 3)
+
+**Forecast Sensor:**
+- `sensor.contact_energy_forecast_daily_usage_[ICP]` - Predicted next-day usage (kWh)
+  - **Purpose:** Forecasts next day's paid usage using EMA (Exponential Moving Average)
+  - **Method:** 30-day window with alpha = 2/(N+1)
+  - **Attributes:**
+    - `method`: "EMA"
+    - `window_days`: 30
+    - `alpha`: Smoothing factor (~0.065)
+    - `mean_30d`: Average over baseline period
+    - `std_30d`: Standard deviation
+    - `last_observation`: Most recent daily usage
+    - `lower_2sigma`: Lower confidence band (mean - 2σ)
+    - `upper_2sigma`: Upper confidence band (mean + 2σ)
   
-These sensors store data in their attributes for easy use with the ApexCharts custom card. See the ApexCharts Card Examples section below for configuration examples.
+  **Dashboard Use:**
+  - Display forecast value in entity card or gauge
+  - Add to history graph alongside actual usage for comparison
+  - Show confidence bands (2-sigma) in mini-graph card
+  - Use in markdown card to display "Expected tomorrow: X kWh"
+  
+  **Automation Use:**
+  - Send daily forecast notifications
+  - Pre-heat/pre-cool based on predicted high usage days
+  - Adjust smart device schedules to stay within forecast
 
-## Phase 3: Forecasts & Alerts
+**Historical Anomaly Binary Sensor:**
+- `binary_sensor.contact_energy_historical_usage_anomaly_[ICP]` - Anomaly detection (on/off)
+  - **Purpose:** Flags unusual usage when delayed data arrives (not real time)
+  - **Detection:** Z-score > 2.5 vs last 30 days baseline
+  - **State:** `on` = anomaly detected, `off` = normal usage
+  - **Device Class:** problem
+  - **Attributes:**
+    - `z_score`: How many standard deviations from baseline
+    - `threshold`: Detection threshold (default 2.5)
+    - `baseline_days`: 30
+    - `baseline_mean`: Average usage over baseline
+    - `baseline_std`: Standard deviation
+    - `today_usage`: Latest usage value that triggered check
+  
+  **Dashboard Use:**
+  - Add to entity card or badge to show current status
+  - Use in conditional cards to highlight when anomaly is detected
+  - Display z-score value in markdown for technical users
+  - Show historical anomaly trend in history graph
+  
+  **Automation Use (Primary Purpose):**
+  - Trigger alerts when state changes to `on`
+  - Send notifications with z-score and usage details
+  - Create persistent notifications for investigation
+  - Log anomalies to file or external system
+  
+  **Example Automation:**
+  ```yaml
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.contact_energy_historical_usage_anomaly_[ICP]
+      to: 'on'
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "⚠️ Usage Anomaly Detected"
+        message: >
+          Unusual usage: {{ state_attr('binary_sensor.contact_energy_historical_usage_anomaly_[ICP]', 'today_usage')|round(1) }} kWh
+          ({{ state_attr('binary_sensor.contact_energy_historical_usage_anomaly_[ICP]', 'z_score')|round(1) }}σ above normal)
+  ```
 
-Phase 3 adds proactive insights and notifications:
+**Important Note:** Contact Energy data is delayed by 24–72 hours. These sensors detect anomalies as soon as new historical data is released—not in real time. They're useful for:
+- Spotting billing errors after data arrives
+- Identifying appliance faults or unusual consumption patterns
+- Catching unexpected usage spikes for investigation
+- Retrospective analysis rather than live monitoring
 
-- "Contact Energy Forecast Daily Usage (…ICP…)" sensor
-  - Forecasts the next day's paid usage using EMA over the last 30 complete days
-  - Attributes include method (EMA), window (30 days), alpha, mean/std, and a 2-sigma band
-  - Unit: kWh; no state_class (derived metric)
-
-- "Contact Energy Historical Usage Anomaly (…ICP…)" binary sensor
-  - Flags historical usage anomalies when new delayed data arrives (not real time)
-  - Detects if latest paid usage is anomalous (z-score > threshold vs last 30 days)
-  - Attributes: z_score, threshold (default 2.5), baseline_days (30), baseline_mean/std, today_usage
-  - Device class: problem
-
-**Note:** Contact Energy data is delayed by 24–72 hours, so anomalies are detected as soon as new data is released—not in real time. Alerts help you spot unusual usage promptly after data becomes available.
-
-### Alerting Options
-
-You can notify in multiple ways; choose the service that fits your setup:
-
+**Alerting Options:**
 - Persistent notification (built-in): `persistent_notification.create`
-- Mobile app notify: e.g. `notify.mobile_app_your_phone`
+- Mobile app: `notify.mobile_app_your_phone`
+- Email: `notify.email`
+- Other notify services: See Home Assistant notify documentation
 
-See the example in `custom_components/contact_energy/assets/Automation - Usage Anomaly Alert.yaml` and replace the `action` with your preferred notify service. The example shows both approaches and comments on how to switch.
+See the example in `custom_components/contact_energy/assets/Automation - Usage Anomaly Alert.yaml` for a complete automation template.
+
+---
+
+### 6. Chart Sensors for ApexCharts
+
+These sensors store pre-formatted historical data in attributes for easy charting:
+
+**Hourly Chart Sensors:**
+- `sensor.contact_energy_chart_hourly_[ICP]` - Last 14 days hourly paid usage
+- `sensor.contact_energy_chart_hourly_free_[ICP]` - Last 14 days hourly free usage
+  - **Data Format:** Hourly delta values (kWh per hour)
+  - **Attribute:** `hourly_data` or `hourly_free_data` (ISO timestamp → kWh)
+
+**Daily Chart Sensors:**
+- `sensor.contact_energy_chart_daily_[ICP]` - Last 60 days daily paid usage
+- `sensor.contact_energy_chart_daily_free_[ICP]` - Last 60 days daily free usage
+  - **Data Format:** Daily delta values (kWh per day at 23:59:59)
+  - **Attribute:** `daily_data` or `daily_free_data` (ISO date → kWh)
+
+**Monthly Chart Sensors:**
+- `sensor.contact_energy_chart_monthly_[ICP]` - All available monthly paid usage
+- `sensor.contact_energy_chart_monthly_free_[ICP]` - All available monthly free usage
+  - **Data Format:** Monthly totals (kWh per month)
+  - **Attribute:** `monthly_data` or `monthly_free_data` (YYYY-MM-15 → kWh)
+
+**Dashboard Use:**
+- **Primary Purpose:** Used with ApexCharts custom card for advanced visualizations
+- Data is stored in attributes and accessed via `data_generator` in ApexCharts config
+- See [ApexCharts Card Examples](#apexcharts-card-examples) section for complete configurations
+
+**Why These Exist:**
+- Home Assistant statistics can be slow to query for large date ranges
+- Pre-formatted data in attributes provides instant charting without database queries
+- Allows complex visualizations (stacked columns, mixed series, custom formatting)
+
+---
+
+### Summary: Which Sensors to Use
+
+**For Energy Dashboard:**
+- `sensor.contact_energy_usage_[ICP]` (paid usage)
+- `sensor.contact_energy_free_usage_[ICP]` (free usage)
+
+**For Quick Dashboard Cards:**
+- Convenience sensors (today, yesterday, last 7 days, etc.)
+- Account & billing sensors (balance, next bill, rates)
+
+**For Analysis & Insights:**
+- Analytics sensors (averages, trends, cost per kWh)
+- Forecast sensor (predicted usage)
+
+**For Alerts & Automations:**
+- Historical anomaly binary sensor (unusual usage detection)
+- Usage trend sensor (increasing/decreasing patterns)
+- Convenience sensors with threshold triggers
+
+**For Advanced Charts:**
+- Chart sensors with ApexCharts card (hourly, daily, monthly visualizations)
 
 
 ## Limitations

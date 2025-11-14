@@ -4,15 +4,14 @@
 
 ### Changes
 
-#### Clarification: Historical Anomaly Detection (Not Real Time)
-  - **Renamed sensor:** Changed `ContactEnergyUsageAnomalyBinarySensor` to `ContactEnergyHistoricalAnomalyBinarySensor` to clarify delayed detection nature.
-  - **Updated entity name:** Now "Contact Energy Historical Usage Anomaly" (unique_id: `historical_usage_anomaly`).
-  - **Documentation updates:** Added note in README explaining Contact Energy data is delayed 24–72 hours; anomalies are flagged when new data arrives, not in real time.
-  - **Entity descriptions:** Updated strings.json and translations to clarify "historical anomaly detection when new delayed data arrives."
-  - **Automation example:** Updated example entity IDs and messages to reflect historical detection and delayed data context.
-
-#### Why this change?
-  - Users may expect "real time" anomaly detection. This rename and documentation clarifies that detection happens as soon as delayed data is released—useful for spotting billing errors, appliance faults, or consumption patterns, but not live monitoring.
+#### Clarification: Historical vs Real-Time Anomaly Detection
+  - **Sensor renamed:** `ContactEnergyUsageAnomalyBinarySensor` → `ContactEnergyHistoricalAnomalyBinarySensor` to clarify that detection occurs when delayed data arrives (24-72 hours), not in real time.
+  - **Entity ID updated:** `binary_sensor.contact_energy_usage_anomaly_[ICP]` → `binary_sensor.contact_energy_historical_usage_anomaly_[ICP]`
+  - **Documentation clarification:** Added explicit note in README explaining Contact Energy data delay and that anomaly detection is retrospective (useful for billing errors, appliance faults, pattern analysis after data release).
+  - **Translations updated:** Updated `strings.json` and `translations/en.json` to reflect "Historical Usage Anomaly" naming and clarified description: "Detects anomalies when new delayed data arrives (not real time)".
+  - **Automation example updated:** Updated `Automation - Usage Anomaly Alert.yaml` with corrected entity IDs matching the historical anomaly sensor.
+  
+This release improves clarity around data delay limitations and sets accurate expectations for anomaly detection timing.
 
 
 ## 0.7.0
