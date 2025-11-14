@@ -4,8 +4,10 @@
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - Energy Dashboard sensor implementation and statistics integration
+#### Bug Fix: Email Sensor
+  - Fixed email sensor to use login email from config entry instead of API
+  - Contact Energy API does not return email address in account details
+  - Sensor now displays the email address used to log in to the integration
 
 
 ## 0.4.14
