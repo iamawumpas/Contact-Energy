@@ -991,11 +991,6 @@ main() {
       entry_text=$(build_changelog_from_working_changes "$range")
     fi
   fi
-      else
-        entry_text=$(build_changelog_from_working_changes "$range")
-      fi
-    fi
-  fi
 
   # Step 2: Write changelog with the agent summary or fallback
   write_changelog_section "$version" "$entry_text"
