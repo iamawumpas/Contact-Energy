@@ -11,7 +11,7 @@
 
 #### Assets
   - Added Account Details Summary Example.yaml template file for markdown card configuration
-  - Created image-4.png screenshot showing the Account Details Summary card with selectively blurred sensitive information (address, email, IDs)
+  - Created image-4.png screenshot showing part of the Account Details Summary card 
 
 
 ## 0.5.1
