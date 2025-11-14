@@ -48,9 +48,9 @@
 			}
 		},
 		"binary_sensor": {
-			"usage_anomaly": {
-				"name": "Contact Energy Usage Anomaly",
-				"description": "Flags today's paid usage as anomalous when z-score exceeds threshold (default 2.5) vs last 30 complete days. Choose your preferred alert method (persistent_notification or notify.mobile_app) in your automations."
+			"historical_usage_anomaly": {
+				"name": "Contact Energy Historical Usage Anomaly",
+				"description": "Flags historical usage anomalies when new delayed data arrives (not real time). Detects if latest paid usage is anomalous (z-score > threshold vs last 30 days). Alerts are based on delayed data; choose your preferred notify method in automations."
 			}
 		}
 	}

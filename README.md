@@ -107,10 +107,13 @@ Phase 3 adds proactive insights and notifications:
   - Attributes include method (EMA), window (30 days), alpha, mean/std, and a 2-sigma band
   - Unit: kWh; no state_class (derived metric)
 
-- "Contact Energy Usage Anomaly (…ICP…)" binary sensor
-  - Flags today's paid usage as anomalous if its z-score exceeds 2.5 vs the last 30 complete days
+- "Contact Energy Historical Usage Anomaly (…ICP…)" binary sensor
+  - Flags historical usage anomalies when new delayed data arrives (not real time)
+  - Detects if latest paid usage is anomalous (z-score > threshold vs last 30 days)
   - Attributes: z_score, threshold (default 2.5), baseline_days (30), baseline_mean/std, today_usage
   - Device class: problem
+
+**Note:** Contact Energy data is delayed by 24–72 hours, so anomalies are detected as soon as new data is released—not in real time. Alerts help you spot unusual usage promptly after data becomes available.
 
 ### Alerting Options
 

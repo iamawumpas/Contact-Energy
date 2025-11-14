@@ -1,29 +1,37 @@
 # Changelog
 
+## 0.7.1
+
+### Changes
+
+#### Clarification: Historical Anomaly Detection (Not Real Time)
+  - **Renamed sensor:** Changed `ContactEnergyUsageAnomalyBinarySensor` to `ContactEnergyHistoricalAnomalyBinarySensor` to clarify delayed detection nature.
+  - **Updated entity name:** Now "Contact Energy Historical Usage Anomaly" (unique_id: `historical_usage_anomaly`).
+  - **Documentation updates:** Added note in README explaining Contact Energy data is delayed 24–72 hours; anomalies are flagged when new data arrives, not in real time.
+  - **Entity descriptions:** Updated strings.json and translations to clarify "historical anomaly detection when new delayed data arrives."
+  - **Automation example:** Updated example entity IDs and messages to reflect historical detection and delayed data context.
+
+#### Why this change?
+  - Users may expect "real time" anomaly detection. This rename and documentation clarifies that detection happens as soon as delayed data is released—useful for spotting billing errors, appliance faults, or consumption patterns, but not live monitoring.
+
+
 ## 0.7.0
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - Code expansion: +119 net lines (added 119, deleted 0)
+#### Phase 3: Forecasting, Anomaly Detection, Alerts
+  - **New forecast sensor:** Added `ContactEnergyForecastDailyUsageSensor` (EMA-based, 30-day window, alpha=2/(N+1)) to predict next day's paid usage. Attributes include method, window, alpha, mean, stddev, and 2-sigma band.
+  - **New anomaly binary sensor:** Added `ContactEnergyUsageAnomalyBinarySensor` to flag today's paid usage as anomalous if z-score > 2.5 vs last 30 days. Attributes: z_score, threshold, baseline stats, today_usage.
+  - **Alert automation example:** Added `Automation - Usage Anomaly Alert.yaml` showing both persistent_notification and mobile notify options. Users can choose their preferred alert method.
+  - **Platform update:** Enabled binary_sensor platform in `__init__.py` to support anomaly detection.
+  - **Documentation:** Updated README with a new "Phase 3: Forecasts & Alerts" section, describing new sensors, attributes, and alerting options.
+  - **Entity docs:** Added clear descriptions for new sensors in `strings.json` and `translations/en.json`.
 
-#### __init__.py - Cleaner Restart Logic
-  - Added automatic daily restart at 3:00 AM (±30 minutes) for reliable API connections
-  - Simplified daily restart scheduling logic
+#### ApexCharts Card & Asset Updates
+  - **Automation example added:** `Automation - Usage Anomaly Alert.yaml` in assets folder.
 
-#### Translations
-  - Updated user interface strings and translations
-
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Modified 3 asset files
-
-#### Documentation
-  - Added comprehensive ApexCharts Card Examples section
-
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Added example configurations for hourly, daily, and monthly charts
+#### Why these changes?
+  - These additions provide proactive insights (forecasting) and real-time anomaly detection, helping users spot unusual usage and receive alerts. The documentation and entity descriptions clarify how to use and customize these features.
 
 
 ## 0.6.2

@@ -32,14 +32,14 @@ async def async_setup_entry(
     contract_icp = entry.data[CONF_CONTRACT_ICP]
 
     entities: list[BinarySensorEntity] = [
-        ContactEnergyUsageAnomalyBinarySensor(coordinator, account_id, contract_id, contract_icp)
+        ContactEnergyHistoricalAnomalyBinarySensor(coordinator, account_id, contract_id, contract_icp)
     ]
 
     async_add_entities(entities, False)
 
 
-class ContactEnergyUsageAnomalyBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Binary sensor that flags today's usage as anomalous using a z-score."""
+class ContactEnergyHistoricalAnomalyBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor that flags historical usage anomalies (z-score) when new data arrives."""
 
     def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
         super().__init__(coordinator)
@@ -54,8 +54,8 @@ class ContactEnergyUsageAnomalyBinarySensor(CoordinatorEntity, BinarySensorEntit
         self._baseline_std: Optional[float] = None
         self._today_usage: Optional[float] = None
 
-        self._attr_name = f"Contact Energy Usage Anomaly ({contract_icp})"
-        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_usage_anomaly"
+        self._attr_name = f"Contact Energy Historical Usage Anomaly ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_historical_usage_anomaly"
         self._attr_device_class = BinarySensorDeviceClass.PROBLEM
         self._attr_icon = "mdi:alert"
 
@@ -81,7 +81,7 @@ class ContactEnergyUsageAnomalyBinarySensor(CoordinatorEntity, BinarySensorEntit
             "baseline_mean": round(self._baseline_mean, 3) if self._baseline_mean is not None else None,
             "baseline_std": round(self._baseline_std, 3) if self._baseline_std is not None else None,
             "today_usage": round(self._today_usage, 3) if self._today_usage is not None else None,
-            "calculation": "Anomaly detected if today's paid usage z-score exceeds threshold vs last 30 complete days",
+            "calculation": "Historical anomaly detected when new delayed usage data arrives and z-score exceeds threshold vs last 30 complete days.",
         }
 
     @property
