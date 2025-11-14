@@ -5,25 +5,14 @@
 ### Changes
 
 #### Documentation
-  - **GitHub Wiki created:** Migrated detailed documentation to comprehensive 12-page wiki structure
-  - **README streamlined:** Reduced README to concise landing page with wiki links for better navigation
-  - **Wiki pages added:**
-    - Home: Overview and navigation hub
-    - Installation: HACS and manual setup guides
-    - Configuration: Setup including multiple properties support
-    - Energy-Dashboard-Setup: Energy Dashboard integration guide
-    - Sensor-Reference: Complete documentation of 40+ sensors
-    - Forecasting-and-Alerts: Forecast and anomaly sensor details with examples
-    - Dashboard-Examples: UI card configurations (entity, gauge, markdown, conditional)
-    - ApexCharts-Examples: Advanced charting with YAML configurations
-    - Automation-Examples: Automation templates for alerts and notifications
-    - Limitations: Data delay and API constraints documentation
-    - Troubleshooting: Common issues and solutions
-    - FAQ: Frequently asked questions
-  - **Removed Phase references:** Cleaned up historical Phase 1/2/3/4 development references from user-facing documentation
-  - **Changelog and Attribution preserved:** Kept changelog and attribution sections in README as requested
-
-This release improves documentation organization and discoverability by separating detailed content into a structured wiki while maintaining a clean, accessible README.
+  - Added comprehensive Table of Contents navigation
+  - Updated documentation to reflect 60-day data collection capability
+  - Updated hourly chart documentation for 14-day retention
+  - Updated daily usage chart screenshot with current visualization
+  - Added comprehensive ApexCharts Card Examples section
+  - Added documentation for multiple properties and accounts support
+  - Documented sensor naming with ICP suffixes for multi-instance setups
+  - Added use case examples (rental properties, holiday homes, family accounts)
 
 
 ## 0.7.2
