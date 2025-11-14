@@ -168,8 +168,7 @@ content: |-
 
   <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
     <tr>
-      <th> </th><th align="right">  <h3>{{ address | replace(', ','<br>') }}</h3>
-    </tr>
+      <th> </th><th align="right">  <h3>{{ address | replace(', ','<br>') }}</h3></th>
     </tr>
     <tbody>
       {{ content_html.rows }}
