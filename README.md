@@ -206,6 +206,22 @@ This card shows the monthly usage and monthly free usage. The integration create
 [![Monthly Usage Chart](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-2.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/ApexCharts%20Card%20-%20Monthly%20usage%20exaple.yaml)
 
 
+# Markdown Card Example
+
+The integration includes a comprehensive account details summary card that displays all your Contact Energy account information in a clean, organized format. This markdown card provides an at-a-glance view of:
+
+- **Account Details**: Customer name, email, account number, plan, meter details, full address, and contract information
+- **Billing Information**: Outstanding balance, estimated next bill, payment dates, reading schedules, and payment history
+- **Current Rates**: Daily charges, peak/off-peak rates, and free hours
+- **Usage Summary**: Current month costs and usage, daily statistics, historical data, and meter readings
+
+The card automatically formats currency values, dates, and usage units (kWh) for easy reading. New sensors added in recent versions are highlighted for quick identification. The template includes custom styling with scrollable content and grouped sections for better organization.
+
+**Click the image below to view the YAML configuration:**
+
+[![Account Details Summary Card](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/image-4.png)](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/custom_components/contact_energy/assets/Account%20Details%20Summary%20Example.yaml)
+
+
 # Changelog
 
 For a detailed list of changes in each version, see the <a href="https://github.com/iamawumpas/Contact-Energy/blob/main/CHANGELOG.md" target="_blank">CHANGELOG.md</a> file.
