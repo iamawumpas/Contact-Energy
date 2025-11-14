@@ -5,7 +5,9 @@
 ### Changes
 
 #### Documentation
-  - Documentation updates and improvements
+  - Added documentation for multiple properties and accounts support
+  - Documented sensor naming with ICP suffixes for multi-instance setups
+  - Added use case examples (rental properties, holiday homes, family accounts)
 
 
 ## 0.4.13

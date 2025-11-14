@@ -593,14 +593,17 @@ build_changelog_from_range() {
     if echo "$readme_diff" | grep -q "chart.*sensor.*documentation\|Hourly.*Daily.*Monthly"; then
       readme_additions+="  - Added documentation for chart sensors (hourly, daily, monthly)\n"
     fi
+    if echo "$readme_diff" | grep -q "Multiple Properties\|Multiple.*Accounts\|multiple instances"; then
+      readme_additions+="  - Added documentation for multiple properties and accounts support\n"
+      readme_additions+="  - Documented sensor naming with ICP suffixes for multi-instance setups\n"
+    fi
+    if echo "$readme_diff" | grep -q "rental properties\|holiday homes\|family"; then
+      readme_additions+="  - Added use case examples (rental properties, holiday homes, family accounts)\n"
+    fi
     
     if [[ -n "$readme_additions" ]]; then
       detailed_changes+="#### Documentation\n"
-      detailed_changes+="$readme_additions"
-      detailed_changes+="  - Improved consistency and fixed spelling errors\n\n"
-    elif [[ "$readme_diff" != "" ]]; then
-      detailed_changes+="#### Documentation\n"
-      detailed_changes+="  - Documentation updates and improvements\n\n"
+      detailed_changes+="$readme_additions\n"
     fi
   fi
   
