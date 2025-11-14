@@ -4,13 +4,12 @@
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - **Performance optimizations**:
-    - Optimized startup delays using consistent MD5 hashing
-
-
-#### Documentation
-  - Updated hourly chart documentation for 14-day retention
+#### Bug Fix: Phase 2 Sensors NameError
+  - Fixed critical bug where Phase 2 analytics sensors failed to load with `NameError: name 'ContactEnergyConvenienceSensorBase' is not defined`
+  - Moved `ContactEnergyConvenienceSensorBase` class definition before Phase 2 sensor classes that inherit from it
+  - Python requires base classes to be defined before subclasses can reference them
+  - All Phase 2 sensors now load correctly: Average Daily Usage (7/30 days), Usage Trend, Cost Per kWh
+  - Integration now starts successfully without import errors
 
 
 ## 0.6.0
