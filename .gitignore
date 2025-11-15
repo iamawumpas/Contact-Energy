@@ -1,3 +1,5 @@
 release.sh
 .integration-notes.md
 .*
+!.github
+!.gitignore

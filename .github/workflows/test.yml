@@ -1,0 +1,63 @@
+name: Test Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+        home-assistant: ["2024.11.0", "2024.12.0"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install Home Assistant ${{ matrix.home-assistant }}
+      run: |
+        pip install homeassistant==${{ matrix.home-assistant }}
+        pip install pytest pytest-homeassistant-custom-component
+    
+    - name: Create test configuration
+      run: |
+        mkdir -p config/custom_components
+        ln -s ${{ github.workspace }}/custom_components/contact_energy config/custom_components/contact_energy
+    
+    - name: Validate integration
+      run: |
+        python -m pytest tests/ -v
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Run Home Assistant check config
+      run: |
+        hass --script check_config -c config
+      continue-on-error: true
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run hassfest
+      uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate HACS
+      uses: hacs/action@main
+      with:
+        category: integration
