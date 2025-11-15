@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.6
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11+ compatibility
+  - Added unit_class to StatisticMetaData (energy / monetary) for HA 2026.11+ compatibility
+
+
 ## 0.7.5
 
 ### Changes
