@@ -3,7 +3,6 @@ release.sh
 .*
 !.github
 !.gitignore
-!.chat-transcript.md
 !.allow_release
 !.release-owners
 __pycache__/
