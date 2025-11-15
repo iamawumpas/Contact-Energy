@@ -4,9 +4,24 @@
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - Added mean_type parameter to StatisticMetaData for Home Assistant 2026.11+ compatibility
-  - Added unit_class to StatisticMetaData (energy / monetary) for HA 2026.11+ compatibility
+#### Statistics Compatibility & Recorder Stability
+
+- **Added `mean_type="mean"` parameter** to all external statistics metadata entries (energy, cost, free energy)
+  - Ensures compatibility with Home Assistant 2026.11+ recorder requirements
+  - Eliminates future deprecation warnings for sum-based statistics without mean type specification
+- **Changed cost statistics `unit_class` from `monetary` to `currency`**
+  - Resolves "Unsupported unit_class 'monetary'" errors in Home Assistant recorder
+  - Aligns with supported unit classes for financial metrics (currency is the correct HA standard)
+- **Impact:** Prevents recorder errors/warnings; future-proofs statistics ingestion against Home Assistant schema changes
+
+#### Technical Details
+
+- Modified three `StatisticMetaData` blocks in `sensor.py`:
+  - Energy consumption statistics (kWh)
+  - Cost statistics (NZD)
+  - Free energy statistics (kWh during off-peak hours)
+- All changes backward-compatible; existing statistics data preserved
+- No user action required; updates apply automatically on integration reload
 
 
 ## 0.7.5
