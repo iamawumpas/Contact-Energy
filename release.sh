@@ -114,6 +114,24 @@ if (( AUTO )); then
 	echo "auto-bumped from $(majority_version) to $VERSION"
 fi
 
+# -------- agent prompt (no side effects, just guidance) --------
+agent_prompt() {
+	cat <<'PROMPT'
+--- AGENT PROMPT ---
+Please summarize the current session's changes from chat history into `.chat-transcript.md` at the repo root.
+
+Requirements:
+- Do NOT commit `.chat-transcript.md` (keep it ignored by `.gitignore`).
+- Include: date/time (UTC), repo and branch, released version, key steps taken (validation, auto-bump, file updates, commit, tag, push, GitHub release creation), and rollback commands.
+- Keep it concise and structured with short sections and bullets.
+
+Note: This script does not write the file; it only prompts you to do so.
+--- END AGENT PROMPT ---
+PROMPT
+}
+
+agent_prompt
+
 # -------- apply version to files (no commit/tag here) --------
 
 apply_manifest() {
