@@ -2,6 +2,6 @@
   "name": "Contact Energy",
   "content_in_root": false,
   "version": "0.7.6",
-  "ignore": ["release.sh", ".integration-notes.md"],
+  "ignore": ["__pycache__/", ".chat-transcript.md", ".integration-notes.md"],
   "iot_class": "cloud_polling"
 }
