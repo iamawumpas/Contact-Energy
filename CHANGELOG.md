@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.9
+
+### Changes
+
+#### Service Handler Fix
+- **Fixed Download Trigger Service:** Corrected entity_registry import to fix service call error
+  - Import entity_registry module directly instead of via `hass.helpers`
+  - Resolves `'HomeAssistant' object has no attribute 'helpers'` error when pressing download button
+  - Service now properly triggers download when called from dashboard buttons or automations
+
+### Technical Details
+- Changed from `hass.helpers.entity_registry.async_get(hass)` to `er.async_get(hass)` with proper import
+- Follows Home Assistant best practices for helper module access
+
+
 ## 0.7.8
 
 ### Changes
