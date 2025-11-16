@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.7.6
+
+### Changes
+
+#### Download Progress Tracking
+  - **New Progress Sensor:** Added `sensor.contact_energy_download_progress_[ICP]` showing real-time download progress
+    - Displays percentage complete (0-100%)
+    - Icon changes based on status: downloading (mdi:download), complete (mdi:check-circle), idle (mdi:information)
+    - Attributes include: status, current_date, start_date, end_date, days_completed, days_total
+  - **Persistent Notifications:** For large downloads (>365 days), shows progress notification
+    - Auto-updates every 50 days during download
+    - Auto-dismisses when complete
+    - Displays estimated time and current progress
+  - **Enhanced Logging:** Added detailed progress logging every 10 days during download
+    - Shows date range being downloaded
+    - Reports total days to process at start
+    - Logs completion statistics
+
+#### Bug Fixes - Statistics Issues
+  - **Fixed statistics metadata errors:** Removed `unit_class` parameters from StatisticMetaData
+    - Resolves "Invalid mean type" errors from corrupted 0.7.6 metadata
+    - Fixes "Unsupported unit_class: 'monetary'" error  
+    - Eliminates UNIQUE constraint violations on statistics_meta.statistic_id
+    - Home Assistant now correctly infers unit class from unit_of_measurement
+  - **Fixed initial download delay:** Reduced from randomized 0.5-5 seconds to consistent 2 seconds
+    - Ensures usage data download starts immediately after integration setup
+    - Prevents long wait times before statistics appear
+
+#### Performance Improvements
+  - Download progress updates every 10 days (reduces state write frequency)
+  - Notifications only shown for large downloads (>1 year of data)
+  - Optimized progress sensor state updates
+
+### Technical Details
+  - Progress sensor shows on device page with all Contact Energy sensors
+  - Status values: "idle", "downloading", "complete", "error"
+  - Progress percentage calculated as: (days_completed / days_total) × 100
+  - Notification ID format: `contact_energy_download_{ICP}`
+  - Compatible with all existing sensors and dashboard configurations
+
+
 ## 0.7.5
 
 ### Changes

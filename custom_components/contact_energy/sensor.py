@@ -53,16 +53,25 @@ async def async_setup_entry(
     else:
         usage_days = entry.data.get(CONF_USAGE_DAYS, 30)
 
-    # Create usage sensor for Energy Dashboard
-    entities = [
-        ContactEnergyUsageSensor(
-            coordinator,
-            account_id,
-            contract_id,
-            contract_icp,
-            usage_days,
-        )
-    ]
+    # Create usage sensor for Energy Dashboard with progress tracking
+    usage_sensor = ContactEnergyUsageSensor(
+        coordinator,
+        account_id,
+        contract_id,
+        contract_icp,
+        usage_days,
+    )
+    
+    # Create progress sensor
+    progress_sensor = ContactEnergyDownloadProgressSensor(
+        coordinator,
+        contract_icp,
+    )
+    
+    # Link progress sensor to usage sensor
+    usage_sensor.set_progress_sensor(progress_sensor)
+    
+    entities = [usage_sensor, progress_sensor]
 
     # Add account information sensors (read from coordinator account_details)
     entities.extend([
@@ -156,6 +165,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         self._state = 0.0
         self._last_usage_update: Optional[datetime] = None
         self._download_task: Optional[asyncio.Task] = None
+        self._progress_sensor: Optional["ContactEnergyDownloadProgressSensor"] = None
 
         # Entity attributes
         self._attr_name = f"Contact Energy Usage ({contract_icp})"
@@ -164,6 +174,10 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_icon = "mdi:meter-electric"
+
+    def set_progress_sensor(self, progress_sensor: "ContactEnergyDownloadProgressSensor") -> None:
+        """Set reference to progress sensor for download updates."""
+        self._progress_sensor = progress_sensor
 
     @property
     def native_value(self) -> float:
@@ -286,7 +300,38 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             # If nothing to do (already up to date), exit early
             if start_date > end_date:
                 _LOGGER.info("Statistics already up to date through %s; no download needed", end_date)
+                if self._progress_sensor:
+                    self._progress_sensor.update_progress("complete", days_completed=0, days_total=0)
                 return
+
+            # Calculate total days to download
+            total_days = (end_date - start_date).days + 1
+            
+            # Initialize progress sensor and notification
+            if self._progress_sensor:
+                self._progress_sensor.update_progress(
+                    "downloading",
+                    current_date=start_date,
+                    start_date=start_date,
+                    end_date=end_date,
+                    days_completed=0,
+                    days_total=total_days
+                )
+            
+            # Show persistent notification for large downloads (> 365 days)
+            notification_id = f"{DOMAIN}_download_{self._contract_icp}"
+            if total_days > 365:
+                from homeassistant.components.persistent_notification import async_create
+                async_create(
+                    self.hass,
+                    f"Downloading {total_days} days of usage data. This may take 10-15 minutes...\n\n"
+                    f"Progress: 0% (0/{total_days} days)\n"
+                    f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+                    title="Contact Energy - Downloading Usage Data",
+                    notification_id=notification_id
+                )
+            
+            _LOGGER.info("Downloading %d days of usage data from %s to %s", total_days, start_date, end_date)
 
             # Initialize statistics lists
             kwh_statistics = []
@@ -359,6 +404,32 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 # Move to next date
                 current_date += timedelta(days=1)
                 
+                # Update progress every 10 days or on final day
+                days_completed = (current_date - start_date).days
+                if days_completed % 10 == 0 or current_date > end_date:
+                    if self._progress_sensor:
+                        self._progress_sensor.update_progress(
+                            "downloading",
+                            current_date=current_date,
+                            start_date=start_date,
+                            end_date=end_date,
+                            days_completed=min(days_completed, total_days),
+                            days_total=total_days
+                        )
+                    
+                    # Update notification for large downloads
+                    if total_days > 365 and days_completed % 50 == 0:
+                        from homeassistant.components.persistent_notification import async_create
+                        progress_pct = int((days_completed / total_days) * 100)
+                        async_create(
+                            self.hass,
+                            f"Downloading {total_days} days of usage data. This may take 10-15 minutes...\n\n"
+                            f"Progress: {progress_pct}% ({days_completed}/{total_days} days)\n"
+                            f"Current: {current_date.strftime('%Y-%m-%d')}",
+                            title="Contact Energy - Downloading Usage Data",
+                            notification_id=notification_id
+                        )
+                
                 # Small delay between requests to be nice to the API
                 await asyncio.sleep(0.5)
 
@@ -370,11 +441,30 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             else:
                 _LOGGER.warning("No usage data retrieved - all API requests may have failed")
             
+            # Mark progress as complete
+            if self._progress_sensor:
+                self._progress_sensor.update_progress(
+                    "complete",
+                    current_date=end_date,
+                    start_date=start_date,
+                    end_date=end_date,
+                    days_completed=total_days,
+                    days_total=total_days
+                )
+            
+            # Dismiss notification
+            if total_days > 365:
+                from homeassistant.components.persistent_notification import async_dismiss
+                async_dismiss(self.hass, notification_id)
+            
             # Update sensor state to latest total
             self._state = kwh_running_sum
 
         except Exception as error:
             _LOGGER.exception("Usage data download failed: %s", error)
+            # Mark progress as failed
+            if self._progress_sensor:
+                self._progress_sensor.update_progress("error", days_completed=0, days_total=0)
 
     async def _add_statistics(
         self, 
@@ -442,6 +532,94 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             return float(value) if value is not None else 0.0
         except (TypeError, ValueError):
             return 0.0
+
+
+# -----------------------------
+# Download Progress Sensor
+# -----------------------------
+
+class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
+    """Sensor showing usage data download progress."""
+    
+    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+        """Initialize the progress sensor."""
+        super().__init__(coordinator)
+        self._contract_icp = contract_icp
+        self._state: Optional[int] = None
+        self._status = "idle"
+        self._current_date: Optional[str] = None
+        self._start_date: Optional[str] = None
+        self._end_date: Optional[str] = None
+        self._days_completed = 0
+        self._days_total = 0
+        
+        # Entity attributes
+        self._attr_name = f"Contact Energy Download Progress ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_download_progress"
+        self._attr_icon = "mdi:download"
+        self._attr_native_unit_of_measurement = "%"
+    
+    @property
+    def native_value(self) -> Optional[int]:
+        """Return download progress percentage."""
+        return self._state
+    
+    @property
+    def icon(self) -> str:
+        """Return icon based on status."""
+        if self._status == "downloading":
+            return "mdi:download"
+        elif self._status == "complete":
+            return "mdi:check-circle"
+        return "mdi:information"
+    
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        return {
+            "status": self._status,
+            "current_date": self._current_date,
+            "start_date": self._start_date,
+            "end_date": self._end_date,
+            "days_completed": self._days_completed,
+            "days_total": self._days_total,
+        }
+    
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self._contract_icp)},
+            "name": f"Contact Energy ({self._contract_icp})",
+            "manufacturer": "Contact Energy",
+            "model": "Smart Meter",
+        }
+    
+    def update_progress(
+        self,
+        status: str,
+        current_date: Optional[date] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        days_completed: int = 0,
+        days_total: int = 0,
+    ) -> None:
+        """Update progress sensor state."""
+        self._status = status
+        self._current_date = current_date.isoformat() if current_date else None
+        self._start_date = start_date.isoformat() if start_date else None
+        self._end_date = end_date.isoformat() if end_date else None
+        self._days_completed = days_completed
+        self._days_total = days_total
+        
+        # Calculate percentage
+        if days_total > 0:
+            self._state = min(100, int((days_completed / days_total) * 100))
+        else:
+            self._state = None
+        
+        # Update HA state
+        self.async_write_ha_state()
 
 
 # -----------------------------
