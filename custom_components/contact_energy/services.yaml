@@ -1,0 +1,15 @@
+# Services for Contact Energy integration
+
+trigger_download:
+  name: Trigger usage data download
+  description: Manually trigger a download of historical usage data for the specified usage sensor.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The entity ID of the Contact Energy usage sensor to trigger download for.
+      required: true
+      example: "sensor.contact_energy_usage_0000000966tr348"
+      selector:
+        entity:
+          integration: contact_energy
+          domain: sensor

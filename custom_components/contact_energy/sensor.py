@@ -179,6 +179,22 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         """Set reference to progress sensor for download updates."""
         self._progress_sensor = progress_sensor
 
+    async def trigger_download(self) -> None:
+        """Trigger a manual download of usage data."""
+        _LOGGER.info("Manual download triggered for %s", self._contract_icp)
+        
+        # Cancel any existing download task
+        if self._download_task and not self._download_task.done():
+            _LOGGER.warning("Cancelling existing download task before starting new one")
+            self._download_task.cancel()
+            try:
+                await self._download_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Start new download task
+        self._download_task = self.hass.async_create_task(self._download_usage_data())
+
     @property
     def native_value(self) -> float:
         """Return the current total usage."""

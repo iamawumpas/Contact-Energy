@@ -7,8 +7,10 @@ from datetime import datetime, time, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.event import async_track_time_change, async_call_later
+import voluptuous as vol
+from homeassistant.helpers import config_validation as cv
 
 from .api import ContactEnergyApi
 from .coordinator import ContactEnergyCoordinator
@@ -25,6 +27,14 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+
+# Service names
+SERVICE_TRIGGER_DOWNLOAD = "trigger_download"
+
+# Service schema
+SERVICE_TRIGGER_DOWNLOAD_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+})
 
 # Daily restart time: 3am +/- 30 minutes
 RESTART_HOUR = 3
@@ -110,6 +120,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Set up sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register service to trigger manual download
+    async def handle_trigger_download(call: ServiceCall) -> None:
+        """Handle the trigger download service call."""
+        entity_id = call.data["entity_id"]
+        
+        # Find the usage sensor entity
+        entity_registry = hass.helpers.entity_registry.async_get(hass)
+        entity_entry = entity_registry.async_get(entity_id)
+        
+        if not entity_entry:
+            _LOGGER.error("Entity %s not found", entity_id)
+            return
+        
+        # Get the entity from the state machine
+        if entity := hass.data.get("entity_components", {}).get("sensor"):
+            for ent in entity.entities:
+                if ent.entity_id == entity_id:
+                    if hasattr(ent, "trigger_download"):
+                        await ent.trigger_download()
+                        _LOGGER.info("Triggered manual download for %s", entity_id)
+                    else:
+                        _LOGGER.error("Entity %s does not support manual download", entity_id)
+                    return
+        
+        _LOGGER.error("Could not find entity %s to trigger download", entity_id)
+    
+    # Register the service (only once per domain)
+    if not hass.services.has_service(DOMAIN, SERVICE_TRIGGER_DOWNLOAD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_TRIGGER_DOWNLOAD,
+            handle_trigger_download,
+            schema=SERVICE_TRIGGER_DOWNLOAD_SCHEMA,
+        )
 
     _LOGGER.info(
         "Contact Energy integration setup complete for account %s (ICP: %s). Daily restart scheduled at %02d:%02d",

@@ -30,12 +30,28 @@
     bar_background: '#e0e0e0'
     ```
 
+#### Manual Download Trigger
+  - **New Service:** `contact_energy.trigger_download` - Manually initiate usage data downloads
+    - Call via button cards, automations, or Developer Tools
+    - Cancels any existing download in progress before starting
+    - Useful after database cleanup or to refresh data after API issues
+    - Service parameter: `entity_id` (usage sensor)
+  - **Dashboard Integration:** Add download buttons to your dashboard
+    - Button card example provided in wiki
+    - Mushroom button card support
+    - Combined progress bar + button card examples
+  - **Automation Support:** Schedule periodic data refreshes
+    - Weekly/monthly automated downloads
+    - Trigger after specific events or conditions
+
 ### Technical Details
   - `native_value` returns state string instead of percentage integer
   - Timestamps stored in ISO 8601 format with timezone
   - Duration calculated from start/end times and formatted as `HH:MM:SS`
   - Estimation algorithm: `time_per_day = elapsed_time / days_completed`
   - Timestamps cleared when download completes or enters idle/error state
+  - Service registered in `__init__.py` with schema validation
+  - `services.yaml` defines service parameters for UI integration
 
 
 ## 0.7.6
