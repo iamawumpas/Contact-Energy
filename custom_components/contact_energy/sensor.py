@@ -191,19 +191,15 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         await super().async_added_to_hass()
 
         async def _kickoff_download(_event=None) -> None:
-            # Add randomized jitter based on contract ICP to spread out multiple accounts/contracts
-            # Use hash of ICP to generate consistent but distributed delays
-            import hashlib
-            icp_hash = int(hashlib.md5(self._contract_icp.encode()).hexdigest()[:8], 16)
-            base_delay = (icp_hash % 30) / 10.0  # 0-3 seconds based on ICP
-            jitter = random.uniform(0.5, 2.0)  # Additional random jitter
-            total_delay = base_delay + jitter
+            # Add small delay to allow coordinator to complete initial fetch
+            # but start immediately if no prior download has occurred
+            delay = 2.0  # 2 seconds to let coordinator initialize
             
             try:
-                await asyncio.sleep(total_delay)
+                await asyncio.sleep(delay)
             except Exception:  # noqa: BLE001
                 pass
-            _LOGGER.info("Starting initial usage data download for %s (delay: %.1fs)", self._contract_icp, total_delay)
+            _LOGGER.info("Starting initial usage data download for %s", self._contract_icp)
             self._download_task = self.hass.async_create_task(self._download_usage_data())
 
         if getattr(self.hass, "is_running", False):
