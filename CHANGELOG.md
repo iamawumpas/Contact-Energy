@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.7.8
+
+### Changes
+
+#### Progress Sensor Hotfix
+- **Numeric State:** Progress sensor state is now a numeric percentage (0–100).
+- **Status Moved to Attribute:** Human-readable mode (`idle`, `downloading`, `complete`, `error`) is exposed via the `status` attribute.
+- **Timer Bar Card Update:** Configuration must reference `status` via `state_attribute`, and set `active_state: downloading`.
+
+```yaml
+type: custom:timer-bar-card
+entity: sensor.contact_energy_download_progress_[ICP]
+name: Usage Data Download
+active_state: downloading
+state_attribute: status
+start_time:
+  attribute: start_time
+end_time:
+  attribute: end_time
+bar_width: 70%
+bar_foreground: '#4caf50'
+bar_background: '#e0e0e0'
+```
+
+### Technical Details
+- `native_value` returns an integer 0–100 (percent complete).
+- `status` attribute provides card-friendly state (`downloading`, etc.).
+- Keeps `start_time`, `end_time`, and `duration` for timer-bar-card.
+
+
 ## 0.7.7
 
 ### Changes

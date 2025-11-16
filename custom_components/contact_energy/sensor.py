@@ -564,7 +564,8 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
         """Initialize the progress sensor."""
         super().__init__(coordinator)
         self._contract_icp = contract_icp
-        self._state: Optional[str] = "idle"  # State for timer-bar-card: idle/active/paused
+        # Keep numeric percentage for HA; expose mode via attributes
+        self._state: Optional[int] = 0
         self._status = "idle"  # Internal status
         self._current_date: Optional[str] = None
         self._start_date: Optional[str] = None
@@ -581,20 +582,9 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_unit_of_measurement = "%"
     
     @property
-    def native_value(self) -> Optional[str]:
-        """Return state for timer-bar-card compatibility.
-        
-        Returns 'idle', 'active', or 'paused' for timer-bar-card.
-        """
-        if self._status == "downloading":
-            return "active"
-        elif self._status == "idle":
-            return "idle"
-        elif self._status == "complete":
-            return "idle"
-        elif self._status == "error":
-            return "idle"
-        return "idle"
+    def native_value(self) -> Optional[int]:
+        """Return numeric progress percentage (0-100)."""
+        return self._state
     
     @property
     def icon(self) -> str:
@@ -694,11 +684,12 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
                 self._download_start_time = None
                 self._estimated_end_time = None
         
-        # Update internal state for compatibility
+        # Update numeric percentage state for HA
         if days_total > 0:
-            self._state = "active" if status == "downloading" else "idle"
+            self._state = min(100, int((days_completed / days_total) * 100))
         else:
-            self._state = "idle"
+            # Idle/no work yet: keep at 0%
+            self._state = 0
         
         # Update HA state
         self.async_write_ha_state()
