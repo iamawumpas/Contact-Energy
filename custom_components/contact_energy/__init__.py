@@ -124,19 +124,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register service to trigger manual download
     async def handle_trigger_download(call: ServiceCall) -> None:
         """Handle the trigger download service call."""
+        from homeassistant.helpers import entity_registry as er
+        
         entity_id = call.data["entity_id"]
         
         # Find the usage sensor entity
-        entity_registry = hass.helpers.entity_registry.async_get(hass)
+        entity_registry = er.async_get(hass)
         entity_entry = entity_registry.async_get(entity_id)
         
         if not entity_entry:
-            _LOGGER.error("Entity %s not found", entity_id)
+            _LOGGER.error("Entity %s not found in registry", entity_id)
             return
         
-        # Get the entity from the state machine
-        if entity := hass.data.get("entity_components", {}).get("sensor"):
-            for ent in entity.entities:
+        # Get the entity from the entity component
+        component = hass.data.get("entity_components", {}).get("sensor")
+        if component:
+            for ent in component.entities:
                 if ent.entity_id == entity_id:
                     if hasattr(ent, "trigger_download"):
                         await ent.trigger_download()
