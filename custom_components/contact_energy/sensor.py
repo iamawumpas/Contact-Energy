@@ -539,19 +539,24 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 # -----------------------------
 
 class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
-    """Sensor showing usage data download progress."""
+    """Sensor showing usage data download progress.
+    
+    Compatible with timer-bar-card for visual progress tracking.
+    """
     
     def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
         """Initialize the progress sensor."""
         super().__init__(coordinator)
         self._contract_icp = contract_icp
-        self._state: Optional[int] = None
-        self._status = "idle"
+        self._state: Optional[str] = "idle"  # State for timer-bar-card: idle/active/paused
+        self._status = "idle"  # Internal status
         self._current_date: Optional[str] = None
         self._start_date: Optional[str] = None
         self._end_date: Optional[str] = None
         self._days_completed = 0
         self._days_total = 0
+        self._download_start_time: Optional[str] = None  # ISO timestamp when download started
+        self._estimated_end_time: Optional[str] = None  # ISO timestamp when download will finish
         
         # Entity attributes
         self._attr_name = f"Contact Energy Download Progress ({contract_icp})"
@@ -560,9 +565,20 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_unit_of_measurement = "%"
     
     @property
-    def native_value(self) -> Optional[int]:
-        """Return download progress percentage."""
-        return self._state
+    def native_value(self) -> Optional[str]:
+        """Return state for timer-bar-card compatibility.
+        
+        Returns 'idle', 'active', or 'paused' for timer-bar-card.
+        """
+        if self._status == "downloading":
+            return "active"
+        elif self._status == "idle":
+            return "idle"
+        elif self._status == "complete":
+            return "idle"
+        elif self._status == "error":
+            return "idle"
+        return "idle"
     
     @property
     def icon(self) -> str:
@@ -575,15 +591,35 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        return {
+        """Return additional state attributes for timer-bar-card."""
+        attrs = {
             "status": self._status,
             "current_date": self._current_date,
             "start_date": self._start_date,
             "end_date": self._end_date,
             "days_completed": self._days_completed,
             "days_total": self._days_total,
+            "percentage": min(100, int((self._days_completed / self._days_total) * 100)) if self._days_total > 0 else 0,
         }
+        
+        # Add timer-bar-card compatible attributes
+        if self._download_start_time:
+            attrs["start_time"] = self._download_start_time
+        if self._estimated_end_time:
+            attrs["end_time"] = self._estimated_end_time
+        
+        # Calculate duration in seconds for timer-bar-card
+        if self._download_start_time and self._estimated_end_time:
+            from datetime import datetime
+            try:
+                start = datetime.fromisoformat(self._download_start_time.replace('Z', '+00:00'))
+                end = datetime.fromisoformat(self._estimated_end_time.replace('Z', '+00:00'))
+                duration_seconds = int((end - start).total_seconds())
+                attrs["duration"] = f"{duration_seconds // 3600}:{(duration_seconds % 3600) // 60:02d}:{duration_seconds % 60:02d}"
+            except (ValueError, AttributeError):
+                pass
+        
+        return attrs
     
     @property
     def device_info(self) -> dict[str, Any]:
@@ -604,7 +640,9 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
         days_completed: int = 0,
         days_total: int = 0,
     ) -> None:
-        """Update progress sensor state."""
+        """Update progress sensor state and calculate timer-bar-card attributes."""
+        from datetime import datetime, timezone
+        
         self._status = status
         self._current_date = current_date.isoformat() if current_date else None
         self._start_date = start_date.isoformat() if start_date else None
@@ -612,11 +650,39 @@ class ContactEnergyDownloadProgressSensor(CoordinatorEntity, SensorEntity):
         self._days_completed = days_completed
         self._days_total = days_total
         
-        # Calculate percentage
+        # Set download start time when download begins
+        if status == "downloading" and not self._download_start_time:
+            self._download_start_time = datetime.now(timezone.utc).isoformat()
+        
+        # Calculate estimated end time based on progress
+        if status == "downloading" and days_total > 0 and days_completed > 0:
+            # Calculate elapsed time and estimate total duration
+            if self._download_start_time:
+                start_time = datetime.fromisoformat(self._download_start_time.replace('Z', '+00:00'))
+                now = datetime.now(timezone.utc)
+                elapsed_seconds = (now - start_time).total_seconds()
+                
+                # Estimate time per day and calculate remaining time
+                if elapsed_seconds > 0:
+                    seconds_per_day = elapsed_seconds / days_completed
+                    remaining_days = days_total - days_completed
+                    remaining_seconds = remaining_days * seconds_per_day
+                    
+                    from datetime import timedelta
+                    estimated_end = now + timedelta(seconds=remaining_seconds)
+                    self._estimated_end_time = estimated_end.isoformat()
+        
+        # Clear timestamps when idle or complete
+        if status in ("idle", "complete", "error"):
+            if status != "downloading":
+                self._download_start_time = None
+                self._estimated_end_time = None
+        
+        # Update internal state for compatibility
         if days_total > 0:
-            self._state = min(100, int((days_completed / days_total) * 100))
+            self._state = "active" if status == "downloading" else "idle"
         else:
-            self._state = None
+            self._state = "idle"
         
         # Update HA state
         self.async_write_ha_state()

@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.7.7
+
+### Changes
+
+#### Timer Bar Card Integration
+  - **Enhanced Progress Sensor:** Reconfigured download progress sensor for timer-bar-card compatibility
+    - State now returns `active`, `idle`, or `paused` (timer-bar-card format)
+    - Added `start_time` attribute: ISO timestamp when download started
+    - Added `end_time` attribute: Estimated ISO timestamp when download will complete
+    - Added `duration` attribute: Total estimated download time in `hh:mm:ss` format
+    - Added `percentage` attribute: Progress percentage (0-100) for additional display options
+  - **Dynamic Time Estimation:** Calculates estimated completion time based on actual download speed
+    - Monitors elapsed time vs days completed
+    - Updates `end_time` estimate as download progresses
+    - Automatically adjusts for slower or faster than expected API response times
+  - **Timer Bar Card Configuration:** Compatible with [timer-bar-card](https://github.com/rianadon/timer-bar-card)
+    ```yaml
+    type: custom:timer-bar-card
+    entity: sensor.contact_energy_download_progress_[ICP]
+    name: Usage Data Download
+    active_state: active
+    start_time:
+      attribute: start_time
+    end_time:
+      attribute: end_time
+    bar_width: 70%
+    bar_foreground: '#4caf50'
+    bar_background: '#e0e0e0'
+    ```
+
+### Technical Details
+  - `native_value` returns state string instead of percentage integer
+  - Timestamps stored in ISO 8601 format with timezone
+  - Duration calculated from start/end times and formatted as `HH:MM:SS`
+  - Estimation algorithm: `time_per_day = elapsed_time / days_completed`
+  - Timestamps cleared when download completes or enters idle/error state
+
+
 ## 0.7.6
 
 ### Changes
