@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.1
+
+### Changes
+
+#### sensor.py - HA 2026.11+ Compatibility
+  - Added `mean_type=None` parameter to all StatisticMetaData definitions for Home Assistant 2026.11+ compliance
+  - Explicitly set to `None` for all cumulative statistics (energy, cost, free_energy)
+  - Ensures proper handling of cumulative statistics without averaging in HA 2026.11+
+  - Added clarifying comments for future maintainers
+  - Statistics configuration:
+    * Energy statistics: `unit_class="energy"`, `mean_type=None`
+    * Cost statistics: `unit_class="monetary"`, `mean_type=None`
+    * Free energy statistics: `unit_class="energy"`, `mean_type=None`
+
+#### Compliance & Documentation
+  - Created comprehensive HA 2026.11+ compatibility verification report
+  - All sensor entities verified for HA 2026.11+ compliance
+  - No deprecated code patterns detected
+  - Confirmed forward compatibility with HA 2027.x
+
+
 ## 0.7.0
 
 ### Changes

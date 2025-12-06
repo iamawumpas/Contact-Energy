@@ -1,0 +1,4 @@
+This file authorizes the release of version 0.7.1
+Release Date: 2025-12-06
+Release Focus: Home Assistant 2026.11+ compatibility
+Key Changes: Added mean_type=None to StatisticMetaData for cumulative statistics
