@@ -8,6 +8,7 @@ VERSION_FILES=(
   "hacs.json"
   "custom_components/contact_energy/manifest.json"
   "README.md"
+  "CHANGELOG.md"
 )
 
 # --- Release guards (kill-switch) ---
@@ -114,9 +115,11 @@ update_readme_version() {
   sed -i -E 's/(<strong>version:<\/strong>)[[:space:]]+[0-9.]+/\1 '"$new_version"'/' "$f"
 }
 
-update_version_in_files() {
+# Update version in files (not including CHANGELOG which is handled separately)
+update_version_files() {
   local new_version="$1"
-  for f in "${VERSION_FILES[@]}"; do
+  # Don't update CHANGELOG.md version here - it's handled by write_changelog_section
+  for f in hacs.json custom_components/contact_energy/manifest.json README.md; do
     if [[ -f "$f" ]]; then
       if [[ "$f" == *.json ]]; then
         # Update JSON version field (preserve formatting)
@@ -978,7 +981,7 @@ main() {
   write_changelog_section "$version" "$entry_text"
 
   # Step 4: Update version numbers in files
-  update_version_in_files "$version"
+  update_version_files "$version"
 
   # Step 5: Commit all changes including the changelog
   commit_and_release "$version" "$entry_text"

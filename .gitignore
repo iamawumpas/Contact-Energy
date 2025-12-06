@@ -1,3 +1,9 @@
-release.sh
+# Dotfiles (except .gitignore, .github, .githooks)
+.**
+
+# Directories
+*/.github
+*/.githooks
+
+# Development files
 .integration-notes.md
-.*
