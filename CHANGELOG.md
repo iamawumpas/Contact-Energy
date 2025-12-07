@@ -1,28 +1,8 @@
 # Changelog
 
-## 0.0.1
-
-### Changes
-
-#### Assets
-  - Updated ApexCharts card configuration examples
-  - Modified 4 asset files
-
-#### Documentation
-  - Added comprehensive ApexCharts Card Examples section
-  - Added documentation for multiple properties and accounts support
-  - Documented sensor naming with ICP suffixes for multi-instance setups
-
-#### Visual Assets
-  - Updated integration screenshots and visual assets
-
-#### Metadata
-  - Added cloud_polling IoT class designation
-
-
 All notable changes to this project will be documented in this file.
 
-## [0.0.1] - 2025-12-07
+## [0.7.0]
 
 ### Complete API Research and Documentation
 
@@ -189,7 +169,7 @@ custom_components/contact_energy/
 
 ### Summary
 
-Version 0.0.1 establishes the foundation for a reliable Contact Energy integration by:
+Version 0.7.0 establishes the foundation for a reliable Contact Energy integration by:
 - Documenting all available API capabilities
 - Identifying the optimal implementation approach (direct API vs library)
 - Creating comprehensive testing and validation scripts
