@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 
@@ -16,10 +16,11 @@ from .const import (
     CONF_PASSWORD,
     CONF_ACCOUNT_ID,
     CONF_CONTRACT_ID,
-    CONF_CONTRACT_ICP,
+    CONF_ICP_NUMBER,
     CONF_USAGE_DAYS,
     CONF_USAGE_MONTHS,
-    DATA_ACCOUNT,
+    CONF_HISTORY_DAYS,
+    CONF_HISTORY_MONTHS,
     DOMAIN,
 )
 from .coordinator import ContactEnergyDataUpdateCoordinator
@@ -55,8 +56,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("Failed to authenticate with Contact Energy API: %s", error)
             return False
 
+        # Get config values for coordinator
+        account_id = entry.data.get(CONF_ACCOUNT_ID)
+        contract_id = entry.data.get(CONF_CONTRACT_ID)
+        icp_number = entry.data.get(CONF_ICP_NUMBER)
+        
+        # Determine history days - prefer months if available
+        history_days = DEFAULT_HISTORY_DAYS
+        if CONF_HISTORY_MONTHS in entry.data:
+            months = entry.data.get(CONF_HISTORY_MONTHS)
+            history_days = months * 30 if months else DEFAULT_HISTORY_DAYS
+        elif CONF_HISTORY_DAYS in entry.data:
+            history_days = entry.data.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS)
+
         # Create the data coordinator for this entry
-        coordinator = ContactEnergyDataUpdateCoordinator(hass, api, entry)
+        coordinator = ContactEnergyDataUpdateCoordinator(
+            hass,
+            api,
+            account_id,
+            contract_id,
+            icp_number,
+            history_days
+        )
 
         # Initial data fetch to populate coordinator
         try:
@@ -76,10 +97,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
         # Schedule daily restart at 3:00 AM to refresh account details
-        async def _schedule_restart(event: Event) -> None:
+        async def _schedule_restart(event: Event = None) -> None:
             """Schedule restart every day at 3:00 AM."""
 
-            @callback
             def _restart_at_3am(now: Optional[datetime] = None) -> None:
                 """Restart the coordinator daily at 3:00 AM."""
                 _LOGGER.debug(
@@ -105,6 +125,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as error:
         _LOGGER.exception("Unexpected error during setup: %s", error)
         return False
+
+
+# Add missing constant
+DEFAULT_HISTORY_DAYS = 90
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

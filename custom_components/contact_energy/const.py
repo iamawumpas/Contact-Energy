@@ -21,10 +21,13 @@ CONF_PASSWORD: Final = "password"
 CONF_ACCOUNT_ID: Final = "account_id"
 CONF_CONTRACT_ID: Final = "contract_id"
 CONF_ICP_NUMBER: Final = "icp_number"
+CONF_CONTRACT_ICP: Final = "icp_number"  # Alias for backwards compatibility
 CONF_ACCOUNT_NICKNAME: Final = "account_nickname"
 CONF_ACCOUNT_ADDRESS: Final = "account_address"
 CONF_HISTORY_DAYS: Final = "history_days"
 CONF_HISTORY_MONTHS: Final = "history_months"
+CONF_USAGE_DAYS: Final = "history_days"  # Alias for backwards compatibility
+CONF_USAGE_MONTHS: Final = "history_months"  # Alias for backwards compatibility
 
 # Default Values
 DEFAULT_HISTORY_MONTHS: Final = 3
@@ -122,3 +125,8 @@ INTERVAL_MONTHLY: Final = "monthly"
 # Retry Configuration
 MAX_RETRIES: Final = 3
 RETRY_DELAY: Final = 5  # seconds
+
+
+def months_to_days(months: int) -> int:
+    """Convert months to approximate days (30 days per month)."""
+    return months * 30

@@ -7,7 +7,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from .const import (
     API_BASE_URL,
@@ -94,7 +94,7 @@ class ContactEnergyApi:
         
         try:
             async with self._session.post(
-                url, json=payload, headers=headers, timeout=API_TIMEOUT
+                url, json=payload, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 _LOGGER.debug("Authentication response status: %s", response.status)
                 
@@ -143,7 +143,7 @@ class ContactEnergyApi:
         for attempt in range(MAX_RETRIES):
             try:
                 async with self._session.get(
-                    url, headers=headers, timeout=API_TIMEOUT
+                    url, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     _LOGGER.debug("Account fetch response status: %s", response.status)
                     
@@ -222,7 +222,7 @@ class ContactEnergyApi:
         for attempt in range(MAX_RETRIES):
             try:
                 async with self._session.post(
-                    url, headers=headers, timeout=API_TIMEOUT
+                    url, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     _LOGGER.debug("Usage fetch response status: %s", response.status)
                     
