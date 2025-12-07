@@ -7,6 +7,7 @@ from typing import Optional
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 
@@ -38,7 +39,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Store the config entry
     hass.data[DOMAIN][entry.entry_id] = {
-        "api": None,
         "coordinator": None,
     }
 
@@ -47,14 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         email = entry.data.get(CONF_EMAIL)
         password = entry.data.get(CONF_PASSWORD)
 
-        api = ContactEnergyApi(email, password)
-
-        # Test the connection by trying to authenticate
-        try:
-            await api.authenticate()
-        except Exception as error:
-            _LOGGER.error("Failed to authenticate with Contact Energy API: %s", error)
-            return False
+        # Get the Home Assistant aiohttp session
+        session = async_get_clientsession(hass)
 
         # Get config values for coordinator
         account_id = entry.data.get(CONF_ACCOUNT_ID)
@@ -72,12 +66,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Create the data coordinator for this entry
         coordinator = ContactEnergyDataUpdateCoordinator(
             hass,
-            api,
+            email,
+            password,
             account_id,
             contract_id,
             icp_number,
-            history_days
+            history_days,
+            session,  # Pass the session to the coordinator
         )
+        
+        # Initialize the coordinator (sets up API with session)
+        coordinator._initialize()
 
         # Initial data fetch to populate coordinator
         try:
@@ -87,7 +86,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return False
 
         # Store in hass.data
-        hass.data[DOMAIN][entry.entry_id]["api"] = api
         hass.data[DOMAIN][entry.entry_id]["coordinator"] = coordinator
 
         # Forward entry setup to platforms
