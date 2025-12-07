@@ -2,6 +2,15 @@
   "name": "Contact Energy",
   "content_in_root": false,
   "version": "0.0.1",
-  "ignore": ["release.sh", ".integration-notes.md"],
+  "ignore": [
+    "release.sh",
+    ".agent-instructions.txt",
+    ".git",
+    ".github",
+    ".gitignore",
+    ".vscode",
+    ".devcontainer",
+    ".*"
+  ],
   "iot_class": "cloud_polling"
 }
