@@ -316,13 +316,6 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Failed to update monthly usage: %s", err)
             _LOGGER.exception("Full traceback:")
             raise
-                    self.data[DATA_USAGE_MONTHLY][date_key] = record
-            
-            _LOGGER.debug("Monthly usage updated: %d records", len(usage_data))
-            
-        except Exception as err:
-            _LOGGER.error("Failed to update monthly usage: %s", err)
-            raise
 
     def get_today_usage(self) -> dict[str, Any] | None:
         """Get today's usage summary.
