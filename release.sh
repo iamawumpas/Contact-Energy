@@ -3,6 +3,19 @@ set -Eeuo pipefail
 
 # Automated release script for Contact Energy integration
 
+# --- Agent Instructions Reminder ---
+# The agent must read and follow .agent-instructions.txt before proceeding
+echo "========================================" >&2
+echo "AGENT: Read .agent-instructions.txt" >&2
+echo "========================================" >&2
+if [[ -f ".agent-instructions.txt" ]]; then
+  echo "Instructions file found. Agent must review before proceeding." >&2
+  echo "" >&2
+  cat ".agent-instructions.txt" >&2
+  echo "" >&2
+  echo "========================================" >&2
+fi
+
 # Files to update version in
 VERSION_FILES=(
   "hacs.json"
