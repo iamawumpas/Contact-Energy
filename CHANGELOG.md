@@ -2,11 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.0.1] - 2025-12-07
+## [0.7.0] - 2025-12-07
 
 ### Complete API Research and Documentation
 
-This release represents a comprehensive reset and research phase for the Contact Energy Home Assistant integration. The entire repository was archived and rebuilt from scratch with a focus on understanding and documenting the available API capabilities.
+This release represents a comprehensive reset and research phase for the Contact Energy Home Assistant integration. The entire repository was archived (tag: archive-full-repo-0.6.2) and rebuilt from scratch with a focus on understanding and documenting the available API capabilities.
 
 #### Research Objectives
 - Identify all available data points from the Contact Energy API
