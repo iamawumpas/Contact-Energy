@@ -1,23 +1,63 @@
-"""Contact Energy sensor platform."""
+"""Sensor entities for Contact Energy integration."""
 from __future__ import annotations
 
-import asyncio
+from datetime import datetime
 import logging
-from datetime import datetime, timedelta, date
-from typing import Any, Optional
+from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import (
     SensorEntity,
-    SensorDeviceClass,
     SensorStateClass,
+    SensorDeviceClass,
 )
-from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics, statistics_during_period
-from homeassistant.const import UnitOfEnergy, EVENT_HOMEASSISTANT_STARTED, CONF_EMAIL
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    UnitOfEnergy,
+    UnitOfTime,
+    CURRENCY_DOLLAR,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+)
+from homeassistant.util import dt as dt_util
+
+from .const import (
+    CONF_ACCOUNT_NICKNAME,
+    CONF_ICP_NUMBER,
+    CURRENCY_DOLLAR as CE_CURRENCY_DOLLAR,
+    DATA_ACCOUNT,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_MONETARY,
+    DOMAIN,
+    ENERGY_KILO_WATT_HOUR,
+    ICON_ACCOUNT,
+    ICON_CALENDAR,
+    ICON_CURRENCY,
+    ICON_LIGHTNING_BOLT,
+    SENSOR_ACCOUNT_BALANCE,
+    SENSOR_AMOUNT_DUE,
+    SENSOR_BILLING_FREQUENCY,
+    SENSOR_DAYS_UNTIL_OVERDUE,
+    SENSOR_FREE_USAGE_TODAY,
+    SENSOR_LAST_MONTH_COST,
+    SENSOR_LAST_MONTH_USAGE,
+    SENSOR_NEXT_BILL_DATE,
+    SENSOR_OFFPEAK_USAGE_TODAY,
+    SENSOR_PAYMENT_DUE_DATE,
+    SENSOR_PAYMENT_METHOD,
+    SENSOR_PRODUCT_NAME,
+    SENSOR_THIS_MONTH_COST,
+    SENSOR_THIS_MONTH_USAGE,
+    SENSOR_TODAY_COST,
+    SENSOR_TODAY_USAGE,
+    SENSOR_YESTERDAY_COST,
+    SENSOR_YESTERDAY_USAGE,
+    STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL,
+)
+from .coordinator import ContactEnergyDataUpdateCoordinator
 import random
 import re
 
@@ -1982,6 +2022,46 @@ class ContactEnergyChartMonthlyFreeSensor(SensorEntity):
             "month",
             None,
             {"sum"}
+        )
+        self._monthly_free_data = {}
+        if self._stat_id in stats:
+            for entry in stats[self._stat_id]:
+                start_ts = entry.get("start")
+                # Prefer the monthly change if provided by the statistics helper; fall back to sum
+                val = entry.get("change", entry.get("sum"))
+                if start_ts and val is not None:
+                    # Convert timestamp to datetime and store as year-month string
+                    if isinstance(start_ts, (int, float)):
+                        dt = datetime.fromtimestamp(start_ts)
+                    elif isinstance(start_ts, datetime):
+                        dt = start_ts
+                    else:
+                        continue
+                    # Store as YYYY-MM-15 format for monthly data (mid-month)
+                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
+        self._last_update = datetime.now()
+
+
+class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
+    def __init__(self, coordinator, account_id, contract_id, contract_icp) -> None:
+        super().__init__(coordinator, account_id, contract_id, contract_icp)
+        self._attr_name = f"Contact Energy Yesterday Free Usage ({contract_icp})"
+        self._attr_unique_id = f"{DOMAIN}_{contract_icp}_yesterday_free_usage"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_icon = "mdi:gift"
+
+    def _date_range(self) -> tuple[date, date]:
+        y = datetime.now().date() - timedelta(days=1)
+        return y, y
+
+    def _apply_values(self, kwh, cost, free_kwh) -> None:
+        self._state = free_kwh
+
+    @property
+    def native_value(self) -> float:
+        return self._state
         )
         self._monthly_free_data = {}
         if self._stat_id in stats:
