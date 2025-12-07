@@ -193,15 +193,19 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Fetching account data for contract: %s", self._contract_id)
             
             if not self._api.is_authenticated:
+                _LOGGER.debug("API not authenticated, authenticating...")
                 await self._api.authenticate()
+            else:
+                _LOGGER.debug("API already authenticated")
             
             account_data = await self._api.get_accounts()
             self.data[DATA_ACCOUNT] = account_data
             
-            _LOGGER.debug("Account data updated successfully")
+            _LOGGER.info("Account data updated successfully")
             
         except Exception as err:
             _LOGGER.error("Failed to update account data: %s", err)
+            _LOGGER.exception("Full traceback:")
             raise
 
     async def _update_hourly_usage(self) -> None:
@@ -220,14 +224,18 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
                         yesterday.date(), now.date())
             
             # Fetch hourly for yesterday
+            _LOGGER.debug("Fetching hourly data for yesterday: %s", yesterday.date())
             usage_yesterday = await self._api.get_hourly_usage(
                 self._contract_id, self._account_id, yesterday
             )
+            _LOGGER.debug("Got %d hourly records for yesterday", len(usage_yesterday))
             
             # Fetch hourly for today
+            _LOGGER.debug("Fetching hourly data for today: %s", now.date())
             usage_today = await self._api.get_hourly_usage(
                 self._contract_id, self._account_id, now
             )
+            _LOGGER.debug("Got %d hourly records for today", len(usage_today))
             
             # Store by date string as key
             usage_all = usage_yesterday + usage_today
@@ -238,10 +246,11 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
                         self.data[DATA_USAGE_HOURLY][date_key] = []
                     self.data[DATA_USAGE_HOURLY][date_key].append(record)
             
-            _LOGGER.debug("Hourly usage updated: %d records", len(usage_all))
+            _LOGGER.info("Hourly usage updated: %d total records", len(usage_all))
             
         except Exception as err:
             _LOGGER.error("Failed to update hourly usage: %s", err)
+            _LOGGER.exception("Full traceback:")
             raise
 
     async def _update_daily_usage(self) -> None:
@@ -255,8 +264,8 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
             now = dt_util.now()
             start_date = now - timedelta(days=self._history_days)
             
-            _LOGGER.debug("Fetching daily usage from %s to %s",
-                        start_date.date(), now.date())
+            _LOGGER.debug("Fetching daily usage from %s to %s (%d days)",
+                        start_date.date(), now.date(), self._history_days)
             
             usage_data = await self._api.get_daily_usage(
                 self._contract_id, self._account_id, start_date, now
@@ -268,10 +277,11 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
                 if date_key:
                     self.data[DATA_USAGE_DAILY][date_key] = record
             
-            _LOGGER.debug("Daily usage updated: %d records", len(usage_data))
+            _LOGGER.info("Daily usage updated: %d records stored", len(usage_data))
             
         except Exception as err:
             _LOGGER.error("Failed to update daily usage: %s", err)
+            _LOGGER.exception("Full traceback:")
             raise
 
     async def _update_monthly_usage(self) -> None:
@@ -285,8 +295,8 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
             now = dt_util.now()
             start_date = now - timedelta(days=self._history_days)
             
-            _LOGGER.debug("Fetching monthly usage from %s to %s",
-                        start_date.date(), now.date())
+            _LOGGER.debug("Fetching monthly usage from %s to %s (%d days)",
+                        start_date.date(), now.date(), self._history_days)
             
             usage_data = await self._api.get_monthly_usage(
                 self._contract_id, self._account_id, start_date, now
@@ -298,6 +308,14 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
                 month = record.get("month")
                 if year and month:
                     date_key = f"{year}-{month:02d}"
+                    self.data[DATA_USAGE_MONTHLY][date_key] = record
+            
+            _LOGGER.info("Monthly usage updated: %d records stored", len(usage_data))
+            
+        except Exception as err:
+            _LOGGER.error("Failed to update monthly usage: %s", err)
+            _LOGGER.exception("Full traceback:")
+            raise
                     self.data[DATA_USAGE_MONTHLY][date_key] = record
             
             _LOGGER.debug("Monthly usage updated: %d records", len(usage_data))

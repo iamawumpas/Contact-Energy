@@ -80,11 +80,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Contact Energy sensor entities from a config entry."""
+    _LOGGER.debug("=== sensor.async_setup_entry START ===")
+    _LOGGER.debug("Entry: %s", entry.title)
+    
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    _LOGGER.debug("Retrieved coordinator from hass.data")
     
     account_id = entry.data[CONF_ACCOUNT_ID]
     contract_id = entry.data[CONF_CONTRACT_ID]
     contract_icp = entry.data[CONF_CONTRACT_ICP]
+    _LOGGER.debug("Account: %s, Contract: %s, ICP: %s", account_id, contract_id, contract_icp)
     # Prefer months setting; fall back to legacy days
     if CONF_USAGE_MONTHS in entry.data:
         usage_days = months_to_days(entry.data.get(CONF_USAGE_MONTHS))
@@ -167,7 +172,12 @@ async def async_setup_entry(
 
     # Register all entities in a single call
     all_entities = entities + convenience_entities + chart_entities
+    _LOGGER.debug("Creating %d sensor entities", len(all_entities))
+    _LOGGER.debug("Entity types: %d main, %d convenience, %d chart", 
+                 len(entities), len(convenience_entities), len(chart_entities))
     async_add_entities(all_entities, False)
+    _LOGGER.info("Sensor platform setup completed: %d entities created for %s", 
+                len(all_entities), contract_icp)
 
 
 

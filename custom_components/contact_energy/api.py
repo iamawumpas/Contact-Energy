@@ -83,7 +83,8 @@ class ContactEnergyApi:
             AuthenticationError: If authentication fails
             ConnectionError: If connection fails
         """
-        _LOGGER.info("Authenticating with Contact Energy API")
+        _LOGGER.info("=== Authenticating with Contact Energy API ===")
+        _LOGGER.debug("Email: %s", self._email)
         
         url = f"{API_BASE_URL}{ENDPOINT_LOGIN}"
         headers = {"x-api-key": API_KEY}
@@ -92,6 +93,9 @@ class ContactEnergyApi:
             "password": self._password,
         }
         
+        _LOGGER.debug("POST %s", url)
+        _LOGGER.debug("Headers: %s", {k: v for k, v in headers.items()})
+        
         try:
             async with self._session.post(
                 url, json=payload, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
@@ -99,7 +103,7 @@ class ContactEnergyApi:
                 _LOGGER.debug("Authentication response status: %s", response.status)
                 
                 if response.status == 401:
-                    _LOGGER.error("Authentication failed: Invalid credentials")
+                    _LOGGER.error("Authentication failed: Invalid credentials (401)")
                     raise AuthenticationError(ERROR_INVALID_AUTH)
                     
                 if response.status != 200:
@@ -112,13 +116,15 @@ class ContactEnergyApi:
                 
                 if not self._token:
                     _LOGGER.error("No token received in authentication response")
+                    _LOGGER.debug("Response data: %s", data)
                     raise AuthenticationError(ERROR_AUTH_FAILED)
                 
-                _LOGGER.info("Authentication successful, token received")
+                _LOGGER.info("Authentication successful, token received (length: %d)", len(self._token))
                 return True
                 
         except ClientError as err:
             _LOGGER.error("Connection error during authentication: %s", err)
+            _LOGGER.exception("Full traceback:")
             raise ConnectionError(ERROR_CANNOT_CONNECT) from err
 
     async def get_accounts(self) -> dict[str, Any]:
@@ -135,17 +141,21 @@ class ContactEnergyApi:
             _LOGGER.warning("No token available, authenticating first")
             await self.authenticate()
         
-        _LOGGER.info("Fetching account information")
+        _LOGGER.info("=== Fetching account information ===")
         
         url = f"{API_BASE_URL}{ENDPOINT_ACCOUNTS}?ba="
         headers = self._get_auth_headers()
+        
+        _LOGGER.debug("GET %s", url)
+        _LOGGER.debug("Headers: %s", {k: '***' if k in ['session', 'authorization'] else v for k, v in headers.items()})
         
         for attempt in range(MAX_RETRIES):
             try:
                 async with self._session.get(
                     url, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
                 ) as response:
-                    _LOGGER.debug("Account fetch response status: %s", response.status)
+                    _LOGGER.debug("Account fetch response status: %s (attempt %d/%d)", 
+                                response.status, attempt + 1, MAX_RETRIES)
                     
                     if response.status == 401 or response.status == 403:
                         if attempt < MAX_RETRIES - 1:
@@ -166,7 +176,7 @@ class ContactEnergyApi:
                     data = await response.json()
                     accounts_summary = data.get("accountsSummary", [])
                     _LOGGER.info("Successfully fetched %d account(s)", len(accounts_summary))
-                    _LOGGER.debug("Account data: %s", data)
+                    _LOGGER.debug("Account IDs: %s", [acc.get('id') for acc in accounts_summary])
                     return data
                     
             except ClientError as err:
@@ -208,8 +218,9 @@ class ContactEnergyApi:
             _LOGGER.warning("No token available, authenticating first")
             await self.authenticate()
         
-        _LOGGER.info("Fetching %s usage data from %s to %s", 
-                    interval, start_date.date(), end_date.date())
+        _LOGGER.info("=== Fetching %s usage data ===", interval)
+        _LOGGER.debug("Contract: %s, Account: %s", contract_id, account_id)
+        _LOGGER.debug("Date range: %s to %s", start_date.date(), end_date.date())
         
         url = (
             f"{API_BASE_URL}{ENDPOINT_USAGE.format(contract_id=contract_id)}"
@@ -219,12 +230,15 @@ class ContactEnergyApi:
         )
         headers = self._get_auth_headers()
         
+        _LOGGER.debug("POST %s", url)
+        
         for attempt in range(MAX_RETRIES):
             try:
                 async with self._session.post(
                     url, headers=headers, timeout=ClientTimeout(total=API_TIMEOUT)
                 ) as response:
-                    _LOGGER.debug("Usage fetch response status: %s", response.status)
+                    _LOGGER.debug("Usage fetch response status: %s (attempt %d/%d)", 
+                                response.status, attempt + 1, MAX_RETRIES)
                     
                     if response.status == 401 or response.status == 403:
                         if attempt < MAX_RETRIES - 1:
@@ -245,7 +259,8 @@ class ContactEnergyApi:
                     data = await response.json()
                     _LOGGER.info("Successfully fetched %d %s usage record(s)", 
                                len(data), interval)
-                    _LOGGER.debug("Usage data sample: %s", data[0] if data else "No data")
+                    if data:
+                        _LOGGER.debug("First record: %s", data[0])
                     return data
                     
             except ClientError as err:

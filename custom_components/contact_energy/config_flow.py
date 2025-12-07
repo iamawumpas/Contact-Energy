@@ -58,15 +58,20 @@ async def validate_auth(
         AuthenticationError: If authentication fails
         ApiConnectionError: If connection fails
     """
+    _LOGGER.debug("=== validate_auth START ===")
     _LOGGER.debug("Validating credentials for email: %s", email)
     
     session = async_get_clientsession(hass)
+    _LOGGER.debug("Got session: %s", type(session).__name__)
     
     async with ContactEnergyApi(email, password, session) as api:
+        _LOGGER.debug("Created API client, authenticating...")
         await api.authenticate()
+        _LOGGER.debug("Authentication successful, fetching accounts...")
         account_data = await api.get_accounts()
+        _LOGGER.debug("Fetched account data successfully")
         
-        _LOGGER.debug("Validation successful, fetched account data")
+        _LOGGER.debug("=== validate_auth SUCCESS ===")
         return account_data
 
 
@@ -309,20 +314,24 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info("Creating config entry for account: %s with %d months history",
                         self._selected_account["icp_number"], history_months)
             
+            entry_data = {
+                CONF_EMAIL: self._email,
+                CONF_PASSWORD: self._password,
+                CONF_ACCOUNT_ID: self._selected_account["account_id"],
+                CONF_CONTRACT_ID: self._selected_account["contract_id"],
+                CONF_ICP_NUMBER: self._selected_account["icp_number"],
+                CONF_ACCOUNT_NICKNAME: self._selected_account["nickname"],
+                CONF_ACCOUNT_ADDRESS: self._selected_account["address"],
+                CONF_HISTORY_MONTHS: history_months,
+                CONF_HISTORY_DAYS: history_days,
+            }
+            
+            _LOGGER.debug("Entry data: %s", {k: v if k != CONF_PASSWORD else '***' for k, v in entry_data.items()})
+            
             # Create the config entry
             return self.async_create_entry(
                 title=f"{self._selected_account['nickname']} ({self._selected_account['icp_number']})",
-                data={
-                    CONF_EMAIL: self._email,
-                    CONF_PASSWORD: self._password,
-                    CONF_ACCOUNT_ID: self._selected_account["account_id"],
-                    CONF_CONTRACT_ID: self._selected_account["contract_id"],
-                    CONF_ICP_NUMBER: self._selected_account["icp_number"],
-                    CONF_ACCOUNT_NICKNAME: self._selected_account["nickname"],
-                    CONF_ACCOUNT_ADDRESS: self._selected_account["address"],
-                    CONF_HISTORY_MONTHS: history_months,
-                    CONF_HISTORY_DAYS: history_days,
-                },
+                data=entry_data,
             )
 
         return self.async_show_form(
