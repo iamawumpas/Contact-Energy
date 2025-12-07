@@ -139,11 +139,10 @@ def is_account_configured(hass: HomeAssistant, icp_number: str) -> bool:
     return False
 
 
-class ContactEnergyConfigFlow(config_entries.ConfigFlow):
+class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
-    DOMAIN = DOMAIN
 
     def __init__(self) -> None:
         """Initialize the config flow."""
