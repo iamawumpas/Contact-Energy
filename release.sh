@@ -133,7 +133,7 @@ update_version_in_files() {
     if [[ -f "$f" ]]; then
       if [[ "$f" == *.json ]]; then
         # Update JSON version field (preserve formatting)
-        sed -i -E 's/("version"[^"]*":\s*")[0-9.]+(\")/\1'$new_version'\2/' "$f"
+        sed -i -E 's/("version"[[:space:]]*:[[:space:]]*")[0-9.]+(",?)/\1'"$new_version"'\2/' "$f"
       elif [[ "$f" == "README.md" ]]; then
         update_readme_version "$new_version"
       fi

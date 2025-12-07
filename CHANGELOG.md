@@ -12,14 +12,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.0.3] - 2025-12-07
+## [0.0.3]
 
 ### Bug Fixes
 - **Config Flow**: Fixed "Invalid handler specified" error by properly registering domain parameter in ConfigFlow class
   - Changed from class attribute `DOMAIN = DOMAIN` to class parameter `domain=DOMAIN`
   - Config flow now loads correctly in Home Assistant UI
 
-## [0.0.2] - 2025-12-07
+## [0.0.2]
 
 ### Complete Integration Implementation
 
