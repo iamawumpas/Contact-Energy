@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.2
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - **Performance optimizations**:
+    - Optimized startup delays using consistent MD5 hashing
+
+
+#### Metadata
+  - Added cloud_polling IoT class designation
+
+
 ## 0.6.1
 
 ### Changes
