@@ -4,15 +4,16 @@
 
 ### Changes
 
-#### Documentation
-  - Added comprehensive Table of Contents navigation
-  - Updated documentation to reflect 60-day data collection capability
-  - Updated hourly chart documentation for 14-day retention
-  - Updated daily usage chart screenshot with current visualization
-  - Added comprehensive ApexCharts Card Examples section
-  - Added documentation for multiple properties and accounts support
-  - Documented sensor naming with ICP suffixes for multi-instance setups
-  - Added use case examples (rental properties, holiday homes, family accounts)
+#### Documentation - README Refactor
+  - Refactored README.md to eliminate duplication with GitHub wiki
+  - Added comprehensive "Quick Links" section for easy navigation
+  - Moved detailed installation instructions to wiki
+  - Moved ApexCharts card examples and configuration to wiki
+  - Moved Markdown card examples to wiki
+  - Moved detailed limitations and how-it-works to wiki
+  - Moved multiple properties/accounts setup guide to wiki
+  - Kept README focused as a landing page with quick start information
+  - All detailed documentation now links to appropriate wiki pages for better maintainability
 
 
 ## 0.6.0
