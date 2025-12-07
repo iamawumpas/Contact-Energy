@@ -1,0 +1,21 @@
+# Ignore all hidden files and folders
+.*
+
+# But track the git folder
+!.git/
+!.github/
+!.gitignore
+
+# Ignore all folders except specific ones
+/**/
+!custom_components/
+!custom_components/contact_energy/
+!custom_components/contact_energy/assets/
+!custom_components/contact_energy/translations/
+
+# Allow specific root files
+!README.md
+!CHANGELOG.md
+!hacs.json
+!manifest.json
+!release.sh
