@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.4
+
+### Changes
+
+#### __init__.py - Cleaner Restart Logic
+  - Enhanced integration setup and unload procedures
+  - Improved coordinator and platform initialization
+  - Simplified daily restart scheduling logic
+
+
 All notable changes to this project will be documented in this file.
 
 ## [0.0.3] - 2025-12-07
