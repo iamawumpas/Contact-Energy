@@ -4,13 +4,10 @@
 
 ### Changes
 
-#### sensor.py - Major Consolidation
-  - **Performance optimizations**:
-    - Optimized startup delays using consistent MD5 hashing
-
-
-#### Metadata
-  - Added cloud_polling IoT class designation
+#### sensor.py - Import Reliability
+- Moved `ContactEnergyConvenienceSensorBase` above its subclasses to remove a forward reference
+- Fixes `NameError` during platform import and prevents blocking import warnings in HA startup
+- Keeps convenience usage/cost sensors functioning after restarts
 
 
 ## 0.6.1
