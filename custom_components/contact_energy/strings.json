@@ -1,0 +1,122 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Contact Energy",
+        "description": "Enter your Contact Energy account credentials to get started.",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        },
+        "data_description": {
+          "email": "The email address you use to log into your Contact Energy account",
+          "password": "Your Contact Energy account password"
+        }
+      },
+      "select_account": {
+        "title": "Select Account",
+        "description": "Multiple accounts were found. Please select which account you would like to monitor with this integration instance.",
+        "data": {
+          "account_selection": "Select Account"
+        },
+        "data_description": {
+          "account_selection": "Choose the property/account you want to monitor. You can add additional accounts by setting up separate integration instances."
+        }
+      },
+      "configure_history": {
+        "title": "Configure Historical Data",
+        "description": "Choose how much historical usage data to download and store. This data will be available for charts and analysis in Home Assistant.",
+        "data": {
+          "history_months": "Months of Historical Data"
+        },
+        "data_description": {
+          "history_months": "Number of months of past usage data to download (1-24 months). More data provides better long-term trends but takes longer to download initially."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to Contact Energy. Please check your internet connection and try again.",
+      "invalid_auth": "Invalid email or password. Please check your credentials and try again.",
+      "auth_failed": "Authentication failed. Please try again later.",
+      "no_accounts": "No accounts found for this email address. Please check your credentials.",
+      "account_in_use": "This account is already configured in Home Assistant. Please select a different account or remove the existing configuration first.",
+      "unknown": "An unexpected error occurred. Please try again."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "no_accounts": "No accounts found for this email address."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Integration Settings",
+        "description": "Modify the historical data range for this account. Changing this will download any missing data.",
+        "data": {
+          "history_months": "Months of Historical Data"
+        },
+        "data_description": {
+          "history_months": "Number of months of past usage data to store (1-24 months). Increasing this will download additional historical data. Decreasing it will not delete existing data."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "account_balance": {
+        "name": "Account Balance"
+      },
+      "amount_due": {
+        "name": "Amount Due"
+      },
+      "payment_due_date": {
+        "name": "Payment Due Date"
+      },
+      "days_until_overdue": {
+        "name": "Days Until Overdue"
+      },
+      "next_bill_date": {
+        "name": "Next Bill Date"
+      },
+      "payment_method": {
+        "name": "Payment Method"
+      },
+      "product_name": {
+        "name": "Product Name"
+      },
+      "billing_frequency": {
+        "name": "Billing Frequency"
+      },
+      "today_usage": {
+        "name": "Today's Usage"
+      },
+      "today_cost": {
+        "name": "Today's Cost"
+      },
+      "yesterday_usage": {
+        "name": "Yesterday's Usage"
+      },
+      "yesterday_cost": {
+        "name": "Yesterday's Cost"
+      },
+      "this_month_usage": {
+        "name": "This Month's Usage"
+      },
+      "this_month_cost": {
+        "name": "This Month's Cost"
+      },
+      "last_month_usage": {
+        "name": "Last Month's Usage"
+      },
+      "last_month_cost": {
+        "name": "Last Month's Cost"
+      },
+      "free_usage_today": {
+        "name": "Free Usage Today"
+      },
+      "offpeak_usage_today": {
+        "name": "Off-Peak Usage Today"
+      }
+    }
+  }
+}
