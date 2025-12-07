@@ -76,13 +76,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         
         # Initialize the coordinator (sets up API with session)
-        coordinator._initialize()
+        await coordinator.async_init()
+        
+        _LOGGER.debug("Coordinator initialized for ICP: %s", icp_number)
 
         # Initial data fetch to populate coordinator
         try:
             await coordinator.async_config_entry_first_refresh()
         except Exception as error:
             _LOGGER.error("Failed to refresh data from Contact Energy API: %s", error)
+            _LOGGER.exception("Full traceback:")
             return False
 
         # Store in hass.data

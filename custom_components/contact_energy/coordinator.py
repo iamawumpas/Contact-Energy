@@ -105,10 +105,14 @@ class ContactEnergyDataUpdateCoordinator(DataUpdateCoordinator):
         if self._own_session:
             from homeassistant.helpers.aiohttp_client import async_get_clientsession
             self._session = async_get_clientsession(self.hass)
+            _LOGGER.debug("Retrieved Home Assistant session for coordinator")
+        else:
+            _LOGGER.debug("Using provided session for coordinator")
         
         self._api = ContactEnergyApi(
             self._email, self._password, self._session
         )
+        _LOGGER.info("API client created for coordinator (ICP: %s)", self._icp_number)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from Contact Energy API.
