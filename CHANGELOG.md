@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.1
+
+### Changes
+
+#### Documentation
+  - Added comprehensive Table of Contents navigation
+  - Updated documentation to reflect 60-day data collection capability
+  - Updated hourly chart documentation for 14-day retention
+  - Updated daily usage chart screenshot with current visualization
+  - Added comprehensive ApexCharts Card Examples section
+  - Added documentation for multiple properties and accounts support
+  - Documented sensor naming with ICP suffixes for multi-instance setups
+  - Added use case examples (rental properties, holiday homes, family accounts)
+
+
 ## 0.6.0
 
 ### Changes
