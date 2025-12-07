@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.5
+
+### Changes
+
+#### coordinator.py - Streamlined Data Flow
+  - Implemented 8-hour polling DataUpdateCoordinator
+  - Cleaner, more predictable data flow to all sensor entities
+
+
 ## 0.0.4
 
 ### Changes
