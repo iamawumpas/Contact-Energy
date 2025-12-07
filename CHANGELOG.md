@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.4
+
+### Changes
+
+- Config flow validation and UI improvements
+- Energy Dashboard sensor implementation and statistics integration
+
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.6.3
 
 ### Changes

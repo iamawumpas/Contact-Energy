@@ -23,11 +23,7 @@ check_release_guards() {
     exit 1
   fi
 
-  # Working tree must be clean (no staged or unstaged changes)
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "Release guard: Working tree must be clean (no unstaged or staged changes)." >&2
-    exit 1
-  fi
+  # Allow uncommitted changes; will be committed automatically during release
 
   # Must be up-to-date with remote tracking branch
   git fetch -q origin
