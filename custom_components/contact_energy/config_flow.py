@@ -139,10 +139,11 @@ def is_account_configured(hass: HomeAssistant, icp_number: str) -> bool:
     return False
 
 
-class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ContactEnergyConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
+    DOMAIN = DOMAIN
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -176,8 +177,12 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info("Attempting authentication for email: %s", self._email)
             
             try:
+                # Type narrowing: at this point we know these are not None
+                email = self._email or ""
+                password = self._password or ""
+                
                 self._account_data = await validate_auth(
-                    self.hass, self._email, self._password
+                    self.hass, email, password
                 )
                 
                 # Extract accounts
@@ -298,7 +303,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug("async_step_configure_history called with input: %s", 
                      bool(user_input))
         
-        if user_input is not None:
+        if user_input is not None and self._selected_account is not None:
             history_months = user_input[CONF_HISTORY_MONTHS]
             history_days = history_months * 30  # Approximate conversion
             
