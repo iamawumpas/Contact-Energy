@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.1
+
+### Changes
+
+#### Assets
+  - Updated ApexCharts card configuration examples
+  - Modified 4 asset files
+
+#### Documentation
+  - Added comprehensive ApexCharts Card Examples section
+  - Added documentation for multiple properties and accounts support
+  - Documented sensor naming with ICP suffixes for multi-instance setups
+
+#### Visual Assets
+  - Updated integration screenshots and visual assets
+
+#### Metadata
+  - Added cloud_polling IoT class designation
+
+
 All notable changes to this project will be documented in this file.
 
 ## [0.0.1] - 2025-12-07
