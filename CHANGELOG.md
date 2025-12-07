@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.5
+
+### Changes
+
+- Config flow validation and UI improvements
+
+
+**Note**: This release includes uncommitted changes from the working directory.
+
+
 ## 0.6.4
 
 ### Changes

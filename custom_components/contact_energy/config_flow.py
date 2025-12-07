@@ -17,7 +17,6 @@ except ImportError:
     sel = None
     USE_SELECTOR = False
 
-from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
 from .const import (
     DOMAIN, 
     CONF_USAGE_DAYS, 
@@ -88,6 +87,8 @@ class ConfigFlow(config_entries.ConfigFlow):
         self._usage_months = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        from .api import InvalidAuth, CannotConnect, UnknownError
+        
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -137,6 +138,8 @@ class ConfigFlow(config_entries.ConfigFlow):
 
     async def _validate_input(self) -> dict[str, Any]:
         """Validate account data and return info for entry creation."""
+        from .api import ContactEnergyApi, InvalidAuth, CannotConnect, UnknownError
+        
         api = ContactEnergyApi(self.hass, self._email, self._password)
 
         # Login and validate
@@ -206,9 +209,11 @@ ContactEnergyConfigFlow = ConfigFlow
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-        def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-            self.config_entry = config_entry
     """Handle options flow for Contact Energy."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage the options."""
