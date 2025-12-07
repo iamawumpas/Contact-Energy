@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3
+
+### Changes
+
+#### sensor.py - Major Consolidation (Code Reduction)
+  - Significant code reduction in sensor.py: -136 net lines (deleted 136, added 0)
+
+
 ## 0.6.2
 
 ### Changes
