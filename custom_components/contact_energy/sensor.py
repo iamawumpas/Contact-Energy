@@ -1,6 +1,7 @@
 """Sensor entities for Contact Energy integration."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 import logging
 from typing import Any
@@ -23,6 +24,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
 from homeassistant.util import dt as dt_util
+from homeassistant.components.history import statistics_during_period
 
 from .const import (
     CONF_ACCOUNT_NICKNAME,
@@ -1161,7 +1163,6 @@ class ContactEnergyAverageDailyUsage7DaysSensor(ContactEnergyConvenienceSensorBa
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_icon = "mdi:chart-line"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
 
     def _date_range(self) -> tuple[date, date]:
         end = datetime.now().date() - timedelta(days=1)
@@ -1194,7 +1195,6 @@ class ContactEnergyAverageDailyUsage30DaysSensor(ContactEnergyConvenienceSensorB
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_icon = "mdi:chart-line"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
 
     def _date_range(self) -> tuple[date, date]:
         end = datetime.now().date() - timedelta(days=1)
@@ -1291,7 +1291,6 @@ class ContactEnergyCostPerKwhSensor(ContactEnergyConvenienceSensorBase):
         self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_native_unit_of_measurement = "NZD/kWh"
         self._attr_icon = "mdi:cash"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._total_kwh = 0.0
         self._total_cost = 0.0
 
