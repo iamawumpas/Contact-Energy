@@ -2,11 +2,32 @@
 
 ## 0.0.7
 
+### Hotfix: Complete 5xx Retry Logic Implementation
+
+**Problem**: Following the v0.0.6 release, the `get_accounts()` method was missing the automatic retry logic for HTTP 5xx server errors that was implemented in `get_usage()`. This meant account data fetches would fail immediately on 502/503/504 errors, causing integration setup to fail during temporary API outages.
+
+**Root Cause**: The retry logic implementation was incomplete—while `get_usage()` and its dependent methods (daily, monthly, hourly usage) had 5xx error retry logic, the `get_accounts()` method (called during initial setup) lacked this protection, creating an inconsistency in error handling.
+
+**Impact**: When Contact Energy API experienced temporary outages, the integration would fail to initialize because account data couldn't be fetched. This was especially critical since account fetching happens during `async_setup_entry()`.
+
+**Solution**: Extended automatic retry logic to all API methods for consistent error handling across the entire API client.
+
 ### Changes
 
-#### api.py - Simplified API Client
-  - Added retry logic and exponential backoff for API requests
-  - Improved code readability and maintainability
+#### api.py - Complete Retry Logic Across All Methods
+  - **NEW**: Added HTTP 5xx server error retry logic to `get_accounts()` method
+    - Detects HTTP status codes 500-599 (server errors)
+    - Implements 3 retry attempts with 5-second delays between attempts
+    - Logs each retry attempt with detailed error messages
+    - Separates auth error handling (401/403) for re-authentication flow
+  - **IMPROVED**: Consistent error handling across all API endpoints
+    - Now all methods (`authenticate()`, `get_accounts()`, `get_usage()`, etc.) handle 5xx errors uniformly
+    - Auth errors trigger re-authentication; server errors trigger retries with exponential backoff
+    - Enhanced logging shows HTTP status codes and API response text for each attempt
+  - **OUTCOME**: Integration can now recover from temporary API outages regardless of which endpoint is affected
+    - Account initialization succeeds even during brief API issues
+    - Usage data fetching continues to retry automatically
+    - Clear visibility into retry attempts through comprehensive logging
 
 
 ## 0.0.6
