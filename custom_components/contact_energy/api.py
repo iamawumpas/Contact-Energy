@@ -83,7 +83,7 @@ class ContactEnergyApi:
             AuthenticationError: If authentication fails
             ConnectionError: If connection fails
         """
-        _LOGGER.info("=== Authenticating with Contact Energy API ===")
+        _LOGGER.info("🔐 Authenticating with Contact Energy API...")
         _LOGGER.debug("Email: %s", self._email)
         
         url = f"{API_BASE_URL}{ENDPOINT_LOGIN}"
@@ -94,7 +94,7 @@ class ContactEnergyApi:
         }
         
         _LOGGER.debug("POST %s", url)
-        _LOGGER.debug("Headers: %s", {k: v for k, v in headers.items()})
+        _LOGGER.debug("Headers: x-api-key: ***")
         
         try:
             async with self._session.post(
@@ -103,27 +103,27 @@ class ContactEnergyApi:
                 _LOGGER.debug("Authentication response status: %s", response.status)
                 
                 if response.status == 401:
-                    _LOGGER.error("Authentication failed: Invalid credentials (401)")
+                    _LOGGER.error("❌ Authentication failed: Invalid credentials (401)")
                     raise AuthenticationError(ERROR_INVALID_AUTH)
                     
                 if response.status != 200:
                     text = await response.text()
-                    _LOGGER.error("Authentication failed: %s - %s", response.status, text)
+                    _LOGGER.error("❌ Authentication failed: status %d - %s", response.status, text)
                     raise AuthenticationError(ERROR_AUTH_FAILED)
                 
                 data = await response.json()
                 self._token = data.get("token")
                 
                 if not self._token:
-                    _LOGGER.error("No token received in authentication response")
+                    _LOGGER.error("❌ No token received in authentication response")
                     _LOGGER.debug("Response data: %s", data)
                     raise AuthenticationError(ERROR_AUTH_FAILED)
                 
-                _LOGGER.info("Authentication successful, token received (length: %d)", len(self._token))
+                _LOGGER.info("✓ Authentication successful! Token received (length: %d)", len(self._token))
                 return True
                 
         except ClientError as err:
-            _LOGGER.error("Connection error during authentication: %s", err)
+            _LOGGER.error("❌ Connection error during authentication: %s", err)
             _LOGGER.exception("Full traceback:")
             raise ConnectionError(ERROR_CANNOT_CONNECT) from err
 
@@ -240,36 +240,54 @@ class ContactEnergyApi:
                     _LOGGER.debug("Usage fetch response status: %s (attempt %d/%d)", 
                                 response.status, attempt + 1, MAX_RETRIES)
                     
+                    # Handle authentication errors (401, 403)
                     if response.status == 401 or response.status == 403:
                         if attempt < MAX_RETRIES - 1:
-                            _LOGGER.warning("Auth failed, re-authenticating (attempt %d/%d)", 
-                                          attempt + 1, MAX_RETRIES)
+                            _LOGGER.warning("Authentication failed (status %d), re-authenticating (attempt %d/%d)", 
+                                          response.status, attempt + 1, MAX_RETRIES)
                             await self.authenticate()
                             headers = self._get_auth_headers()
                             await asyncio.sleep(RETRY_DELAY)
                             continue
-                        _LOGGER.error("Authentication failed after %d retries", MAX_RETRIES)
+                        _LOGGER.error("Authentication failed (status %d) after %d retries - giving up", 
+                                     response.status, MAX_RETRIES)
                         raise AuthenticationError(ERROR_INVALID_AUTH)
                     
-                    if response.status != 200:
+                    # Handle server errors (5xx) with retries
+                    if 500 <= response.status < 600:
                         text = await response.text()
-                        _LOGGER.error("Failed to fetch usage data: %s - %s", response.status, text)
+                        if attempt < MAX_RETRIES - 1:
+                            _LOGGER.warning("Server error (status %d): %s - retrying (attempt %d/%d)", 
+                                          response.status, text, attempt + 1, MAX_RETRIES)
+                            await asyncio.sleep(RETRY_DELAY)
+                            continue
+                        _LOGGER.error("Server error (status %d) after %d retries - giving up: %s", 
+                                     response.status, MAX_RETRIES, text)
                         raise ConnectionError(ERROR_CANNOT_CONNECT)
                     
-                    data = await response.json()
-                    _LOGGER.info("Successfully fetched %d %s usage record(s)", 
-                               len(data), interval)
-                    if data:
-                        _LOGGER.debug("First record: %s", data[0])
-                    return data
+                    # Handle successful response
+                    if response.status == 200:
+                        data = await response.json()
+                        _LOGGER.info("✓ Successfully fetched %d %s usage record(s)", 
+                                   len(data), interval)
+                        if data:
+                            _LOGGER.debug("First record date: %s", data[0].get("date"))
+                        return data
+                    
+                    # Handle other client errors (4xx excluding auth) and unexpected responses
+                    text = await response.text()
+                    _LOGGER.error("Failed to fetch %s usage data: status %d - %s", 
+                                interval, response.status, text)
+                    raise ConnectionError(ERROR_CANNOT_CONNECT)
                     
             except ClientError as err:
                 if attempt < MAX_RETRIES - 1:
-                    _LOGGER.warning("Connection error, retrying (attempt %d/%d): %s", 
-                                  attempt + 1, MAX_RETRIES, err)
+                    _LOGGER.warning("Connection error on attempt %d/%d (will retry after %ds): %s", 
+                                  attempt + 1, MAX_RETRIES, RETRY_DELAY, err)
                     await asyncio.sleep(RETRY_DELAY)
                     continue
-                _LOGGER.error("Connection error after %d retries: %s", MAX_RETRIES, err)
+                _LOGGER.error("Connection error on final attempt %d/%d - giving up: %s", 
+                            attempt + 1, MAX_RETRIES, err)
                 raise ConnectionError(ERROR_CANNOT_CONNECT) from err
         
         raise ConnectionError(ERROR_CANNOT_CONNECT)
