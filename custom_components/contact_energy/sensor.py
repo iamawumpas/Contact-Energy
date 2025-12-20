@@ -70,7 +70,7 @@ from .const import (
     CONF_USAGE_MONTHS,
     months_to_days,
 )
-from .coordinator import ContactEnergyCoordinator
+from .coordinator import ContactEnergyDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: ContactEnergyCoordinator,
+        coordinator: ContactEnergyDataUpdateCoordinator,
         account_id: str,
         contract_id: str,
         contract_icp: str,
@@ -504,7 +504,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
     """Base for account info sensors that read from coordinator data."""
 
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator)
         self._contract_icp = contract_icp
 
@@ -553,7 +553,7 @@ class ContactEnergyAccountSensorBase(CoordinatorEntity, SensorEntity):
 
 
 class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Account Balance ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_balance"
@@ -574,7 +574,7 @@ class ContactEnergyAccountBalanceSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Next Bill Date ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_bill_date"
@@ -597,7 +597,7 @@ class ContactEnergyNextBillDateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Customer Name ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_customer_name"
@@ -611,7 +611,7 @@ class ContactEnergyCustomerNameSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Plan Name ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_plan_name"
@@ -629,7 +629,7 @@ class ContactEnergyPlanNameSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Account Number ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_account_number"
@@ -643,7 +643,7 @@ class ContactEnergyAccountNumberSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyEmailSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Email ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_email"
@@ -656,7 +656,7 @@ class ContactEnergyEmailSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Service Address ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_service_address"
@@ -672,7 +672,7 @@ class ContactEnergyServiceAddressSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Meter Serial ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_meter_serial"
@@ -689,7 +689,7 @@ class ContactEnergyMeterSerialSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Next Read Date ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_next_read_date"
@@ -713,7 +713,7 @@ class ContactEnergyNextReadDateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Last Read Date ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_read_date"
@@ -739,7 +739,7 @@ class ContactEnergyLastReadDateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyDailyChargeRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Daily Charge Rate ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_daily_charge_rate"
@@ -757,7 +757,7 @@ class ContactEnergyDailyChargeRateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyPeakRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Peak Rate ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_peak_rate"
@@ -775,7 +775,7 @@ class ContactEnergyPeakRateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyOffPeakRateSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Off Peak Rate ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_off_peak_rate"
@@ -793,7 +793,7 @@ class ContactEnergyOffPeakRateSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyFreeHoursSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Free Hours ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_free_hours"
@@ -805,7 +805,7 @@ class ContactEnergyFreeHoursSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Last Payment ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_last_payment"
@@ -841,7 +841,7 @@ class ContactEnergyLastPaymentSensor(ContactEnergyAccountSensorBase):
 
 
 class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Estimated Next Bill ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_estimated_next_bill"
@@ -876,7 +876,7 @@ class ContactEnergyEstimatedNextBillSensor(ContactEnergyAccountSensorBase):
 class ContactEnergyPaymentHistorySensor(ContactEnergyAccountSensorBase):
     """Sensor showing payment history with last 5 payments as attributes."""
     
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Payment History ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_payment_history"
@@ -921,7 +921,7 @@ class ContactEnergyPaymentHistorySensor(ContactEnergyAccountSensorBase):
 class ContactEnergyFullAddressSensor(ContactEnergyAccountSensorBase):
     """Sensor showing full address with individual components."""
     
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Full Address ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_full_address"
@@ -959,7 +959,7 @@ class ContactEnergyFullAddressSensor(ContactEnergyAccountSensorBase):
 class ContactEnergyMeterRegisterSensor(ContactEnergyAccountSensorBase):
     """Sensor showing meter register readings."""
     
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Meter Register ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_meter_register"
@@ -1007,7 +1007,7 @@ class ContactEnergyMeterRegisterSensor(ContactEnergyAccountSensorBase):
 class ContactEnergyContractDetailsSensor(ContactEnergyAccountSensorBase):
     """Sensor showing contract details and status."""
     
-    def __init__(self, coordinator: ContactEnergyCoordinator, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, contract_icp: str) -> None:
         super().__init__(coordinator, contract_icp)
         self._attr_name = f"Contact Energy Contract Details ({contract_icp})"
         self._attr_unique_id = f"{DOMAIN}_{contract_icp}_contract_details"
@@ -1046,7 +1046,7 @@ class ContactEnergyContractDetailsSensor(ContactEnergyAccountSensorBase):
 class ContactEnergyConvenienceSensorBase(CoordinatorEntity, SensorEntity):
     """Base for convenience sensors that recompute on coordinator updates."""
 
-    def __init__(self, coordinator: ContactEnergyCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
+    def __init__(self, coordinator: ContactEnergyDataUpdateCoordinator, account_id: str, contract_id: str, contract_icp: str) -> None:
         super().__init__(coordinator)
         self._account_id = account_id
         self._contract_id = contract_id
