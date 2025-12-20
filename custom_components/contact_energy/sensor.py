@@ -2072,23 +2072,6 @@ class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
     @property
     def native_value(self) -> float:
         return self._state
-        )
-        self._monthly_free_data = {}
-        if self._stat_id in stats:
-            for entry in stats[self._stat_id]:
-                start_ts = entry.get("start")
-                val = entry.get("change", entry.get("sum"))
-                if start_ts and val is not None:
-                    # Robustly handle both float and datetime
-                    if isinstance(start_ts, (int, float)):
-                        dt = datetime.fromtimestamp(start_ts)
-                    elif isinstance(start_ts, datetime):
-                        dt = start_ts
-                    else:
-                        continue
-                    # Store as YYYY-MM-15 format for monthly data (mid-month)
-                    self._monthly_free_data[dt.strftime("%Y-%m-15")] = float(val)
-        self._last_update = datetime.now()
 
 
 class ContactEnergyYesterdayFreeUsageSensor(ContactEnergyConvenienceSensorBase):
