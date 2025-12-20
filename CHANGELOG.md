@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.8
+
+### Changes
+
+#### sensor.py - Major Consolidation
+  - Code reduction: -17 net lines (deleted 17, added 0)
+
+
 ## 0.0.7
 
 ### Hotfix: Complete 5xx Retry Logic Implementation
