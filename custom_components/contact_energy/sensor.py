@@ -1,7 +1,7 @@
 """Sensor entities for Contact Energy integration."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import Any
 
@@ -15,6 +15,7 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfTime,
     CURRENCY_DOLLAR,
+    EVENT_HOMEASSISTANT_STARTED,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -25,6 +26,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ACCOUNT_NICKNAME,
+    CONF_EMAIL,
     CONF_ICP_NUMBER,
     CURRENCY_DOLLAR as CE_CURRENCY_DOLLAR,
     DATA_ACCOUNT,
