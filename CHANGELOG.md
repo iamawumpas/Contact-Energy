@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.9
+
+### Changes
+
+- Sensor platform implementation
+
+
 ## 0.0.8
 
 ### Changes
