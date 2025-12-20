@@ -1,7 +1,7 @@
 {
   "name": "Contact Energy",
   "content_in_root": false,
-  "version": "0.0.10",
+  "version": "0.0.11",
   "ignore": [
     "release.sh",
     ".agent-instructions.txt",
