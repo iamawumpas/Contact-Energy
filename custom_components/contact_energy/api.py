@@ -157,27 +157,43 @@ class ContactEnergyApi:
                     _LOGGER.debug("Account fetch response status: %s (attempt %d/%d)", 
                                 response.status, attempt + 1, MAX_RETRIES)
                     
+                    # Handle authentication errors (401, 403)
                     if response.status == 401 or response.status == 403:
                         if attempt < MAX_RETRIES - 1:
-                            _LOGGER.warning("Auth failed, re-authenticating (attempt %d/%d)", 
-                                          attempt + 1, MAX_RETRIES)
+                            _LOGGER.warning("Authentication failed (status %d), re-authenticating (attempt %d/%d)", 
+                                          response.status, attempt + 1, MAX_RETRIES)
                             await self.authenticate()
                             headers = self._get_auth_headers()
                             await asyncio.sleep(RETRY_DELAY)
                             continue
-                        _LOGGER.error("Authentication failed after %d retries", MAX_RETRIES)
+                        _LOGGER.error("Authentication failed (status %d) after %d retries - giving up", 
+                                     response.status, MAX_RETRIES)
                         raise AuthenticationError(ERROR_INVALID_AUTH)
                     
-                    if response.status != 200:
+                    # Handle server errors (5xx) with retries
+                    if 500 <= response.status < 600:
                         text = await response.text()
-                        _LOGGER.error("Failed to fetch accounts: %s - %s", response.status, text)
+                        if attempt < MAX_RETRIES - 1:
+                            _LOGGER.warning("Server error (status %d): %s - retrying (attempt %d/%d)", 
+                                          response.status, text, attempt + 1, MAX_RETRIES)
+                            await asyncio.sleep(RETRY_DELAY)
+                            continue
+                        _LOGGER.error("Server error (status %d) after %d retries - giving up: %s", 
+                                     response.status, MAX_RETRIES, text)
                         raise ConnectionError(ERROR_CANNOT_CONNECT)
                     
-                    data = await response.json()
-                    accounts_summary = data.get("accountsSummary", [])
-                    _LOGGER.info("Successfully fetched %d account(s)", len(accounts_summary))
-                    _LOGGER.debug("Account IDs: %s", [acc.get('id') for acc in accounts_summary])
-                    return data
+                    # Handle successful response
+                    if response.status == 200:
+                        data = await response.json()
+                        accounts_summary = data.get("accountsSummary", [])
+                        _LOGGER.info("✓ Successfully fetched %d account(s)", len(accounts_summary))
+                        _LOGGER.debug("Account IDs: %s", [acc.get('id') for acc in accounts_summary])
+                        return data
+                    
+                    # Handle other client errors (4xx excluding auth) and unexpected responses
+                    text = await response.text()
+                    _LOGGER.error("Failed to fetch accounts: status %d - %s", response.status, text)
+                    raise ConnectionError(ERROR_CANNOT_CONNECT)
                     
             except ClientError as err:
                 if attempt < MAX_RETRIES - 1:
