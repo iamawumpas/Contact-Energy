@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.7
+
+### Changes
+
+#### api.py - Simplified API Client
+  - Added retry logic and exponential backoff for API requests
+  - Improved code readability and maintainability
+
+
 ## 0.0.6
 
 ### Critical Fix: Automatic Retry Logic for Server Errors
