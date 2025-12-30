@@ -5,15 +5,17 @@
         "title": "Contact Energy Account",
         "description": "Enter your Contact Energy account credentials",
         "data": {
+          "use_previous_email": "Use previous email address",
           "email": "Email Address",
           "password": "Password"
         }
       },
       "select_account": {
-        "title": "Select Your Account",
-        "description": "You have multiple accounts. Please select the one you want to integrate",
+        "title": "Contact Energy Account",
+        "description": "You have one Contact Energy account. Please confirm these are the correct details by pressing submit.",
         "data": {
-          "account_id": "Account (ICP - Address)"
+          "account_icp": "Account (ICP - Address)",
+          "confirmed_icp": "Account Details"
         }
       }
     },
@@ -22,6 +24,7 @@
       "connection_error": "Connection Error",
       "api_error": "API Error",
       "no_accounts": "No Accounts Found",
+      "no_available_accounts": "No Available Accounts",
       "unknown": "Unknown Error"
     },
     "abort": {
