@@ -17,165 +17,159 @@ A comprehensive card displaying all your account information in a compact, organ
 
 *Mobile tip:* On narrow screens the columns stack; rotate to landscape if you want the preview and YAML side-by-side.
 
-<table>
-  <tr>
-    <td style="vertical-align: top; width: 33%; min-width: 260px; padding-right: 16px;">
-      <h3>Preview</h3>
-      <p><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/dashboard_example.png" alt="Dashboard preview" style="max-width: 100%;"></p>
-      <h3>Features</h3>
-      <ul>
-        <li>✅ Currency formatting for dollar amounts</li>
-        <li>✅ Date formatting</li>
-        <li>✅ Grouped sensor display by category</li>
-        <li>✅ Countdown displays for upcoming dates</li>
-        <li>✅ Responsive design</li>
-        <li>✅ Scrollable for long lists</li>
-      </ul>
-    </td>
-    <td style="vertical-align: top; width: 68%; padding-left: 16px;">
-      <h3>YAML Configuration</h3>
-      ```yaml
-      type: markdown
-      content: >+
+| Preview & Features | YAML Configuration |
+| --- | --- |
+| <div style="width:33vw; min-width:280px; max-width:36vw; vertical-align:top;">
+<h3 style="margin-top:0;">Preview</h3>
+<p><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/dashboard_example.png" alt="Dashboard preview" style="width:100%; max-width:100%; height:auto;"></p>
+<h3 style="margin-bottom:4px;">Features</h3>
+<ul>
+  <li>✅ Currency formatting for dollar amounts</li>
+  <li>✅ Date formatting</li>
+  <li>✅ Grouped sensor display by category</li>
+  <li>✅ Countdown displays for upcoming dates</li>
+  <li>✅ Responsive design</li>
+  <li>✅ Scrollable for long lists</li>
+</ul>
+</div> | ```yaml
+type: markdown
+content: >+
 
-        {# Define all entity names that should be formatted as currency ($X.XX) #}
-        {% set currency_names = [
-          'Current Balance',
-          'Prepay Debt Balance',
-          'Maximum Refund',
-          'Amount Due',
-          'Amount Paid',
-          'Discount Total'
-        ] %}
+  {# Define all entity names that should be formatted as currency ($X.XX) #}
+  {% set currency_names = [
+    'Current Balance',
+    'Prepay Debt Balance',
+    'Maximum Refund',
+    'Amount Due',
+    'Amount Paid',
+    'Discount Total'
+  ] %}
 
 
-        {# Define all entity names that should be formatted as a human-readable date #}
-        {% set date_names = [
-          'Payment Due Date',
-          'Next Bill Date'
-        ] %}
+  {# Define all entity names that should be formatted as a human-readable date #}
+  {% set date_names = [
+    'Payment Due Date',
+    'Next Bill Date'
+  ] %}
 
 
-        {# Define groups and their entities - Replace with your actual sensor names #}
-        {% set groups = [
-          ('Account Balance', [
-            ('Current Balance', 'sensor.my_address_icp123_current_balance'),
-            ('Prepay Debt Balance', 'sensor.my_address_icp123_prepay_debt_balance'),
-            ('Refund Eligible', 'sensor.my_address_icp123_refund_eligible'),
-            ('Maximum Refund', 'sensor.my_address_icp123_maximum_refund')
-          ]),
-          ('Billing Information', [
-            ('Amount Due', 'sensor.my_address_icp123_amount_due'),
-            ('Amount Paid', 'sensor.my_address_icp123_amount_paid'),
-            ('Discount Total', 'sensor.my_address_icp123_discount_total'),
-            ('Payment Due Date', 'sensor.my_address_icp123_payment_due_date'),
-            ('Days Until Overdue', 'sensor.my_address_icp123_days_until_overdue')
-          ]),
-          ('Next Bill', [
-            ('Next Bill Date', 'sensor.my_address_icp123_next_bill_date'),
-            ('Days Until Next Bill', 'sensor.my_address_icp123_days_until_next_bill')
-          ]),
-          ('Account Settings', [
-            ('Correspondence Preference', 'sensor.my_address_icp123_correspondence_preference'),
-            ('Payment Method', 'sensor.my_address_icp123_payment_method'),
-            ('Billing Frequency', 'sensor.my_address_icp123_billing_frequency')
-          ]),
-          ('Contract Details', [
-            ('Account Nickname', 'sensor.my_address_icp123_account_nickname'),
-            ('ICP', 'sensor.my_address_icp123_icp'),
-            ('Address', 'sensor.my_address_icp123_address'),
-            ('Product Name', 'sensor.my_address_icp123_product_name'),
-            ('Contract Type', 'sensor.my_address_icp123_contract_type'),
-            ('Contract Status', 'sensor.my_address_icp123_contract_status')
-          ]),
-          ('Payment Plans', [
-            ('Direct Debit', 'sensor.my_address_icp123_is_direct_debit'),
-            ('Smooth Pay', 'sensor.my_address_icp123_is_smooth_pay'),
-            ('Prepay', 'sensor.my_address_icp123_is_prepay')
-          ])
-        ] %}
+  {# Define groups and their entities - Replace with your actual sensor names #}
+  {% set groups = [
+    ('Account Balance', [
+      ('Current Balance', 'sensor.my_address_icp123_current_balance'),
+      ('Prepay Debt Balance', 'sensor.my_address_icp123_prepay_debt_balance'),
+      ('Refund Eligible', 'sensor.my_address_icp123_refund_eligible'),
+      ('Maximum Refund', 'sensor.my_address_icp123_maximum_refund')
+    ]),
+    ('Billing Information', [
+      ('Amount Due', 'sensor.my_address_icp123_amount_due'),
+      ('Amount Paid', 'sensor.my_address_icp123_amount_paid'),
+      ('Discount Total', 'sensor.my_address_icp123_discount_total'),
+      ('Payment Due Date', 'sensor.my_address_icp123_payment_due_date'),
+      ('Days Until Overdue', 'sensor.my_address_icp123_days_until_overdue')
+    ]),
+    ('Next Bill', [
+      ('Next Bill Date', 'sensor.my_address_icp123_next_bill_date'),
+      ('Days Until Next Bill', 'sensor.my_address_icp123_days_until_next_bill')
+    ]),
+    ('Account Settings', [
+      ('Correspondence Preference', 'sensor.my_address_icp123_correspondence_preference'),
+      ('Payment Method', 'sensor.my_address_icp123_payment_method'),
+      ('Billing Frequency', 'sensor.my_address_icp123_billing_frequency')
+    ]),
+    ('Contract Details', [
+      ('Account Nickname', 'sensor.my_address_icp123_account_nickname'),
+      ('ICP', 'sensor.my_address_icp123_icp'),
+      ('Address', 'sensor.my_address_icp123_address'),
+      ('Product Name', 'sensor.my_address_icp123_product_name'),
+      ('Contract Type', 'sensor.my_address_icp123_contract_type'),
+      ('Contract Status', 'sensor.my_address_icp123_contract_status')
+    ]),
+    ('Payment Plans', [
+      ('Direct Debit', 'sensor.my_address_icp123_is_direct_debit'),
+      ('Smooth Pay', 'sensor.my_address_icp123_is_smooth_pay'),
+      ('Prepay', 'sensor.my_address_icp123_is_prepay')
+    ])
+  ] %}
 
-        {% set content_html = namespace(rows="") %}
+  {% set content_html = namespace(rows="") %}
 
 
-        {# Iterate over groups and their entities #}
-        {% for group_name, entities in groups %}
-          
-          {# Add an empty row for separation, but skip it for the very first group #}
-          {% if not loop.first %}
-            {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="padding: 0px 8px;"><br></td></tr>' %}
+  {# Iterate over groups and their entities #}
+  {% for group_name, entities in groups %}
+    
+    {# Add an empty row for separation, but skip it for the very first group #}
+    {% if not loop.first %}
+      {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="padding: 0px 8px;"><br></td></tr>' %}
+    {% endif %}
+
+    {# Insert a full-width header row for the group name #}
+    {% set header_style = 'text-align: left; padding: 6px 8px; font-weight: bold; background-color: rgba(120, 120, 120, 0.1);' %}
+    {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="' + header_style + '"><strong>' + group_name + '</strong></td></tr>' %}
+    
+    {# Iterate over the entities within the current group #}
+    {% for name, entity_id in entities %}
+      {% set value = states(entity_id) %}
+      
+      {% set formatted_value = value %}
+
+      {# Special Formatting Logic #}
+      {% if value not in ['unknown', 'unavailable', 'none'] and value is not none %}
+        {# Handle Currency Formatting ($X.XX) #}
+        {% if name in currency_names %}
+          {% set formatted_value = ('$%.2f' | format(value | float(0))) %}
+        
+        {# Handle Date Formatting #}
+        {% elif name in date_names %}
+          {% set formatted_value = value %}
+        
+        {# Handle Boolean values for Refund Eligible #}
+        {% elif name == 'Refund Eligible' %}
+          {% set formatted_value = 'Yes' if value | lower == 'true' or value == True else 'No' %}
+        
+        {# Handle Days Until values #}
+        {% elif 'Days Until' in name %}
+          {% set num = value | int(0) %}
+          {% if num < 0 %}
+            {% set formatted_value = (num | abs | string) + ' days overdue' %}
+          {% else %}
+            {% set formatted_value = num | string + ' days' %}
           {% endif %}
-
-          {# Insert a full-width header row for the group name #}
-          {% set header_style = 'text-align: left; padding: 6px 8px; font-weight: bold; background-color: rgba(120, 120, 120, 0.1);' %}
-          {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="' + header_style + '"><strong>' + group_name + '</strong></td></tr>' %}
-          
-          {# Iterate over the entities within the current group #}
-          {% for name, entity_id in entities %}
-            {% set value = states(entity_id) %}
-            
-            {% set formatted_value = value %}
-
-            {# Special Formatting Logic #}
-            {% if value not in ['unknown', 'unavailable', 'none'] and value is not none %}
-              {# Handle Currency Formatting ($X.XX) #}
-              {% if name in currency_names %}
-                {% set formatted_value = ('$%.2f' | format(value | float(0))) %}
-              
-              {# Handle Date Formatting #}
-              {% elif name in date_names %}
-                {% set formatted_value = value %}
-              
-              {# Handle Boolean values for Refund Eligible #}
-              {% elif name == 'Refund Eligible' %}
-                {% set formatted_value = 'Yes' if value | lower == 'true' or value == True else 'No' %}
-              
-              {# Handle Days Until values #}
-              {% elif 'Days Until' in name %}
-                {% set num = value | int(0) %}
-                {% if num < 0 %}
-                  {% set formatted_value = (num | abs | string) + ' days overdue' %}
-                {% else %}
-                  {% set formatted_value = num | string + ' days' %}
-                {% endif %}
-              {% endif %}
-            {% else %}
-              {% set formatted_value = '—' %}
-            {% endif %}
-            
-            {# Build table rows #}
-            {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
-          {% endfor %}
-        {% endfor %}
+        {% endif %}
+      {% else %}
+        {% set formatted_value = '—' %}
+      {% endif %}
+      
+      {# Build table rows #}
+      {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
+    {% endfor %}
+  {% endfor %}
 
 
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-          <colgroup>
-            <col style="width: 60%;">
-            <col style="width: 40%;">
-          </colgroup>
-          <tr>
-            <th colspan="2" align="center"><h3>My Address<br>ICP123</h3></th>
-          </tr>
-          <tbody>
-            {{ content_html.rows }}
-          </tbody>
-        </table>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+    <colgroup>
+      <col style="width: 60%;">
+      <col style="width: 40%;">
+    </colgroup>
+    <tr>
+      <th colspan="2" align="center"><h3>My Address<br>ICP123</h3></th>
+    </tr>
+    <tbody>
+      {{ content_html.rows }}
+    </tbody>
+  </table>
 
-      text_only: true
-      view_layout:
-        position: sidebar
-      card_mod:
-        style:
-          .: |
-            ha-card {
-              height: 500px !important;
-              overflow-y: auto !important;
-            }
-      ```
-    </td>
-  </tr>
-</table>
+text_only: true
+view_layout:
+  position: sidebar
+card_mod:
+  style:
+    .: |
+      ha-card {
+        height: 500px !important;
+        overflow-y: auto !important;
+      }
+``` |
 
 ### Customization
 
