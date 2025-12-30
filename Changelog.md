@@ -5,6 +5,47 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.3.0 ]
+
+### Added
+- Comprehensive wiki documentation with 6 pages
+  - Getting Started guide with installation and configuration steps
+  - Complete sensor reference documentation
+  - Dashboard examples with YAML configurations
+  - Multiple accounts setup guide
+  - FAQ and troubleshooting section
+- Assets folder for dashboard examples and resources
+- Sample dashboard.yaml with generic placeholder sensor names
+
+### Changed
+- README.md restructured with wiki links
+- Updated dashboard.yaml to use generic {account}_{icp} placeholders for better usability
+- Improved documentation organization with dedicated wiki pages
+
+### Documentation
+- All sensor details moved to wiki for better maintainability
+- Dashboard examples now include explanations and customization tips
+- Added comprehensive troubleshooting guides
+
+## [ 1.2.0 ]
+
+### Added
+- Account Nickname sensor
+- ICP sensor
+- Address sensor
+- Product Name sensor (plan name)
+- Contract Type sensor
+- Contract Status sensor
+- Direct Debit status sensor
+- Smooth Pay status sensor
+- Prepay status sensor
+- Discount Total sensor (invoice discounts applied)
+
+### Changed
+- Expanded account detail sensors from 3 to 13 sensors total
+- Total sensor count increased from 13 to 24 sensors
+- All contract and account information now exposed as sensors
+
 ## [ 1.1.3 ]
 
 ### Fixed

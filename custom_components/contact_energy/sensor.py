@@ -81,6 +81,9 @@ async def async_setup_entry(
         ContactEnergyInvoiceSensor(
             coordinator, config_entry, entity_name, "days_til_overdue"
         ),
+        ContactEnergyInvoiceSensor(
+            coordinator, config_entry, entity_name, "discount_total"
+        ),
         # Next Bill Sensors
         ContactEnergyNextBillSensor(
             coordinator, config_entry, entity_name, "next_bill_date"
@@ -97,6 +100,33 @@ async def async_setup_entry(
         ),
         ContactEnergyAccountDetailSensor(
             coordinator, config_entry, entity_name, "billing_frequency"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "account_nickname"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "icp"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "address"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "product_name"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "contract_type"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "contract_status"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "is_direct_debit"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "is_smooth_pay"
+        ),
+        ContactEnergyAccountDetailSensor(
+            coordinator, config_entry, entity_name, "is_prepay"
         ),
     ]
 
@@ -211,6 +241,11 @@ class ContactEnergyInvoiceSensor(CoordinatorEntity, SensorEntity):
                 "unit": CURRENCY_NZD,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
+            "discount_total": {
+                "name": "Discount Total",
+                "unit": CURRENCY_NZD,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
             "payment_due_date": {
                 "name": "Payment Due Date",
                 "unit": None,
@@ -245,6 +280,8 @@ class ContactEnergyInvoiceSensor(CoordinatorEntity, SensorEntity):
             return float(invoice.get("amountDue", 0))
         elif self.attribute == "amount_paid":
             return float(invoice.get("amountPaid", 0))
+        elif self.attribute == "discount_total":
+            return float(invoice.get("discountTotal", 0))
         elif self.attribute == "payment_due_date":
             return invoice.get("paymentDueDate")
         elif self.attribute == "days_til_overdue":
@@ -344,6 +381,15 @@ class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
             "correspondence_preference": "Correspondence Preference",
             "payment_method": "Payment Method",
             "billing_frequency": "Billing Frequency",
+            "account_nickname": "Account Nickname",
+            "icp": "ICP",
+            "address": "Address",
+            "product_name": "Product Name",
+            "contract_type": "Contract Type",
+            "contract_status": "Contract Status",
+            "is_direct_debit": "Direct Debit",
+            "is_smooth_pay": "Smooth Pay",
+            "is_prepay": "Prepay",
         }
         self._attr_name = f"{entity_name} {attribute_names.get(attribute, attribute)}"
 
@@ -357,6 +403,8 @@ class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
             return None
 
         account_detail = self.coordinator.data.get("accountDetail", {})
+        contracts = account_detail.get("contracts", [])
+        contract = contracts[0] if contracts else {}
 
         if self.attribute == "correspondence_preference":
             return account_detail.get("correspondencePreference")
@@ -364,5 +412,24 @@ class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
             return account_detail.get("paymentMethod")
         elif self.attribute == "billing_frequency":
             return account_detail.get("billingFrequency")
+        elif self.attribute == "account_nickname":
+            return account_detail.get("nickname")
+        elif self.attribute == "icp":
+            return contract.get("icp")
+        elif self.attribute == "address":
+            return contract.get("address")
+        elif self.attribute == "product_name":
+            product = contract.get("product", {})
+            return product.get("name")
+        elif self.attribute == "contract_type":
+            return contract.get("type")
+        elif self.attribute == "contract_status":
+            return contract.get("status")
+        elif self.attribute == "is_direct_debit":
+            return "Yes" if account_detail.get("isDirectDebit") else "No"
+        elif self.attribute == "is_smooth_pay":
+            return "Yes" if account_detail.get("isSmoothPay") else "No"
+        elif self.attribute == "is_prepay":
+            return "Yes" if account_detail.get("isPrepay") else "No"
 
         return None
