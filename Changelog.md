@@ -5,6 +5,26 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.1.0 ]
+
+### Added
+- Account information sensor platform with 10 new sensors
+- Current Account Balance sensor (NZD)
+- Prepay Debt Balance sensor (NZD)
+- Amount Due sensor (NZD)
+- Amount Paid sensor (NZD)
+- Payment Due Date sensor
+- Days Until Overdue sensor
+- Next Bill Date sensor
+- Days Until Next Bill sensor
+- Refund Eligible sensor
+- Maximum Refund sensor
+- Correspondence Preference sensor
+- Payment Method sensor
+- Billing Frequency sensor
+- Data coordinator for efficient API usage (updates once per day at ~01:00 AM)
+- Sensors follow naming pattern: sensor.{account_name}.{attribute_name}
+
 ## [ 1.0.0 ]
 
 ### Added

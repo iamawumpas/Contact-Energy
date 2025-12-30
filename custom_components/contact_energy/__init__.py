@@ -11,22 +11,26 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .const import DOMAIN
+from .contact_api import ContactEnergyApi
+from .coordinator import ContactEnergyCoordinator
+
 _LOGGER = logging.getLogger(__name__)
 
-# Define the unique domain identifier for this integration
-DOMAIN = "contact_energy"
-
 # List of platforms (sensors, binary_sensors, etc.) that this integration supports.
-# Platforms are added here as they are implemented.
-PLATFORMS: list[Platform] = []
+# Add sensor platform for account information sensors
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Contact Energy from a config entry.
 
     This function is called when a user adds a Contact Energy integration through
-    the Home Assistant UI. It initializes the integration and sets up any required
-    platforms (sensors, switches, etc.).
+    the Home Assistant UI. It initializes the integration, creates the API client,
+    sets up the data coordinator, and loads all required platforms.
+
+    The coordinator fetches account information once per day at approximately 01:00 AM
+    to minimize API requests while keeping data reasonably current.
 
     Args:
         hass: The Home Assistant instance.
@@ -37,8 +41,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     # Initialize the data dictionary for this domain if it doesn't exist
     hass.data.setdefault(DOMAIN, {})
-    # Create an entry for this specific config instance
-    hass.data[DOMAIN][entry.entry_id] = {}
+    
+    # Create API client with stored credentials
+    api_client = ContactEnergyApi(
+        email=entry.data.get("email"),
+        password="",  # Password not stored, only token is used
+    )
+    # Set token from stored config entry instead of re-authenticating
+    api_client.token = entry.data.get("token")
+    api_client.segment = entry.data.get("segment")
+    api_client.bp = entry.data.get("bp")
+
+    # Create data coordinator for fetching account information
+    # Updates once per day - Home Assistant schedules at the closest possible time to 01:00
+    coordinator = ContactEnergyCoordinator(hass, api_client)
+    
+    # Perform initial data fetch
+    await coordinator.async_config_entry_first_refresh()
+
+    # Store coordinator and API client in the domain data
+    hass.data[DOMAIN][entry.entry_id] = {
+        "coordinator": coordinator,
+        "api_client": api_client,
+    }
 
     # Load all platforms defined in PLATFORMS for this config entry
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
