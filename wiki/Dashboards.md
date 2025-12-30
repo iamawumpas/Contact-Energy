@@ -15,6 +15,10 @@ This page provides examples for displaying your Contact Energy data in Home Assi
 
 A comprehensive card displaying all your account information in a compact, organized table. Perfect for sidebar placement.
 
+### Preview
+
+![Dashboard preview](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/dashboard_example.png)
+
 ### Features
 
 - ✅ Currency formatting for dollar amounts
