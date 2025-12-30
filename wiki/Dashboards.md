@@ -24,11 +24,12 @@ A comprehensive card displaying all your account information in a compact, organ
 - ✅ Responsive design
 - ✅ Scrollable for long lists
 
-### Static Preview (scrollable mock)
+### Static Preview
 
-This is a static mock of how the card looks in Lovelace. It is not live or interactive.
+This is a visual representation of how the card appears in Lovelace:
 
-<div style="border: 1px solid #d0d7de; border-radius: 8px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;"><div style="max-height: 250px; overflow-y: auto; padding: 12px;"><div style="text-align: center; margin-bottom: 10px; font-weight: 600;">My Address • ICP123</div>
+<div style="border: 1px solid #d0d7de; border-radius: 8px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; padding: 12px;">
+<div style="text-align: center; margin-bottom: 10px; font-weight: 600;">My Address • ICP123</div>
 <table style="width: 100%; border-collapse: collapse;">
 <tbody>
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Account Balance</td></tr>
@@ -45,27 +46,14 @@ This is a static mock of how the card looks in Lovelace. It is not live or inter
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Next Bill</td></tr>
 <tr><td style="padding: 4px 4px;">Next Bill Date</td><td style="padding: 4px 4px; text-align: right;">2025-02-01</td></tr>
 <tr><td style="padding: 4px 4px;">Days Until Next Bill</td><td style="padding: 4px 4px; text-align: right;">33 days</td></tr>
-<tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Account Settings</td></tr>
-<tr><td style="padding: 4px 4px;">Correspondence Preference</td><td style="padding: 4px 4px; text-align: right;">Email</td></tr>
-<tr><td style="padding: 4px 4px;">Payment Method</td><td style="padding: 4px 4px; text-align: right;">Credit Card</td></tr>
-<tr><td style="padding: 4px 4px;">Billing Frequency</td><td style="padding: 4px 4px; text-align: right;">Monthly</td></tr>
-<tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Contract Details</td></tr>
-<tr><td style="padding: 4px 4px;">Account Nickname</td><td style="padding: 4px 4px; text-align: right;">My Place</td></tr>
-<tr><td style="padding: 4px 4px;">ICP</td><td style="padding: 4px 4px; text-align: right;">ICP123</td></tr>
-<tr><td style="padding: 4px 4px;">Address</td><td style="padding: 4px 4px; text-align: right;">123 Sample St</td></tr>
-<tr><td style="padding: 4px 4px;">Product Name</td><td style="padding: 4px 4px; text-align: right;">Electricity Saver</td></tr>
-<tr><td style="padding: 4px 4px;">Contract Type</td><td style="padding: 4px 4px; text-align: right;">Fixed</td></tr>
-<tr><td style="padding: 4px 4px;">Contract Status</td><td style="padding: 4px 4px; text-align: right;">Active</td></tr>
-<tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Payment Plans</td></tr>
-<tr><td style="padding: 4px 4px;">Direct Debit</td><td style="padding: 4px 4px; text-align: right;">Yes</td></tr>
-<tr><td style="padding: 4px 4px;">Smooth Pay</td><td style="padding: 4px 4px; text-align: right;">No</td></tr>
-<tr><td style="padding: 4px 4px;">Prepay</td><td style="padding: 4px 4px; text-align: right;">No</td></tr>
+<tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);"><em>(Additional sections: Account Settings, Contract Details, Payment Plans below in full card)</em></td></tr>
 </tbody>
-</table></div></div>
+</table>
+</div>
+
+> **Note:** The card is fully scrollable in Lovelace when configured with the `card_mod` styling. This preview shows the first few sections.
 
 ### YAML Configuration
-
-<div style="border: 1px solid #d0d7de; border-radius: 8px; background: #0d1117;"><div style="max-height: 300px; overflow-y: auto; padding: 8px;">
 
 ```yaml
 type: markdown
