@@ -6,6 +6,6 @@
   "documentation": "https://github.com/iamawumpas/Contact-Energy",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "0.0.1",
+  "version": "0.0.3",
   "integration_type": "device"
 }

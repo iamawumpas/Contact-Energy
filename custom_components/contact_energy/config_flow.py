@@ -118,14 +118,16 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "no_available_accounts"},
             )
 
-        # Single account available - show confirmation dialog
+        # Single account available - show confirmation dialog with account details
         if len(available_contracts) == 1:
             contract = available_contracts[0]
+            account_summary = self.accounts_data.get("accountsSummary", [{}])[0]
+            
             return self.async_show_form(
                 step_id="select_account",
                 data_schema=self._get_single_account_confirmation_schema(contract),
                 description_placeholders={
-                    "account_nickname": self.accounts_data.get("accountsSummary", [{}])[0].get("nickname", "Unknown"),
+                    "account_nickname": account_summary.get("nickname", "Unknown"),
                     "icp": contract.get("icp", "Unknown"),
                 },
             )
