@@ -2,13 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "title": "Contact Energy",
-        "description": "Set up your Contact Energy integration"
+        "title": "Contact Energy Account",
+        "description": "Enter your Contact Energy account credentials",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        }
+      },
+      "select_account": {
+        "title": "Select Your Account",
+        "description": "You have multiple accounts. Please select the one you want to integrate",
+        "data": {
+          "account_id": "Account (ICP - Address)"
+        }
       }
     },
     "error": {
-      "invalid_credentials": "Invalid credentials",
-      "connection_failed": "Failed to connect to Contact Energy"
+      "invalid_auth": "Authentication Failed",
+      "connection_error": "Connection Error",
+      "api_error": "API Error",
+      "no_accounts": "No Accounts Found",
+      "unknown": "Unknown Error"
     },
     "abort": {
       "already_configured": "Contact Energy is already configured"

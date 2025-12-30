@@ -1,0 +1,667 @@
+# Contact Energy API - Available Data Reference
+
+This page documents the complete range of data available from the Contact Energy API, based on comprehensive testing and exploration of the API endpoints.
+
+---
+
+## Research Methodology
+
+This documentation was compiled through:
+
+1. **Library Analysis** - Examining the [`contact-energy-nz`](https://pypi.org/project/contact-energy-nz/) Python library (v0.1.18621115660)
+   - Source code inspection
+   - Method testing and validation
+   - Identifying library limitations and bugs
+
+2. **Direct API Exploration** - Testing the Contact Energy API endpoints directly
+   - Authentication flow analysis
+   - Endpoint discovery and mapping
+   - Response structure documentation
+   - Header and parameter validation
+
+3. **Comparative Testing** - Comparing library results vs direct API access
+   - Data completeness verification
+   - Performance and reliability assessment
+   - Bug identification and workarounds
+
+---
+
+## API Overview
+
+**Base URL:** `https://api.contact-digital-prod.net`  
+**API Key:** `kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij` (embedded in library)  
+**Authentication:** Token-based (obtained via login endpoint)
+
+### Required Headers for Authenticated Requests
+
+```json
+{
+  "x-api-key": "kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij",
+  "session": "<token>",
+  "authorization": "<token>"
+}
+```
+
+**Note:** All three headers are required. The API uses the token in both `session` and `authorization` headers (not as `Bearer {token}`).
+
+---
+
+## Working Endpoints
+
+### 1. Authentication - POST `/login/v2`
+
+**Status:** ✅ Fully Working
+
+**Request:**
+```http
+POST https://api.contact-digital-prod.net/login/v2
+Content-Type: application/json
+x-api-key: kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij
+
+{
+  "username": "your_email@example.com",
+  "password": "your_password"
+}
+```
+
+**Response:**
+```json
+{
+  "statusCode": 200,
+  "token": "eCDfRqve0yCFEaWmtvMQoHlHgTXTRhHwgAAG-twz6ho=",
+  "segment": "RESI",
+  "bp": "1500479861"
+}
+```
+
+**Available Fields:**
+- `token` - Session token for authenticated requests
+- `segment` - Customer segment (e.g., "RESI" for residential)
+- `bp` - Business partner ID
+
+---
+
+### 2. Account Information - GET `/accounts/v2?ba=`
+
+**Status:** ✅ Fully Working
+
+**Request:**
+```http
+GET https://api.contact-digital-prod.net/accounts/v2?ba=
+x-api-key: kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij
+session: <token>
+authorization: <token>
+```
+
+**Response Structure:**
+```json
+{
+  "accountsSummary": [
+    {
+      "id": "1111222233",
+      "nickname": "[your streent name]",
+      "contracts": [
+        {
+          "contractId": "1234567890",
+          "premiseId": "0987654321",
+          "address": "[Full address]"
+        }
+      ]
+    }
+  ],
+  "accountDetail": {
+    "id": "1111222233",
+    "nickname": "[your streent name]",
+    "correspondencePreference": "email",
+    "paymentMethod": "Direct Debit",
+    "isDirectDebit": true,
+    "isSmoothPay": false,
+    "isPrepay": false,
+    "isControlpay": false,
+    "isEligibleMonthOff": false,
+    "directDebitAccount": "0001",
+    "billingFrequency": "Monthly",
+    "accountBalance": {
+      "prepayDebtBalance": 0,
+      "currentBalance": 0,
+      "formattedCurrentBalance": "$0.00",
+      "remainingDays": 0,
+      "refundEligible": false,
+      "refundMax": 0,
+      "refundInProgress": 0
+    },
+    "invoice": {
+      "amountPaid": 0,
+      "amountDue": 356.06,
+      "discountTotal": 0,
+      "paymentDueDate": "04 Dec 2023",
+      "daysTilOverdue": -3
+    },
+    "nextBill": {
+      "date": "19 Dec 2023",
+      "daysUntilBill": 12
+    },
+    "contracts": [
+      {
+        "id": ""1111222233"",
+        "premiseId": "0987654321",
+        "address": "[full street address]",
+        "icp": "00000xxxxxyyzzz",
+        "product": {
+          "name": "Broadband Power Combo - Anytime"
+        },
+        "type": "Energy",
+        "status": "Active"
+      }
+    ]
+  }
+}
+```
+
+**Available Data Points:**
+
+**Account Summary:**
+- Account ID
+- Account nickname
+- Contract ID(s)
+- Premise ID(s)
+- Service address(es)
+
+**Account Details:**
+- Correspondence preference
+- Payment method (Direct Debit, Credit Card, etc.)
+- Billing frequency (Monthly, etc.)
+- Account type flags (Direct Debit, Smooth Pay, Prepay, Control Pay)
+- Month-off eligibility
+
+**Account Balance:**
+- Current balance (numeric and formatted)
+- Prepay debt balance
+- Remaining days
+- Refund eligibility
+- Refund maximum amount
+- Refund in progress amount
+
+**Invoice Information:**
+- Amount paid
+- Amount due
+- Discount total
+- Payment due date
+- Days until overdue (negative = already overdue)
+
+**Next Bill:**
+- Next bill date
+- Days until next bill
+
+**Contract Details:**
+- Contract ID
+- Premise ID
+- Service address
+- ICP number (Installation Control Point)
+- Product/plan name
+- Contract type
+- Contract status
+
+**Library Support:**
+- `ContactEnergyApi.account_summary()` - ⚠️ **Returns None** (library bug - doesn't parse response correctly)
+
+**Recommendation:** Use direct API call for reliable access to all account data.
+
+---
+
+### 3. Usage Data - POST `/usage/v2/{contract_id}`
+
+**Status:** ✅ Fully Working (supports hourly, daily, and monthly intervals)
+
+**URL Pattern:**
+```
+POST /usage/v2/{contract_id}?ba={account_id}&interval={interval}&from={start_date}&to={end_date}
+```
+
+**Parameters:**
+- `contract_id` (path) - Contract ID from account data
+- `ba` (query) - Account ID
+- `interval` (query) - One of: `hourly`, `daily`, `monthly`
+- `from` (query) - Start date in `YYYY-MM-DD` format
+- `to` (query) - End date in `YYYY-MM-DD` format
+
+#### Monthly Usage
+
+**Example Request:**
+```http
+POST https://api.contact-digital-prod.net/usage/v2/1350836906?ba=501230645&interval=monthly&from=2025-11-07&to=2025-12-07
+x-api-key: kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij
+session: <token>
+authorization: <token>
+```
+
+**Response:**
+```json
+[
+  {
+    "currency": "NZD",
+    "year": 2023,
+    "month": 12,
+    "day": 1,
+    "hour": 0,
+    "date": "2023-12-01T00:00:00.000+13:00",
+    "value": "168.540",
+    "dollarValue": "46.820",
+    "offpeakValue": "0",
+    "unchargedValue": "0",
+    "offpeakDollarValue": "0",
+    "unit": "kWh",
+    "timeZone": "Pacific/Auckland",
+    "percentage": 100
+  }
+]
+```
+
+**Library Support:** `api.get_usage(start_date, end_date)` - ✅ **Working**
+
+#### Daily Usage
+
+**Example Request:**
+```http
+POST https://api.contact-digital-prod.net/usage/v2/1350836906?ba=501230645&interval=daily&from=2023-11-07&to=2023-12-07
+x-api-key: kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij
+session: <token>
+authorization: <token>
+```
+
+**Response Sample:**
+```json
+{
+  "currency": "NZD",
+  "year": 2023,
+  "month": 11,
+  "day": 7,
+  "hour": 0,
+  "date": "2023-11-07T00:00:00.000+13:00",
+  "value": "36.344",
+  "dollarValue": "9.600",
+  "offpeakValue": "0.00",
+  "unchargedValue": "0.00",
+  "offpeakDollarValue": "0.00",
+  "unit": "kWh",
+  "timeZone": "Pacific/Auckland",
+  "percentage": 67.4
+}
+```
+
+**Library Support:** ❌ Not directly exposed
+
+#### Hourly Usage
+
+**Example Request:**
+```http
+POST https://api.contact-digital-prod.net/usage/v2/1350836906?ba=501230645&interval=hourly&from=2023-12-06&to=2023-12-06
+x-api-key: kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij
+session: <token>
+authorization: <token>
+```
+
+**Response Sample:**
+```json
+{
+  "currency": "NZD",
+  "year": 2023,
+  "month": 12,
+  "day": 6,
+  "hour": 0,
+  "date": "2023-12-06T00:00:00.000+13:00",
+  "value": "1.53",
+  "dollarValue": "0.526",
+  "offpeakValue": "0.00",
+  "unchargedValue": "0.00",
+  "offpeakDollarValue": "0.000",
+  "unit": "kWh",
+  "timeZone": "Pacific/Auckland",
+  "percentage": 34.62,
+  "type": "dollar"
+}
+```
+
+**Returns:** 24 records (one per hour) for the specified date
+
+**Library Support:** `api.get_hourly_usage(date)` - ✅ **Working**
+
+#### Available Usage Data Fields
+
+Per usage record (hourly/daily/monthly):
+- **Energy consumption (kWh)** - `value`
+- **Cost (NZD)** - `dollarValue`
+- **Off-peak usage (kWh)** - `offpeakValue`
+- **Free/uncharged usage (kWh)** - `unchargedValue`
+- **Off-peak cost (NZD)** - `offpeakDollarValue`
+- **Date/timestamp** - `date` (with timezone)
+- **Year, month, day, hour** - Individual components
+- **Percentage indicator** - `percentage`
+- **Currency** - `currency` (always "NZD")
+- **Unit** - `unit` (always "kWh")
+- **Timezone** - `timeZone` (always "Pacific/Auckland")
+- **Type** - `type` (sometimes included, e.g., "dollar")
+
+---
+
+## Non-Working Endpoints
+
+Through comprehensive testing, the following endpoint patterns were discovered to return **403 Forbidden** or **404 Not Found**:
+
+### Account Variants
+- `/v1/account`, `/v1/account/summary`, `/v1/account/details`, `/v1/account/info`
+- `/api/account`, `/api/account/summary`
+- `/api/customer`, `/api/customer/account`, `/api/customer/details`
+- `/v1/customer`, `/v1/customer/profile`
+- `/api/profile`, `/v1/profile`
+- `/api/accounts`, `/v1/accounts`
+- `/api/me`, `/v1/me`
+
+### Usage Variants
+- `/v1/usage`, `/v1/usage/daily`, `/v1/usage/hourly`, `/v1/usage/monthly`
+- `/api/usage`, `/api/usage/daily`, `/api/usage/hourly`
+- `/api/electricity/usage`, `/v1/electricity/usage`
+- `/api/consumption`, `/v1/consumption`
+- `/api/meter/readings`, `/v1/meter/readings`
+
+### Billing & Payments
+- `/v1/billing`, `/v1/billing/summary`, `/v1/billing/history`
+- `/v1/bills`, `/v1/invoices`
+- `/api/billing`, `/api/bills`, `/api/invoices`
+- `/api/payments`, `/v1/payments`
+- `/api/balance`, `/v1/balance`
+- `/api/account/balance`, `/v1/account/balance`
+
+### Contracts & Services
+- `/v1/contracts`, `/v1/contract`
+- `/api/contracts`, `/api/contract`
+- `/api/services`, `/v1/services`
+- `/api/premises`, `/v1/premises`
+- `/api/properties`, `/v1/properties`
+- `/api/icp`, `/v1/icp`
+- `/api/meter`, `/v1/meter`
+
+### Plans & Pricing
+- `/v1/plan`, `/v1/plans`
+- `/api/plan`, `/api/plans`
+- `/api/pricing`, `/v1/pricing`
+- `/api/rates`, `/v1/rates`
+- `/api/tariff`, `/v1/tariff`
+
+**Conclusion:** The Contact Energy API has a very limited public surface with only 3 working endpoints for customer data access.
+
+---
+
+## Library vs Direct API Comparison
+
+| Feature | `contact-energy-nz` Library | Direct API | Notes |
+|---------|----------------------------|------------|-------|
+| **Authentication** | ✅ Working | ✅ Working | Both use same endpoint |
+| **Account Summary** | ⚠️ Returns None | ✅ Full data | Library has parsing bug |
+| **Account Details** | ❌ Not exposed | ✅ Full data | Library doesn't extract this |
+| **Balance Information** | ❌ Not exposed | ✅ Full data | Available in account endpoint |
+| **Invoice Details** | ❌ Not exposed | ✅ Full data | Available in account endpoint |
+| **Contract Information** | ❌ Not exposed | ✅ Full data | Available in account endpoint |
+| **Monthly Usage** | ✅ Working | ✅ Working | `get_usage(start, end)` |
+| **Daily Usage** | ❌ Not exposed | ✅ Working | Must use direct API |
+| **Hourly Usage** | ✅ Working | ✅ Working | `get_hourly_usage(date)` |
+| **Latest Usage** | ⚠️ Date bug | ✅ Working | Library has implementation issue |
+
+### Library Bugs Identified
+
+1. **`account_summary()` returns None** - Method exists but doesn't correctly parse the API response
+2. **`get_latest_usage()` has date issues** - Incorrect date handling causes failures
+3. **Missing data extraction** - Library retrieves full account data but only exposes minimal fields
+
+### Recommendation
+
+**Use Direct API calls** for the Home Assistant integration because:
+- Full access to all available data points
+- No dependency on library bug fixes
+- Better control over error handling
+- Access to daily usage interval (not exposed by library)
+- Direct access to account balance, invoice, and contract details
+
+---
+
+## API Testing Script
+
+Below is the Python script used to validate the API endpoints and gather this documentation. This script can be used to verify API access and explore available data.
+
+```python
+#!/usr/bin/env python3
+"""
+Contact Energy API Testing Script
+Tests authentication, account data, and usage endpoints.
+"""
+
+import asyncio
+import aiohttp
+import json
+from datetime import datetime, timedelta
+from getpass import getpass
+
+BASE_URL = "https://api.contact-digital-prod.net"
+API_KEY = "kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij"
+
+
+async def main():
+    # Get credentials from user
+    print("Contact Energy API Tester")
+    print("=" * 50)
+    username = input("Enter your Contact Energy email: ")
+    password = getpass("Enter your Contact Energy password: ")
+    print()
+
+    async with aiohttp.ClientSession() as session:
+        # 1. Authenticate
+        print("🔐 Authenticating...")
+        auth_url = f"{BASE_URL}/login/v2"
+        auth_payload = {"username": username, "password": password}
+        auth_headers = {"x-api-key": API_KEY}
+        
+        try:
+            async with session.post(auth_url, json=auth_payload, headers=auth_headers) as resp:
+                if resp.status != 200:
+                    print(f"❌ Authentication failed: {resp.status}")
+                    text = await resp.text()
+                    print(f"   Error: {text}")
+                    return
+                
+                auth_data = await resp.json()
+                token = auth_data.get("token")
+                print(f"✅ Authentication successful")
+                print(f"   Token: {token[:20]}...")
+                print(f"   Segment: {auth_data.get('segment')}")
+                print(f"   BP: {auth_data.get('bp')}\n")
+        except Exception as e:
+            print(f"❌ Authentication error: {e}")
+            return
+        
+        # Setup headers for authenticated requests
+        headers = {
+            "x-api-key": API_KEY,
+            "session": token,
+            "authorization": token,
+        }
+        
+        # 2. Get account data
+        print("📋 Fetching account information...")
+        try:
+            async with session.get(f"{BASE_URL}/accounts/v2?ba=", headers=headers) as resp:
+                if resp.status != 200:
+                    print(f"❌ Account fetch failed: {resp.status}")
+                    text = await resp.text()
+                    print(f"   Error: {text}")
+                    return
+                
+                account_data = await resp.json()
+                
+                # Extract key information
+                account_summary = account_data.get("accountsSummary", [{}])[0]
+                account_detail = account_data.get("accountDetail", {})
+                
+                account_id = account_summary.get("id")
+                nickname = account_summary.get("nickname")
+                
+                contract = account_summary.get("contracts", [{}])[0]
+                contract_id = contract.get("contractId")
+                address = contract.get("address")
+                
+                balance_info = account_detail.get("accountBalance", {})
+                invoice_info = account_detail.get("invoice", {})
+                
+                print(f"✅ Account data retrieved")
+                print(f"   Account ID: {account_id}")
+                print(f"   Nickname: {nickname}")
+                print(f"   Address: {address}")
+                print(f"   Contract ID: {contract_id}")
+                print(f"   Current Balance: {balance_info.get('formattedCurrentBalance', 'N/A')}")
+                print(f"   Amount Due: ${invoice_info.get('amountDue', 'N/A')}")
+                print(f"   Due Date: {invoice_info.get('paymentDueDate', 'N/A')}")
+                print()
+                
+                # Save full account data
+                with open("account_data.json", "w") as f:
+                    json.dump(account_data, f, indent=2)
+                print("💾 Full account data saved to: account_data.json\n")
+                
+        except Exception as e:
+            print(f"❌ Account fetch error: {e}")
+            return
+        
+        # 3. Test usage endpoints
+        print("📊 Testing usage endpoints...")
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+        yesterday = end_date - timedelta(days=1)
+        
+        usage_tests = [
+            ("Monthly", "monthly", start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
+            ("Daily", "daily", start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
+            ("Hourly", "hourly", yesterday.strftime('%Y-%m-%d'), yesterday.strftime('%Y-%m-%d')),
+        ]
+        
+        for test_name, interval, from_date, to_date in usage_tests:
+            print(f"\n   Testing {test_name} usage...")
+            url = f"{BASE_URL}/usage/v2/{contract_id}?ba={account_id}&interval={interval}&from={from_date}&to={to_date}"
+            
+            try:
+                async with session.post(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        print(f"   ✅ {test_name}: {len(data)} records")
+                        
+                        if data:
+                            sample = data[0]
+                            print(f"      Sample: {sample.get('date')} - {sample.get('value')} {sample.get('unit')} (${sample.get('dollarValue')})")
+                            
+                            # Save to file
+                            filename = f"usage_{interval}.json"
+                            with open(filename, "w") as f:
+                                json.dump(data, f, indent=2)
+                            print(f"      💾 Saved to: {filename}")
+                    else:
+                        text = await resp.text()
+                        print(f"   ❌ {test_name} failed: {resp.status} - {text}")
+            except Exception as e:
+                print(f"   ❌ {test_name} error: {e}")
+        
+        print("\n" + "=" * 50)
+        print("✅ API testing complete!")
+        print("\nFiles created:")
+        print("  - account_data.json (full account details)")
+        print("  - usage_monthly.json (monthly usage data)")
+        print("  - usage_daily.json (daily usage data)")
+        print("  - usage_hourly.json (hourly usage data)")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Running the Script
+
+```bash
+# Install dependencies
+pip install aiohttp
+
+# Run the script
+python test_contact_api.py
+```
+
+The script will:
+1. Prompt for your Contact Energy credentials
+2. Authenticate with the API
+3. Fetch and display your account information
+4. Retrieve usage data at all available intervals (monthly, daily, hourly)
+5. Save all responses as JSON files for inspection
+
+---
+
+## Additional Resources
+
+- **Python Library:** [`contact-energy-nz`](https://pypi.org/project/contact-energy-nz/) on PyPI
+- **Library Source:** Available through pip installation: `pip show -f contact-energy-nz`
+- **API Base URL:** `https://api.contact-digital-prod.net`
+- **Home Assistant Integration:** [iamawumpas/Contact-Energy](https://github.com/iamawumpas/Contact-Energy)
+
+---
+
+## Summary of Available Data
+
+### ✅ Account Information (19 data points)
+1. Account ID
+2. Account nickname
+3. Contract ID(s)
+4. Premise ID(s)
+5. Service address
+6. ICP number
+7. Payment method
+8. Current balance (NZD)
+9. Invoice amount due
+10. Payment due date
+11. Days until/past due
+12. Next bill date
+13. Days until next bill
+14. Product/plan name
+15. Contract status
+16. Billing frequency
+17. Direct debit status
+18. Smooth pay status
+19. Prepay status
+
+### ✅ Usage Data (10 data points per interval)
+
+**Available intervals:** hourly, daily, monthly
+
+1. Energy consumption (kWh)
+2. Cost (NZD)
+3. Off-peak usage (kWh)
+4. Free/uncharged usage (kWh)
+5. Off-peak cost (NZD)
+6. Date/timestamp (with timezone)
+7. Year/month/day/hour breakdown
+8. Percentage indicator
+9. Currency (NZD)
+10. Unit (kWh)
+
+---
+
+## Integration Recommendations
+
+For Home Assistant integration development:
+
+1. **Use Direct API calls** instead of the library
+2. **Update frequency:**
+   - Account data: Every 6 hours (slow-changing)
+   - Daily/monthly usage: Every 1-4 hours
+   - Hourly usage: Every 30-60 minutes
+3. **Token management:** Implement re-authentication on 401/403 errors
+4. **Error handling:** Use exponential backoff for 500 errors
+5. **Data storage:** Store historical data as sensor attributes for charting
+
+---
+
+*Last Updated: December 7, 2025*

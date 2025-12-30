@@ -2,23 +2,37 @@
   "config": {
     "step": {
       "user": {
-        "title": "Contact Energy",
-        "description": "Set up your Contact Energy integration"
+        "title": "Contact Energy Account",
+        "description": "Enter your Contact Energy account credentials to connect your account and verify connectivity.\n\n**Email Address**: The email address associated with your Contact Energy account. This is the email you use to log in to the Contact Energy website or mobile app.\n\n**Password**: Your Contact Energy account password. Your credentials are securely encrypted and used only to authenticate with Contact Energy's servers.",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        }
+      },
+      "select_account": {
+        "title": "Select Your Account",
+        "description": "You have multiple Contact Energy accounts or ICPs (Installation Control Points). Please select the account you want to integrate with Home Assistant.\n\nEach option shows your ICP (a unique identifier) and the service address.",
+        "data": {
+          "account_id": "Account (ICP - Address)"
+        }
       }
     },
     "error": {
-      "invalid_credentials": "Invalid credentials",
-      "connection_failed": "Failed to connect to Contact Energy"
+      "invalid_auth": "Authentication Failed - Invalid email or password. Please double-check your credentials and ensure caps lock is off. Contact Energy accounts are case-sensitive for passwords.",
+      "connection_error": "Connection Error - Unable to connect to Contact Energy servers. This may be due to a network issue or Contact Energy API being temporarily unavailable. Please check your internet connection and try again.",
+      "api_error": "API Error - Contact Energy servers returned an error. Please try again later or contact Contact Energy support if the problem persists.",
+      "no_accounts": "No Accounts Found - Your Contact Energy account exists but has no active accounts or ICPs. Please contact Contact Energy support to activate your account.",
+      "unknown": "Unknown Error - An unexpected error occurred. Please try again or contact support if the problem persists."
     },
     "abort": {
-      "already_configured": "Contact Energy is already configured"
+      "already_configured": "Contact Energy is already configured in Home Assistant"
     }
   },
   "options": {
     "step": {
       "user": {
         "title": "Contact Energy Options",
-        "description": "Configure Contact Energy options"
+        "description": "Configure Contact Energy integration options"
       }
     }
   }
