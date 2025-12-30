@@ -11,7 +11,6 @@ import logging
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.const import UnitOfCurrency
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
@@ -21,6 +20,9 @@ from .const import DOMAIN
 from .coordinator import ContactEnergyCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Currency unit for New Zealand Dollar
+CURRENCY_NZD = "NZD"
 
 
 async def async_setup_entry(
@@ -139,7 +141,7 @@ class ContactEnergyAccountBalanceSensor(CoordinatorEntity, SensorEntity):
             "refund_max": "Maximum Refund",
         }
         self._attr_name = f"{entity_name} {attribute_names.get(attribute, attribute)}"
-        self._attr_unit_of_measurement = UnitOfCurrency.NZD
+        self._attr_unit_of_measurement = CURRENCY_NZD
 
     @property
     def state(self):
@@ -201,12 +203,12 @@ class ContactEnergyInvoiceSensor(CoordinatorEntity, SensorEntity):
         attribute_config = {
             "amount_due": {
                 "name": "Amount Due",
-                "unit": UnitOfCurrency.NZD,
+                "unit": CURRENCY_NZD,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
             "amount_paid": {
                 "name": "Amount Paid",
-                "unit": UnitOfCurrency.NZD,
+                "unit": CURRENCY_NZD,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
             "payment_due_date": {
