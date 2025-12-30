@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 0.0.6 ]
+
+### Fixed
+- Config entry title now uses account nickname as fallback when address is not available from API
+- Multiple account selection now displays account nickname if address field is missing
+- Improved handling of incomplete address data from Contact Energy API
+
 ## [ 0.0.5 ]
 
 ### Fixed

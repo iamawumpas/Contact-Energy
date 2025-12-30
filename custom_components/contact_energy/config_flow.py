@@ -133,10 +133,11 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         # Multiple accounts available - show selection dialog
+        account_summary = self.accounts_data.get("accountsSummary", [{}])[0]
         choices = [
             {
                 "value": contract.get("icp"),
-                "label": f"{contract.get('icp', 'Unknown')} - {contract.get('address', 'Unknown')}",
+                "label": f"{contract.get('icp', 'Unknown')} - {contract.get('address') or account_summary.get('nickname') or 'Unknown'}",
             }
             for contract in available_contracts
         ]
@@ -168,6 +169,9 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     break
 
             if selected_contract:
+                # Use address if available, otherwise use account nickname
+                display_name = selected_contract.get("address") or account_summary.get("nickname") or "Unknown"
+                
                 # Prepare the config entry data with all required information
                 config_data = {
                     "email": self.api_client.email,
@@ -182,9 +186,9 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "premise_id": selected_contract.get("premiseId"),
                 }
 
-                # Create the config entry with a descriptive title
+                # Create the config entry with a descriptive title (ICP - Address/Nickname)
                 return self.async_create_entry(
-                    title=f"{selected_contract.get('icp')} - {selected_contract.get('address', 'Unknown')}", 
+                    title=f"{selected_contract.get('icp')} - {display_name}", 
                     data=config_data
                 )
 
