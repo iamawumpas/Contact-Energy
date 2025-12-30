@@ -80,15 +80,19 @@ echo -e "${GREEN}✓ Pushed to repository${NC}"
 
 # Step 8: Create GitHub release with changelog
 echo -e "${YELLOW}Step 8: Creating GitHub release${NC}"
-# Extract changelog entry for this version (format: ## [ x.y.z ] to next version or EOF)
-CHANGELOG_ENTRY=$(awk "/## \[ ${VERSION} \]/,/## \[/{if(/## \[/ && !/## \[ ${VERSION} \]/) exit; print}" Changelog.md | sed '$ d')
+# Extract changelog entry for this version using sed (more reliable than awk)
+# Finds content between version header and next header, excluding the headers themselves
+CHANGELOG_ENTRY=$(sed -n "/^## \[ ${VERSION} \]/,/^## \[/p" Changelog.md | sed '1d;$d')
+
+# Trim leading/trailing whitespace
+CHANGELOG_ENTRY=$(echo "$CHANGELOG_ENTRY" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 
 if [ -z "$CHANGELOG_ENTRY" ]; then
-    echo -e "${YELLOW}⚠ Could not extract changelog entry${NC}"
+    echo -e "${YELLOW}⚠ Could not extract changelog entry, using default${NC}"
     CHANGELOG_ENTRY="Release v${VERSION}"
 fi
 
-# Create GitHub release using gh CLI
+# Create GitHub release using gh CLI with changelog content as release notes
 gh release create "v${VERSION}" --title "Release v${VERSION}" --notes "$CHANGELOG_ENTRY"
 echo -e "${GREEN}✓ GitHub release created${NC}"
 
