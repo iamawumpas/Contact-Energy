@@ -214,12 +214,9 @@ card_mod:
 
 Display just your current balance:
 
-```yaml
-type: entity
-entity: sensor.my_address_icp123_current_balance
-name: Account Balance
-icon: mdi:currency-usd
-```
+| Preview | YAML |
+| --- | --- |
+| ![Simple Balance Card](https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/simple_balance_card.png) | ```yaml\ntype: entity\nentity: sensor.my_address_icp123_current_balance\nname: Account Balance\nicon: mdi:currency-usd\n``` |
 
 ### Payment Due Card
 
