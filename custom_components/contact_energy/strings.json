@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Contact Energy",
+        "description": "Set up your Contact Energy integration"
+      }
+    },
+    "error": {
+      "invalid_credentials": "Invalid credentials",
+      "connection_failed": "Failed to connect to Contact Energy"
+    },
+    "abort": {
+      "already_configured": "Contact Energy is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Contact Energy Options",
+        "description": "Configure Contact Energy options"
+      }
+    }
+  }
+}

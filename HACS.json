@@ -1,0 +1,11 @@
+{
+  "name": "Contact Energy",
+  "homeassistant": "2024.1.0",
+  "iot_class": "cloud_polling",
+  "persistent_directory": "contact_energy",
+  "version": "0.0.1",
+  "ignore": [
+    ".*",
+    "release.sh"
+  ]
+}

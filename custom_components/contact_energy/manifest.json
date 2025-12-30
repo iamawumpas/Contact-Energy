@@ -1,0 +1,11 @@
+{
+  "domain": "contact_energy",
+  "name": "Contact Energy",
+  "codeowners": ["@iamawumpas"],
+  "config_flow": true,
+  "documentation": "https://github.com/iamawumpas/Contact-Energy",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.0.1",
+  "integration_type": "device"
+}
