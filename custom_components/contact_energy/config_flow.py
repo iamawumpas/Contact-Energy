@@ -173,8 +173,10 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 display_name = selected_contract.get("address") or account_summary.get("nickname") or "Unknown"
                 
                 # Prepare the config entry data with all required information
+                # Note: Password is stored encrypted by Home Assistant's internal encryption
                 config_data = {
                     "email": self.api_client.email,
+                    "password": self.api_client.password,
                     "token": self.api_client.token,
                     "segment": self.api_client.segment,
                     "bp": self.api_client.bp,

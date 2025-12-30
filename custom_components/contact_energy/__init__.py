@@ -43,11 +43,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     
     # Create API client with stored credentials
+    # Home Assistant automatically encrypts sensitive data in config entries
     api_client = ContactEnergyApi(
         email=entry.data.get("email"),
-        password="",  # Password not stored, only token is used
+        password=entry.data.get("password", ""),
     )
-    # Set token from stored config entry instead of re-authenticating
+    # Set token from stored config entry to avoid re-authentication on first load
     api_client.token = entry.data.get("token")
     api_client.segment = entry.data.get("segment")
     api_client.bp = entry.data.get("bp")

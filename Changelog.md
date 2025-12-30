@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.1.1 ]
+
+### Fixed
+- Store password in config entry to enable token refresh on expiry
+- Coordinator now automatically re-authenticates if stored token has expired
+- Improved error handling when API token becomes invalid during daily updates
+- Sensors will now continue working after token expiry instead of showing API errors
+
 ## [ 1.1.0 ]
 
 ### Added

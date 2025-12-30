@@ -49,6 +49,9 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         It retrieves complete account information including balance, invoice
         details, next billing date, and contract information.
 
+        If the stored token is invalid, it will re-authenticate using the stored
+        credentials before fetching data.
+
         Returns:
             Dictionary containing the account data.
 
@@ -57,10 +60,25 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         """
         try:
             _LOGGER.debug("Fetching account information from Contact Energy API")
-            # Retrieve complete account data including balance, invoice, and next bill info
-            account_data = await self.api_client.get_accounts()
-            _LOGGER.debug("Successfully fetched account data")
-            return account_data
+            
+            # Try to get accounts with current token
+            try:
+                account_data = await self.api_client.get_accounts()
+                _LOGGER.debug("Successfully fetched account data")
+                return account_data
+            
+            except Exception as auth_error:
+                # If we get a 401/403 or authentication error, re-authenticate
+                # This handles cases where the stored token has expired
+                _LOGGER.warning(f"Initial fetch failed, re-authenticating: {str(auth_error)}")
+                
+                # Re-authenticate to get a fresh token
+                await self.api_client.authenticate()
+                
+                # Retry fetching account data with the new token
+                account_data = await self.api_client.get_accounts()
+                _LOGGER.debug("Successfully fetched account data after re-authentication")
+                return account_data
 
         except ContactEnergyApiError as e:
             # API returned an error - convert to UpdateFailed for coordinator handling
