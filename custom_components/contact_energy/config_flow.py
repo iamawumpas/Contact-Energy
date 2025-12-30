@@ -371,6 +371,6 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return vol.Schema(
             {
-                vol.Required("confirmed_icp"): vol.In({contract.get("icp"): contract.get("icp")}),
+                vol.Required("confirmed_icp", default=contract.get("icp")): str,
             }
         )

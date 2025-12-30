@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 0.0.5 ]
+
+### Fixed
+- Single account confirmation dialog no longer displays as multi-account selection
+- Form field for single account confirmation now uses proper text input instead of radio button
+- Account ICP label changed from "Confirm" to "Account ICP" for clarity
+- Single account form now properly defaults to the account ICP value
+
 ## [ 0.0.4 ]
 
 ### Fixed

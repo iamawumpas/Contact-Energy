@@ -15,7 +15,7 @@
         "description": "You have one Contact Energy account.\n\n**Account Name:** {account_nickname}\n**ICP:** {icp}\n\nPlease confirm these are the correct details by pressing submit.",
         "data": {
           "account_icp": "Account (ICP - Address)",
-          "confirmed_icp": "Confirm"
+          "confirmed_icp": "Account ICP"
         }
       }
     },

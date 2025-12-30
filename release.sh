@@ -42,14 +42,14 @@ echo -e "${GREEN}Ask the agent to write the changelog for version ${VERSION}${NC
 echo ""
 read -p "Press Enter after the agent has updated Changelog.md: "
 
-# Step 2: Update README.md with version number
+# Step 2: Update README.md with version badge
 echo -e "${YELLOW}Step 2: Updating README.md${NC}"
-if grep -q "## Contact Energy" README.md; then
-    # Find and replace version in README header (format: ## Contact Energy v0.0.1)
-    sed -i "s/## Contact Energy v[0-9]*\.[0-9]*\.[0-9]*/## Contact Energy v${VERSION}/" README.md
-    echo -e "${GREEN}✓ README.md updated${NC}"
+if grep -q "img.shields.io/badge/version" README.md; then
+    # Find and replace version in badge (format: ![Version](https://img.shields.io/badge/version-x.y.z-blue.svg))
+    sed -i "s/img.shields.io\/badge\/version-[0-9]*\.[0-9]*\.[0-9]*-blue/img.shields.io\/badge\/version-${VERSION}-blue/" README.md
+    echo -e "${GREEN}✓ README.md version badge updated${NC}"
 else
-    echo -e "${YELLOW}⚠ README.md header not found in expected format${NC}"
+    echo -e "${YELLOW}⚠ README.md version badge not found in expected format${NC}"
 fi
 
 # Step 3: Update manifest.json version
