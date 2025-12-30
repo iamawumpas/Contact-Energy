@@ -42,11 +42,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize the data dictionary for this domain if it doesn't exist
     hass.data.setdefault(DOMAIN, {})
     
+    # Check if password is present (needed for token refresh)
+    # Configs from v1.0.0 and earlier may not have password stored
+    if "password" not in entry.data:
+        _LOGGER.warning(
+            f"Contact Energy config entry {entry.entry_id} is missing password. "
+            "This is required for token refresh. Please reconfigure the integration."
+        )
+        # Show a repair notification for the user
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "import", "title_placeholders": {"name": entry.title}},
+                data=entry.data,
+            )
+        )
+        return False
+    
     # Create API client with stored credentials
     # Home Assistant automatically encrypts sensitive data in config entries
     api_client = ContactEnergyApi(
         email=entry.data.get("email"),
-        password=entry.data.get("password", ""),
+        password=entry.data.get("password"),
     )
     # Set token from stored config entry to avoid re-authentication on first load
     api_client.token = entry.data.get("token")

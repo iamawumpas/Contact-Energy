@@ -70,10 +70,22 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             except Exception as auth_error:
                 # If we get a 401/403 or authentication error, re-authenticate
                 # This handles cases where the stored token has expired
-                _LOGGER.warning(f"Initial fetch failed, re-authenticating: {str(auth_error)}")
+                error_str = str(auth_error)
+                _LOGGER.warning(f"Initial fetch failed, re-authenticating: {error_str}")
+                
+                # Check if password is available
+                if not self.api_client.password:
+                    _LOGGER.error("Cannot re-authenticate: password not stored in config entry")
+                    raise UpdateFailed("Password not available for re-authentication. Please reconfigure the integration.")
                 
                 # Re-authenticate to get a fresh token
-                await self.api_client.authenticate()
+                try:
+                    _LOGGER.debug(f"Attempting to re-authenticate as {self.api_client.email}")
+                    await self.api_client.authenticate()
+                    _LOGGER.debug("Successfully re-authenticated")
+                except Exception as auth_err:
+                    _LOGGER.error(f"Re-authentication failed: {str(auth_err)}")
+                    raise UpdateFailed(f"Re-authentication failed: {str(auth_err)}") from auth_err
                 
                 # Retry fetching account data with the new token
                 account_data = await self.api_client.get_accounts()

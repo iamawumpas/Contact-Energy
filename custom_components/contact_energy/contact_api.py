@@ -73,6 +73,10 @@ class ContactEnergyApi:
         payload = {"username": self.email, "password": self.password}
 
         try:
+            # Validate we have credentials before attempting authentication
+            if not self.email or not self.password:
+                raise ContactEnergyAuthError("Email and password are required for authentication.")
+            
             # Attempt to connect to the authentication endpoint
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -80,10 +84,16 @@ class ContactEnergyApi:
                 ) as resp:
                     # Handle authentication response
                     if resp.status == 401:
+                        _LOGGER.warning(f"Authentication failed for {self.email}: Invalid credentials (401)")
                         raise ContactEnergyAuthError("Invalid email or password. Please check your credentials and try again.")
                     if resp.status == 403:
+                        _LOGGER.warning(f"Authentication forbidden for {self.email} (403)")
                         raise ContactEnergyAuthError("Access denied. Please contact Contact Energy support.")
+                    if resp.status == 400:
+                        _LOGGER.warning(f"Authentication request malformed for {self.email} (400)")
+                        raise ContactEnergyAuthError("Invalid authentication request. Please reconfigure the integration.")
                     if resp.status != 200:
+                        _LOGGER.error(f"Authentication failed with status {resp.status} for {self.email}")
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please check your internet connection and try again."
                         )
