@@ -218,7 +218,7 @@ Display just your current balance:
   <tr>
     <td style="vertical-align: top; padding-right: 12px;">
       <strong>Preview</strong><br>
-      <img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/simple_balance_card.png" alt="Simple Balance Card" style="max-width: 220px; height: auto;">
+      <img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/simple_account_balance_card.png" alt="Simple Balance Card" style="max-width: 220px; height: auto;">
     </td>
     <td style="vertical-align: top;">
       <strong>YAML</strong>
