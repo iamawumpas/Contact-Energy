@@ -15,8 +15,6 @@ This page provides examples for displaying your Contact Energy data in Home Assi
 
 A comprehensive card displaying all your account information in a compact, organized table. Perfect for sidebar placement.
 
-*Mobile tip:* On narrow screens the columns stack; rotate to landscape if you want the preview and YAML side-by-side.
-
 <table>
   <tr>
     <td style="vertical-align: top; width: 32%; min-width: 260px; padding-right: 16px;">
