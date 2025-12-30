@@ -5,6 +5,19 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.0.0 ]
+
+### Added
+- Initial stable authentication and configuration flow established
+- Full Contact Energy API integration with secure token-based authentication
+- Multi-account and multi-ICP support with duplicate prevention
+- Single and multiple account configuration handling
+- Automatic account discovery and filtering
+- Comprehensive error handling with user-friendly messages
+- Account nickname and ICP display in configuration dialogs
+- Previous email reuse option for seamless multi-account setup
+- Release automation with changelog extraction
+
 ## [ 0.0.6 ]
 
 ### Fixed
