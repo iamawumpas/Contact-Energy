@@ -28,8 +28,7 @@ A comprehensive card displaying all your account information in a compact, organ
 
 This is a static mock of how the card looks in Lovelace. It is not live or interactive.
 
-<div style="height: 250px; overflow-y: scroll; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;">
-<div style="text-align: center; margin-bottom: 10px; font-weight: 600;">My Address • ICP123</div>
+<div style="border: 1px solid #d0d7de; border-radius: 8px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;"><div style="max-height: 250px; overflow-y: auto; padding: 12px;"><div style="text-align: center; margin-bottom: 10px; font-weight: 600;">My Address • ICP123</div>
 <table style="width: 100%; border-collapse: collapse;">
 <tbody>
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Account Balance</td></tr>
@@ -62,12 +61,11 @@ This is a static mock of how the card looks in Lovelace. It is not live or inter
 <tr><td style="padding: 4px 4px;">Smooth Pay</td><td style="padding: 4px 4px; text-align: right;">No</td></tr>
 <tr><td style="padding: 4px 4px;">Prepay</td><td style="padding: 4px 4px; text-align: right;">No</td></tr>
 </tbody>
-</table>
-</div>
+</table></div></div>
 
 ### YAML Configuration
 
-<div style="height: 300px; overflow-y: scroll; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px; background: #0d1117;">
+<div style="border: 1px solid #d0d7de; border-radius: 8px; background: #0d1117;"><div style="max-height: 300px; overflow-y: auto; padding: 8px;">
 
 ```yaml
 type: markdown
