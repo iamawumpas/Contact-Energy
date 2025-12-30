@@ -3,6 +3,6 @@
   <h1>Contact Energy</h1>
   <p><i>Let's do the energy thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-0.0.5-blue.svg)
+  ![Version](https://img.shields.io/badge/version-0.0.6-blue.svg)
 </div>
 

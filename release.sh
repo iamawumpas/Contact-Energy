@@ -62,6 +62,9 @@ echo -e "${YELLOW}Step 4: Updating HACS.json${NC}"
 sed -i "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"${VERSION}\"/" HACS.json
 echo -e "${GREEN}✓ HACS.json updated${NC}"
 
+# Re-stage all modified files before commit
+git add README.md custom_components/contact_energy/manifest.json HACS.json
+
 # Step 5: Commit staged files
 echo -e "${YELLOW}Step 5: Creating git commit${NC}"
 git commit -m "Release v${VERSION}"
