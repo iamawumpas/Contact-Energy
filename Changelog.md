@@ -5,6 +5,27 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 0.0.3 ]
+
+### Added
+- Single account confirmation dialog showing account nickname and ICP
+- Multiple account selection with radio button list (ICP - Address format)
+- Automatic filtering of already-configured accounts from selection list
+- Smart credential handling with previous email reuse option
+- Detection and prevention of duplicate account additions
+- Detailed user instructions for each configuration scenario
+
+### Changed
+- Enhanced config flow to handle single vs. multiple accounts
+- Improved account selection display with ICP and address
+- Better error message for when all accounts are already configured
+- Credential form now offers choice to reuse previous email or enter new credentials
+- Config entry title now shows ICP and address for easy identification
+
+### Fixed
+- Incorrect ICP and address display in account selection (was showing contract ID instead of ICP)
+- Account filtering logic to properly identify already-configured accounts
+
 ## [ 0.0.2 ]
 
 ### Added
