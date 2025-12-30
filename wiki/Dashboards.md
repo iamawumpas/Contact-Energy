@@ -28,7 +28,7 @@ A comprehensive card displaying all your account information in a compact, organ
 
 This is a static mock of how the card looks in Lovelace. It is not live or interactive.
 
-<div style="max-height: 250px; overflow: auto; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;">
+<div style="height: 250px; overflow-y: scroll; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;">
 <div style="text-align: center; margin-bottom: 10px; font-weight: 600;">My Address • ICP123</div>
 <table style="width: 100%; border-collapse: collapse;">
 <tbody>
@@ -66,6 +66,8 @@ This is a static mock of how the card looks in Lovelace. It is not live or inter
 </div>
 
 ### YAML Configuration
+
+<div style="height: 300px; overflow-y: scroll; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px; background: #0d1117;">
 
 ```yaml
 type: markdown
@@ -206,6 +208,8 @@ card_mod:
         overflow-y: auto !important;
       }
 ```
+
+</div>
 
 ### Customization
 
