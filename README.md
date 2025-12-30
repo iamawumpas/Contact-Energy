@@ -10,12 +10,12 @@
 ---
 
 ## Quick Links
-- 📚 [**Full Documentation**](../../wiki) - Complete guides and setup instructions
-- 🚀 [**Getting Started**](../../wiki/Getting-Started) - Installation and configuration
-- 📊 [**Sensor Reference**](../../wiki/Sensors) - Complete list of all 24 sensors
-- 📈 [**Charts & Dashboards**](../../wiki/Dashboards) - Dashboard examples and card configurations
-- ⚙️ [**Multiple Instances**](../../wiki/Multiple-Accounts) - Monitor multiple properties or accounts
-- ❓ [**FAQ & Limitations**](../../wiki/FAQ) - Common questions and constraints
+- 📚 [**Full Documentation**](https://github.com/iamawumpas/Contact-Energy/wiki/Home) - Complete guides and setup instructions
+- 🚀 [**Getting Started**](https://github.com/iamawumpas/Contact-Energy/wiki/Getting-Started) - Installation and configuration
+- 📊 [**Sensor Reference**](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 24 sensors
+- 📈 [**Charts & Dashboards**](https://github.com/iamawumpas/Contact-Energy/wiki/Dashboards) - Dashboard examples and card configurations
+- ⚙️ [**Multiple Instances**](https://github.com/iamawumpas/Contact-Energy/wiki/Multiple-Accounts) - Monitor multiple properties or accounts
+- ❓ [**FAQ & Limitations**](https://github.com/iamawumpas/Contact-Energy/wiki/FAQ) - Common questions and constraints
 - 📝 [**Changelog**](Changelog.md) - Version history and changes
 
 ## About This Integration
@@ -70,17 +70,17 @@ All data updates automatically once per day at 01:00 AM and can be viewed in cus
 4. Select which account(s) you want to monitor (if you have multiple)
 5. Done! Sensors will appear and update daily at 01:00 AM
 
-📖 For detailed setup instructions and multi-account configuration, see the [Getting Started Guide](../../wiki/Getting-Started).
+📖 For detailed setup instructions and multi-account configuration, see the [Getting Started Guide](https://github.com/iamawumpas/Contact-Energy/wiki/Getting-Started).
 
 ## Documentation
 
-For comprehensive documentation on all features, configuration options, and troubleshooting, visit the **[Wiki](../../wiki)**.
+For comprehensive documentation on all features, configuration options, and troubleshooting, visit the **[Wiki](https://github.com/iamawumpas/Contact-Energy/wiki)**.
 
 **Key topics:**
-- [Sensor Reference](../../wiki/Sensors) - Complete list of all 24 sensors
-- [Dashboard Examples](../../wiki/Dashboards) - Markdown card examples and [sample dashboard YAML](assets/dashboard.yaml)
-- [Multiple Properties/Accounts](../../wiki/Multiple-Accounts) - Managing multiple accounts
-- [How It Works & Limitations](../../wiki/FAQ) - Technical details and constraints
+- [Sensor Reference](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 24 sensors
+- [Dashboard Examples](https://github.com/iamawumpas/Contact-Energy/wiki/Dashboards) - Markdown card examples and [sample dashboard YAML](assets/dashboard.yaml)
+- [Multiple Properties/Accounts](https://github.com/iamawumpas/Contact-Energy/wiki/Multiple-Accounts) - Managing multiple accounts
+- [How It Works & Limitations](https://github.com/iamawumpas/Contact-Energy/wiki/FAQ) - Technical details and constraints
 
 ## Free to Use
 
