@@ -19,7 +19,7 @@ A comprehensive card displaying all your account information in a compact, organ
 
 <table>
   <tr>
-    <td style="vertical-align: top; width: 33%; min-width: 260px; padding-right: 16px;">
+    <td style="vertical-align: top; width: 32%; min-width: 260px; padding-right: 16px;">
       <h3>Preview</h3>
       <p><img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/dashboard_example.png" alt="Dashboard preview" style="max-width: 100%;"></p>
       <h3>Features</h3>
