@@ -234,8 +234,15 @@ icon: mdi:currency-usd</code></pre>
 
 Show upcoming payment information:
 
-```yaml
-type: entities
+<table>
+  <tr>
+    <td style="vertical-align: top; padding-right: 12px;">
+      <strong>Preview</strong><br>
+      <img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/payment_due_card.png" alt="Payment Due Card" style="max-width: 220px; height: auto;">
+    </td>
+    <td style="vertical-align: top;">
+      <strong>YAML</strong>
+      <pre><code>type: entities
 title: Payment Due
 entities:
   - entity: sensor.my_address_icp123_amount_due
@@ -244,8 +251,10 @@ entities:
     name: Due Date
   - entity: sensor.my_address_icp123_days_until_overdue
     name: Days Remaining
-    icon: mdi:calendar-clock
-```
+    icon: mdi:calendar-clock</code></pre>
+    </td>
+  </tr>
+</table>
 
 ### Contract Information Card
 
