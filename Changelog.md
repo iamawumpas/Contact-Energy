@@ -5,6 +5,35 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.4.0-beta.2 ]
+
+### Added
+- **Phase 1: Usage Data Download & Caching**
+  - New `usage_cache.py` module for persistent JSON storage of usage data
+  - New `usage_coordinator.py` for orchestrating incremental usage data sync
+  - `get_usage()` API method in `contact_api.py` for fetching hourly/daily/monthly usage data
+  - Smart caching with metadata-driven incremental sync (downloads only new data after first run)
+  - Atomic file operations to prevent cache corruption
+  - Comprehensive logging at DEBUG/INFO/WARNING/ERROR levels
+  - Performance timing on all I/O operations
+  - Background sync runs independently without affecting account sensors
+
+### Technical Details
+- Usage data windows: 9 days hourly, 35 days daily, 18 months monthly
+- Daily sync at 2 AM with metadata checks to minimize API calls
+- Separate cache files per contract: `.usage_cache_<contract_id>.json`
+- Paid usage calculated as: total - free (offpeak) - promotional (uncharged)
+- Error isolation: usage failures don't break existing account sensors
+
+### Developer Tools
+- Added `feature.sh` script for beta/alpha release automation
+- Excluded `feature.sh` from HACS package
+
+### Notes
+- **Beta Release**: This is Phase 1 of 5 phases leading to v2.0
+- No user-facing sensors yet - data collection infrastructure only
+- Next phase (v1.5.x) will expose usage data as Home Assistant sensors
+
 ## [ 1.3.1 ]
 
 ### Documentation
