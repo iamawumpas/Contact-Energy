@@ -5,6 +5,31 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.4.6 ]
+
+### Fixed
+- **Release Scripts**: Fixed release.sh and feature.sh to commit all modified files
+  - Changed from staging specific files to `git add -A` 
+  - Ensures all code changes are included in release commits
+  - Prevents issues where code changes were documented but not committed
+
+## [ 1.4.5 ]
+
+### Fixed
+- **v1.4.4 Code Commit**: Actually committed the free usage capping code that was missing from v1.4.4 release
+  - Caps free usage at total usage when API reports free > total
+  - Changed from WARNING to DEBUG logging for cleaner logs
+  - This fix was intended for v1.4.4 but the code wasn't committed properly
+
+## [ 1.4.4 ]
+
+### Fixed
+- **Free Usage Capping**: Implemented automatic capping of free usage at total usage
+  - When API reports free > total (rare rounding/data quality issues), cap free at total
+  - Changed from WARNING to DEBUG logging for cleaner logs
+  - Eliminates warning messages for these edge cases
+  - Since usage data is estimated (not billing), precision to the nearest decimal is not critical
+
 ## [ 1.4.2 ]
 
 ### Fixed
