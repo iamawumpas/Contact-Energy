@@ -5,6 +5,11 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.6 ]
+
+### Fixed
+- Consolidate response body reading in usage API error handling to avoid aiohttp consumption issues
+
 ## [ 1.5.5 ]
 
 ### Fixed
