@@ -3,6 +3,9 @@
 This module provides the data coordinator that periodically fetches account
 information from the Contact Energy API. Updates occur once per day at 01:00 AM
 to minimize API calls while keeping account data current.
+
+Version: 1.4.0
+Changes: Added usage data synchronization via UsageCoordinator
 """
 
 import logging
@@ -13,6 +16,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import DOMAIN
 from .contact_api import ContactEnergyApi, ContactEnergyApiError
+from .usage_coordinator import UsageCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,14 +27,18 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
     This coordinator handles periodic fetching of account information from the
     Contact Energy API. It's configured to update once per day at 01:00 AM to
     minimize API requests while keeping account data reasonably current.
+    
+    Additionally, it triggers usage data synchronization as a background task
+    via the UsageCoordinator (Phase 1 / v1.4.0).
     """
 
-    def __init__(self, hass: HomeAssistant, api_client: ContactEnergyApi):
+    def __init__(self, hass: HomeAssistant, api_client: ContactEnergyApi, contract_id: str):
         """Initialize the coordinator.
 
         Args:
             hass: The Home Assistant instance.
             api_client: The Contact Energy API client for data retrieval.
+            contract_id: Contract identifier for usage data sync.
         """
         super().__init__(
             hass,
@@ -41,6 +49,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(days=1),
         )
         self.api_client = api_client
+        self.contract_id = contract_id
+        
+        # Initialize usage coordinator (Phase 1 / v1.4.0)
+        # This handles background syncing of hourly/daily/monthly usage data
+        self.usage_coordinator = UsageCoordinator(hass, api_client, contract_id)
+        
+        _LOGGER.debug(
+            "ContactEnergyCoordinator initialized with usage sync for contract %s",
+            contract_id
+        )
 
     async def _async_update_data(self) -> dict:
         """Fetch account information from Contact Energy API.
@@ -51,6 +69,9 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
 
         If the stored token is invalid, it will re-authenticate using the stored
         credentials before fetching data.
+        
+        Additionally, triggers usage data sync as a background task (non-blocking).
+        Usage sync failures do not affect account data updates.
 
         Returns:
             Dictionary containing the account data.
@@ -65,6 +86,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             try:
                 account_data = await self.api_client.get_accounts()
                 _LOGGER.debug("Successfully fetched account data")
+                
+                # Trigger usage sync as background task (Phase 1 / v1.4.0)
+                # This runs independently and doesn't block account data updates
+                # Usage sync errors are logged but don't fail the coordinator
+                _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
+                self.hass.async_create_task(
+                    self._async_sync_usage(),
+                    name=f"usage_sync_{self.contract_id}"
+                )
+                
                 return account_data
             
             except Exception as auth_error:
@@ -90,6 +121,14 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 # Retry fetching account data with the new token
                 account_data = await self.api_client.get_accounts()
                 _LOGGER.debug("Successfully fetched account data after re-authentication")
+                
+                # Trigger usage sync after successful re-auth (Phase 1 / v1.4.0)
+                _LOGGER.debug("Triggering background usage sync for contract %s (after re-auth)", self.contract_id)
+                self.hass.async_create_task(
+                    self._async_sync_usage(),
+                    name=f"usage_sync_{self.contract_id}"
+                )
+                
                 return account_data
 
         except ContactEnergyApiError as e:
@@ -101,3 +140,24 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             # Unexpected error - log and raise UpdateFailed
             _LOGGER.exception(f"Unexpected error during data update: {e}")
             raise UpdateFailed(f"Unexpected error: {str(e)}") from e
+    
+    async def _async_sync_usage(self) -> None:
+        """Background task to sync usage data.
+        
+        This method runs as a background task and syncs hourly/daily/monthly
+        usage data via the UsageCoordinator. Errors are caught and logged
+        to prevent breaking the main coordinator.
+        
+        Note: This is a Phase 1 (v1.4.0) feature - usage data download and caching only.
+              Sensor exposure will come in Phase 2 (v1.5.0).
+        """
+        try:
+            _LOGGER.debug("Starting background usage sync task for contract %s", self.contract_id)
+            await self.usage_coordinator.async_sync_usage()
+            _LOGGER.debug("Background usage sync task completed for contract %s", self.contract_id)
+        except Exception as e:
+            # Log errors but don't propagate - usage sync failures shouldn't break account data
+            _LOGGER.error(
+                "Background usage sync failed for contract %s: %s",
+                self.contract_id, str(e), exc_info=True
+            )

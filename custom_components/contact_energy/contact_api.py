@@ -1,12 +1,17 @@
 """Contact Energy API client for authentication and data retrieval.
 
 This module handles all communication with the Contact Energy API, including
-authentication, account data retrieval, and token management.
+authentication, account data retrieval, usage data downloads, and token management.
+
+Version: 1.4.0
+Changes: Added get_usage() method for hourly/daily/monthly usage data retrieval
 """
 from __future__ import annotations
 
 import aiohttp
 import logging
+import time
+from datetime import date
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
@@ -177,3 +182,358 @@ class ContactEnergyApi:
         except Exception as e:
             _LOGGER.error(f"Unexpected error while retrieving accounts: {e}")
             raise ContactEnergyConnectionError(f"An unexpected error occurred: {str(e)}")
+
+    async def get_usage(
+        self,
+        contract_id: str,
+        interval: str,
+        from_date: date,
+        to_date: date,
+    ) -> list[dict[str, Any]]:
+        """Fetch usage data from Contact Energy API for specified date range.
+
+        Makes a POST request to /usage/v2/{contract_id} endpoint with the
+        specified interval and date range. Automatically handles authentication,
+        retries on transient failures, and parses response into structured format.
+
+        This method supports three intervals:
+        - 'hourly': Returns 24 records per day (hour-by-hour breakdown)
+        - 'daily': Returns 1 record per day (daily totals)
+        - 'monthly': Returns 1 record per month (monthly totals)
+
+        Each record contains:
+        - Total energy consumed (kWh)
+        - Paid energy (charged kWh)
+        - Free energy (off-peak + promotional kWh)
+        - Total cost (NZD)
+
+        Args:
+            contract_id: Contract identifier from account data (e.g., "123456")
+            interval: Data granularity - must be 'hourly', 'daily', or 'monthly'
+            from_date: Start of date range (inclusive), format YYYY-MM-DD
+            to_date: End of date range (inclusive), format YYYY-MM-DD
+
+        Returns:
+            List of usage records, each containing:
+                - timestamp: ISO 8601 datetime string with timezone
+                - total: Total energy consumed (kWh)
+                - paid: Charged energy (kWh)
+                - free: Off-peak/uncharged energy (kWh)
+                - cost: Total cost (NZD)
+
+        Raises:
+            ContactEnergyAuthError: If token expired (triggers re-auth externally)
+            ContactEnergyApiError: If API returns error status
+            ContactEnergyConnectionError: If network request fails
+            ValueError: If interval is invalid or date range is malformed
+
+        Example:
+            usage = await api.get_usage(
+                "123456", "daily",
+                date(2025, 12, 1), date(2025, 12, 31)
+            )
+
+        API Endpoint:
+            POST /usage/v2/{contract_id}?ba={account_id}&interval={interval}
+                 &from={from_date}&to={to_date}
+
+        Note: Contact Energy has a 24-72 hour delay on usage data availability.
+        """
+        # Log entry with parameters for debugging
+        _LOGGER.debug(
+            "get_usage() called: contract_id=%s, interval=%s, from=%s, to=%s",
+            contract_id, interval, from_date, to_date
+        )
+
+        # Start performance timer
+        start_time = time.time()
+
+        # Validate interval parameter (must be one of three supported values)
+        valid_intervals = ['hourly', 'daily', 'monthly']
+        if interval not in valid_intervals:
+            error_msg = f"Invalid interval '{interval}'. Must be one of: {valid_intervals}"
+            _LOGGER.error(error_msg)
+            raise ValueError(error_msg)
+
+        # Validate date range (from_date must be before or equal to to_date)
+        if from_date > to_date:
+            error_msg = f"Invalid date range: from_date ({from_date}) > to_date ({to_date})"
+            _LOGGER.error(error_msg)
+            raise ValueError(error_msg)
+
+        # Ensure we have a valid authentication token before making request
+        if not self.token:
+            error_msg = "Not authenticated. Please authenticate first."
+            _LOGGER.error(error_msg)
+            raise ContactEnergyAuthError(error_msg)
+
+        # Build query parameters for API request
+        # Format dates as YYYY-MM-DD strings required by API
+        params = {
+            "ba": self.bp or "",  # Business partner (account) ID
+            "interval": interval,  # hourly, daily, or monthly
+            "from": from_date.strftime("%Y-%m-%d"),  # Start date
+            "to": to_date.strftime("%Y-%m-%d"),  # End date
+        }
+
+        # Set up headers with authentication token and API key
+        headers = {
+            "x-api-key": API_KEY,
+            "session": self.token,
+            "authorization": self.token,
+            "Content-Type": "application/json",
+        }
+
+        # Log the API request details for debugging (without sensitive token)
+        _LOGGER.debug(
+            "Making usage API request: POST /usage/v2/%s with params=%s",
+            contract_id, params
+        )
+
+        try:
+            # Make POST request to usage endpoint
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{BASE_URL}/usage/v2/{contract_id}",
+                    params=params,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=30)  # Longer timeout for potentially large data
+                ) as resp:
+                    # Log response status for debugging
+                    _LOGGER.debug(
+                        "Usage API response: status=%d, content_type=%s",
+                        resp.status, resp.content_type
+                    )
+
+                    # Handle authentication errors (token expired)
+                    if resp.status == 401:
+                        _LOGGER.warning(
+                            "Usage API returned 401 (Unauthorized) for contract %s. Token may have expired.",
+                            contract_id
+                        )
+                        raise ContactEnergyAuthError(
+                            "Your session has expired. Please re-authenticate."
+                        )
+
+                    # Handle authorization errors (no access to this contract)
+                    if resp.status == 403:
+                        _LOGGER.warning(
+                            "Usage API returned 403 (Forbidden) for contract %s. No access permission.",
+                            contract_id
+                        )
+                        raise ContactEnergyAuthError(
+                            "Access denied for this contract. Please contact Contact Energy support."
+                        )
+
+                    # Handle not found errors (invalid contract ID)
+                    if resp.status == 404:
+                        _LOGGER.warning(
+                            "Usage API returned 404 (Not Found) for contract %s. Contract may not exist.",
+                            contract_id
+                        )
+                        raise ContactEnergyApiError(
+                            f"Contract {contract_id} not found. Please check contract ID."
+                        )
+
+                    # Handle bad request errors (invalid parameters)
+                    if resp.status == 400:
+                        error_text = await resp.text()
+                        _LOGGER.warning(
+                            "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
+                            contract_id, error_text[:200]  # First 200 chars to avoid log spam
+                        )
+                        raise ContactEnergyApiError(
+                            f"Invalid request parameters for usage API: {error_text[:100]}"
+                        )
+
+                    # Handle other non-success status codes
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        _LOGGER.error(
+                            "Usage API returned unexpected status %d for contract %s. Response: %s",
+                            resp.status, contract_id, error_text[:200]
+                        )
+                        raise ContactEnergyConnectionError(
+                            f"API returned status {resp.status}. Please try again later."
+                        )
+
+                    # Parse JSON response
+                    data = await resp.json()
+
+                    # Log raw response structure for debugging (without full data)
+                    _LOGGER.debug(
+                        "Usage API response structure: keys=%s",
+                        list(data.keys()) if isinstance(data, dict) else type(data)
+                    )
+
+                    # Parse and transform the usage data
+                    usage_records = self._parse_usage_response(data, interval, contract_id)
+
+                    # Calculate elapsed time for performance tracking
+                    elapsed = time.time() - start_time
+
+                    # Log success with metrics
+                    _LOGGER.info(
+                        "Retrieved %d usage records for contract %s (%s interval) in %.2f seconds",
+                        len(usage_records), contract_id, interval, elapsed
+                    )
+
+                    return usage_records
+
+        except aiohttp.ClientError as e:
+            # Log network-related errors with full context
+            elapsed = time.time() - start_time
+            _LOGGER.error(
+                "Network error while fetching usage for contract %s after %.2f seconds: %s",
+                contract_id, elapsed, str(e)
+            )
+            raise ContactEnergyConnectionError(
+                f"Unable to connect to Contact Energy API: {str(e)}. Please check your internet connection."
+            )
+        except ContactEnergyApiError:
+            # Re-raise our custom API exceptions without wrapping
+            raise
+        except ValueError:
+            # Re-raise validation errors without wrapping
+            raise
+        except Exception as e:
+            # Log unexpected errors with full context for debugging
+            elapsed = time.time() - start_time
+            _LOGGER.error(
+                "Unexpected error while fetching usage for contract %s after %.2f seconds: %s",
+                contract_id, elapsed, str(e), exc_info=True
+            )
+            raise ContactEnergyConnectionError(
+                f"An unexpected error occurred while fetching usage data: {str(e)}"
+            )
+
+    def _parse_usage_response(
+        self,
+        data: dict[str, Any],
+        interval: str,
+        contract_id: str
+    ) -> list[dict[str, Any]]:
+        """Parse raw API response into standardized usage records.
+
+        Transforms Contact Energy API response format into a clean, consistent
+        structure for caching and sensor exposure. Handles missing fields,
+        calculates paid/free breakdown, and validates data integrity.
+
+        Args:
+            data: Raw JSON response from /usage/v2 endpoint
+            interval: Interval type ('hourly', 'daily', 'monthly') for logging
+            contract_id: Contract ID for error logging context
+
+        Returns:
+            List of parsed usage records with standardized field names:
+                - timestamp: ISO 8601 datetime string with timezone (Pacific/Auckland)
+                - total: Total energy consumed (kWh) - from API 'value' field
+                - paid: Charged/paid energy (kWh) - calculated as total - free
+                - free: Free energy (kWh) - sum of offpeak + uncharged
+                - cost: Total cost in NZD - from API 'dollarValue' field
+
+        Raises:
+            ContactEnergyApiError: If response structure is invalid or missing required fields
+
+        Note: Paid usage = total - (off-peak free hours) - (promotional/uncharged).
+              We ensure paid never goes negative due to data inconsistencies.
+        """
+        _LOGGER.debug("Parsing usage response for contract %s (%s interval)", contract_id, interval)
+
+        # Extract usage array from response
+        # API returns: {"usage": [...records...]}
+        usage_array = data.get("usage", [])
+
+        # Validate response structure
+        if not isinstance(usage_array, list):
+            error_msg = f"Invalid API response: 'usage' field is not a list. Got type: {type(usage_array)}"
+            _LOGGER.error("%s Response: %s", error_msg, str(data)[:200])
+            raise ContactEnergyApiError(error_msg)
+
+        # Log record count before parsing
+        _LOGGER.debug("Parsing %d raw usage records from API", len(usage_array))
+
+        parsed_records = []
+
+        # Process each usage record from API
+        for idx, record in enumerate(usage_array):
+            try:
+                # Extract timestamp (ISO 8601 with timezone, e.g., "2025-12-31T23:00:00+13:00")
+                timestamp = record.get("date")
+                if not timestamp:
+                    _LOGGER.warning(
+                        "Record %d missing 'date' field for contract %s, skipping",
+                        idx, contract_id
+                    )
+                    continue
+
+                # Extract total energy consumed (kWh)
+                # API field: 'value'
+                total_kwh = float(record.get("value", 0.0))
+
+                # Extract free energy components
+                # Off-peak value: Free hours usage (e.g., night rate, contact-free hours)
+                # API field: 'offpeakValue'
+                offpeak_kwh = float(record.get("offpeakValue", 0.0))
+
+                # Uncharged value: Promotional credits or unmetered usage
+                # API field: 'unchargedValue'
+                uncharged_kwh = float(record.get("unchargedValue", 0.0))
+
+                # Calculate total free energy (sum of all free components)
+                free_kwh = offpeak_kwh + uncharged_kwh
+
+                # Calculate paid energy (what the customer is charged for)
+                # Paid = Total consumed - All free energy
+                paid_kwh = total_kwh - free_kwh
+
+                # Ensure paid never goes negative (data consistency check)
+                # This can happen if API returns inconsistent free/total values
+                if paid_kwh < 0:
+                    _LOGGER.warning(
+                        "Negative paid usage detected for contract %s at %s: "
+                        "total=%.2f, free=%.2f, calculated_paid=%.2f. Setting paid to 0.",
+                        contract_id, timestamp, total_kwh, free_kwh, paid_kwh
+                    )
+                    paid_kwh = 0.0
+
+                # Extract cost in NZD
+                # API field: 'dollarValue'
+                cost_nzd = float(record.get("dollarValue", 0.0))
+
+                # Build standardized record structure
+                parsed_record = {
+                    "timestamp": timestamp,  # ISO 8601 with timezone
+                    "total": round(total_kwh, 3),  # Round to 3 decimal places (Wh precision)
+                    "paid": round(paid_kwh, 3),
+                    "free": round(free_kwh, 3),
+                    "cost": round(cost_nzd, 2),  # Round to 2 decimal places (cents precision)
+                }
+
+                parsed_records.append(parsed_record)
+
+            except (ValueError, TypeError) as e:
+                # Log parse errors but continue processing other records
+                _LOGGER.warning(
+                    "Failed to parse usage record %d for contract %s: %s. Record: %s",
+                    idx, contract_id, str(e), str(record)[:200]
+                )
+                continue
+
+        # Log parsing results
+        _LOGGER.debug(
+            "Successfully parsed %d/%d usage records for contract %s",
+            len(parsed_records), len(usage_array), contract_id
+        )
+
+        # Warn if many records failed to parse (>10% failure rate)
+        if len(usage_array) > 0:
+            failure_rate = (len(usage_array) - len(parsed_records)) / len(usage_array)
+            if failure_rate > 0.1:
+                _LOGGER.warning(
+                    "High parse failure rate for contract %s: %.1f%% (%d/%d records failed)",
+                    contract_id, failure_rate * 100,
+                    len(usage_array) - len(parsed_records), len(usage_array)
+                )
+
+        return parsed_records

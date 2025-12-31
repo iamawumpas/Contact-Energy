@@ -70,9 +70,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_client.segment = entry.data.get("segment")
     api_client.bp = entry.data.get("bp")
 
+    # Get contract_id for usage data sync (Phase 1 / v1.4.0)
+    contract_id = entry.data.get("contract_id")
+    if not contract_id:
+        _LOGGER.warning(
+            "No contract_id found in config entry for %s. Usage sync will be disabled.",
+            entry.title
+        )
+        contract_id = "unknown"  # Fallback to prevent crashes
+
     # Create data coordinator for fetching account information
     # Updates once per day - Home Assistant schedules at the closest possible time to 01:00
-    coordinator = ContactEnergyCoordinator(hass, api_client)
+    coordinator = ContactEnergyCoordinator(hass, api_client, contract_id)
     
     # Perform initial data fetch
     await coordinator.async_config_entry_first_refresh()
