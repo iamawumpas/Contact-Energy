@@ -487,7 +487,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Set sensor properties
         self._attr_name = f"{entity_name} Usage"
-        self._attr_unique_id = f"contact_energy_usage_{contract_id}"
+        # Align unique_id schema with other sensors (per config entry)
+        self._attr_unique_id = f"{DOMAIN}_{config_entry.entry_id}_usage"
         self._attr_icon = "mdi:lightning-bolt"
 
         _LOGGER.debug(
@@ -548,7 +549,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         """
         attributes = {
             "last_updated": None,
-            "version": "1.5.1",
+            "version": "1.5.2",
             "hourly_count": 0,
             "daily_count": 0,
             "monthly_count": 0,
@@ -635,39 +636,34 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         Called when coordinator refreshes data. Reloads cache and updates
         sensor state and attributes.
         """
-        _LOGGER.debug("Coordinator update received for usage sensor (contract %s)", self._contract_id)
-        
-        # Reload cache from disk to get latest synced data
-        try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            loop.create_task(self._async_reload_cache())
-        except Exception as e:
-            _LOGGER.error(
-                "Error reloading cache for contract %s: %s",
-                self._contract_id, str(e)
-            )
+        _LOGGER.debug(
+            "Coordinator update received for usage sensor (contract %s)",
+            self._contract_id
+        )
 
-        # Notify HA that sensor state/attributes have changed
-        self.async_write_ha_state()
+        # Reload cache and then write state so attributes include fresh data
+        self.hass.async_create_task(self._async_reload_cache_and_update())
 
-    async def _async_reload_cache(self) -> None:
-        """Reload cache data from disk asynchronously.
-
-        Called after coordinator updates to refresh sensor with latest cached data.
-        """
+    async def _async_reload_cache_and_update(self) -> None:
+        """Reload cache from disk and push state update to HA."""
         try:
             _LOGGER.debug("Reloading cache for usage sensor (contract %s)", self._contract_id)
             loaded = await self._cache.load()
             if loaded:
                 _LOGGER.debug("Cache reloaded successfully for contract %s", self._contract_id)
             else:
-                _LOGGER.debug("Cache load returned False for contract %s (may be first run)", self._contract_id)
+                _LOGGER.debug(
+                    "Cache load returned False for contract %s (may be first run)",
+                    self._contract_id
+                )
         except Exception as e:
             _LOGGER.error(
                 "Failed to reload cache for contract %s: %s",
                 self._contract_id, str(e), exc_info=True
             )
+        finally:
+            # Ensure HA gets an update after cache reload completes
+            self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to Home Assistant.
