@@ -487,8 +487,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Set sensor properties
         self._attr_name = f"{entity_name} Usage"
-        # Align unique_id schema with other sensors (per config entry)
-        self._attr_unique_id = f"{DOMAIN}_{config_entry.entry_id}_usage"
+        # Unique ID per contract, consistent with original sensor naming
+        self._attr_unique_id = f"{DOMAIN}_{self._contract_id}_usage"
         self._attr_icon = "mdi:lightning-bolt"
 
         _LOGGER.debug(

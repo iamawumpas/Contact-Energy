@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reload cache before writing usage sensor state so attributes populate immediately after sync
 - Align usage sensor unique_id schema with account/billing sensors for multi-account clarity
 
+## [ 1.5.3 ]
+
+### Fixed
+- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
+- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
+
 ## [ 1.5.1 ]
 
 ### Fixed

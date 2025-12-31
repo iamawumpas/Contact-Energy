@@ -235,6 +235,10 @@ class UsageCoordinator:
                 "API error during hourly sync for contract %s: %s. Skipping hourly sync.",
                 self.contract_id, str(e)
             )
+            _LOGGER.warning(
+                "Hourly sync skipped for contract %s due to API error (likely HTTP status): %s",
+                self.contract_id, str(e)
+            )
 
         except Exception as e:
             # Unexpected errors are logged but don't block other syncs
