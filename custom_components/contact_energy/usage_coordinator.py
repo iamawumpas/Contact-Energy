@@ -27,7 +27,10 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+
 from .usage_cache import UsageCache
+from .const import DOMAIN
 from .contact_api import ContactEnergyApi, ContactEnergyApiError, ContactEnergyAuthError, ContactEnergyConnectionError
 
 if TYPE_CHECKING:
@@ -145,6 +148,12 @@ class UsageCoordinator:
 
             # Save updated cache to disk
             await self.cache.save()
+
+            # Notify listeners (e.g., usage sensor) that fresh usage data is available
+            async_dispatcher_send(
+                self.hass,
+                f"{DOMAIN}_usage_updated_{self.contract_id}",
+            )
 
             overall_elapsed = time.time() - overall_start_time
             _LOGGER.info(
