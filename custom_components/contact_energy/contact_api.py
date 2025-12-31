@@ -498,25 +498,25 @@ class ContactEnergyApi:
                 # Free > 0.0 when free hours are active (Contact Energy promotions)
                 free_kwh = offpeak_kwh + uncharged_kwh
 
+                # Cap free usage at total to prevent data inconsistencies
+                # In rare cases, API reports free > total due to rounding or data quality
+                # Since this is estimated usage data (not billing), cap free at total
+                if free_kwh > total_kwh:
+                    _LOGGER.debug(
+                        "Capping free usage at total for contract %s at %s: "
+                        "free=%.3f kWh capped to total=%.3f kWh",
+                        contract_id, timestamp, free_kwh, total_kwh
+                    )
+                    free_kwh = total_kwh
+
                 # Calculate paid energy (what the customer is charged for)
                 # Business Logic:
                 # - When free hours NOT offered: free=0.0, paid=total
                 # - When free hours ARE offered: free>0, paid=total-free
                 # - When ALL usage is during free hours: free=total, paid=0.0
                 # Note: Negative values should NEVER occur (no solar/PV buy-back in current system)
+                #       Free is capped at total above to ensure paid >= 0
                 paid_kwh = total_kwh - free_kwh
-
-                # Handle API data quality issues where free > total
-                # This should not happen in normal operation (no solar/PV buy-back)
-                # If it occurs, it's an API data inconsistency - treat as all usage was free
-                if paid_kwh < 0:
-                    _LOGGER.warning(
-                        "API data inconsistency for contract %s at %s: "
-                        "free usage (%.3f kWh) exceeds total (%.3f kWh). "
-                        "This should not occur (no solar/PV in system). Setting paid=0.0.",
-                        contract_id, timestamp, free_kwh, total_kwh
-                    )
-                    paid_kwh = 0.0
 
                 # Extract cost in NZD
                 # API field: 'dollarValue'
