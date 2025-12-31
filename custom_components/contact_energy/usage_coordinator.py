@@ -221,6 +221,9 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
+            # Track interval-specific last sync time
+            self.cache.data["metadata"][interval]["last_synced"] = datetime.now(timezone.utc).isoformat()
+
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
             _LOGGER.error(
@@ -307,6 +310,9 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
+            # Track interval-specific last sync time
+            self.cache.data["metadata"][interval]["last_synced"] = datetime.now(timezone.utc).isoformat()
+
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
             _LOGGER.error(
@@ -390,6 +396,9 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
+            # Track interval-specific last sync time
+            self.cache.data["metadata"][interval]["last_synced"] = datetime.now(timezone.utc).isoformat()
+
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
             _LOGGER.error(
@@ -433,7 +442,7 @@ class UsageCoordinator:
         sync_interval = timedelta(hours=config["sync_interval_hours"])
 
         # Get last sync timestamp from cache metadata
-        last_synced = self.cache.get_last_synced()
+        last_synced = self.cache.get_last_synced(interval)
 
         if last_synced is None:
             # Never synced before - need to sync

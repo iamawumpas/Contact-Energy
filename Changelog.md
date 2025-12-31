@@ -5,17 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.3 ]
+
+### Fixed
+- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
+
 ## [ 1.5.2 ]
 
 ### Fixed
 - Reload cache before writing usage sensor state so attributes populate immediately after sync
 - Align usage sensor unique_id schema with account/billing sensors for multi-account clarity
-
-## [ 1.5.3 ]
-
-### Fixed
-- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
-- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
 
 ## [ 1.5.1 ]
 
@@ -82,16 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File read/write operations now use executor to avoid blocking event loop
   - Resolves Home Assistant warnings about blocking calls in async context
 
-## [ 1.4.0 ]
+## [ 1.5.3 ]
 
-### Added
-- **Phase 1: Usage Data Download & Caching**
-  - New `usage_cache.py` module for persistent JSON storage of usage data
-  - New `usage_coordinator.py` for orchestrating incremental usage data sync
-  - `get_usage()` API method in `contact_api.py` for fetching hourly/daily/monthly usage data
-  - Smart caching with metadata-driven incremental sync (downloads only new data after first run)
-  - Atomic file operations to prevent cache corruption
-  - Comprehensive logging at DEBUG/INFO/WARNING/ERROR levels
+### Fixed
+- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
+- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
+- Use interval-specific last_synced timestamps so hourly retries are not blocked by successful daily/monthly syncs
   - Performance timing on all I/O operations
   - Background sync runs independently without affecting account sensors
 
