@@ -335,41 +335,25 @@ class ContactEnergyApi:
                             f"Contract {contract_id} not found. Please check contract ID."
                         )
 
-                    # Handle non-success status codes
+                    # Handle bad request errors (invalid parameters)
+                    if resp.status == 400:
+                        error_text = await resp.text()
+                        _LOGGER.warning(
+                            "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
+                            contract_id, error_text[:200]  # First 200 chars to avoid log spam
+                        )
+                        raise ContactEnergyApiError(
+                            f"Invalid request parameters for usage API: {error_text[:100]}"
+                        )
+
+                    # Handle other non-success status codes
                     if resp.status != 200:
                         error_text = await resp.text()
-                        
-                        # Handle bad request errors (invalid parameters)
-                        if resp.status == 400:
-                            _LOGGER.warning(
-                                "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
-                                contract_id, error_text[:200]  # First 200 chars to avoid log spam
-                            )
-                            raise ContactEnergyApiError(
-                                f"Invalid request parameters for usage API: {error_text[:100]}"
-                            )
-
-                        # Handle server errors (5xx) with detailed logging
-                        if resp.status >= 500:
-                            _LOGGER.error(
-                                "Usage API returned server error %d for contract %s. "
-                                "Request params: ba=%s, interval=%s, from=%s, to=%s. "
-                                "Response: %s",
-                                resp.status, contract_id,
-                                params.get("ba"), params.get("interval"),
-                                params.get("from"), params.get("to"),
-                                error_text[:300]  # First 300 chars for debugging
-                            )
-                            raise ContactEnergyApiError(
-                                f"API returned status {resp.status}. Please try again later."
-                            )
-                        
-                        # Handle other unexpected status codes
                         _LOGGER.error(
                             "Usage API returned unexpected status %d for contract %s. Response: %s",
                             resp.status, contract_id, error_text[:200]
                         )
-                        raise ContactEnergyApiError(
+                        raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please try again later."
                         )
 

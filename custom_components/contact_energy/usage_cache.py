@@ -101,19 +101,16 @@ class UsageCache:
                 "created": datetime.now(timezone.utc).isoformat(),
                 "last_synced": None,
                 "hourly": {
-                    "last_synced": None,
                     "from": None,
                     "to": None,
                     "record_count": 0
                 },
                 "daily": {
-                    "last_synced": None,
                     "from": None,
                     "to": None,
                     "record_count": 0
                 },
                 "monthly": {
-                    "last_synced": None,
                     "from": None,
                     "to": None,
                     "record_count": 0
@@ -615,25 +612,13 @@ class UsageCache:
 
         return (None, None)
 
-    def get_last_synced(self, interval: Optional[str] = None) -> Optional[datetime]:
+    def get_last_synced(self) -> Optional[datetime]:
         """Get the timestamp of the last successful sync.
-
-        Args:
-            interval: Optional interval name ('hourly', 'daily', 'monthly'). If
-                provided, returns the interval-specific last_synced; otherwise
-                returns the global last_synced.
 
         Returns:
             datetime: Last sync time in UTC, or None if never synced
         """
-        metadata = self.data.get("metadata", {})
-
-        if interval:
-            interval_meta = metadata.get(interval, {})
-            last_synced_str = interval_meta.get("last_synced")
-        else:
-            last_synced_str = metadata.get("last_synced")
-
+        last_synced_str = self.data.get("metadata", {}).get("last_synced")
         if last_synced_str:
             return datetime.fromisoformat(last_synced_str)
         return None

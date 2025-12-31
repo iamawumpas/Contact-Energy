@@ -5,23 +5,6 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.5.6 ]
-
-### Fixed
-- Consolidate response body reading in usage API error handling to avoid aiohttp consumption issues
-
-## [ 1.5.5 ]
-
-### Fixed
-- Cap hourly sync to_date to today-2 days to avoid requesting data not yet processed by Contact Energy (24-72h delay)
-- Add fallback retry logic for hourly sync: if full window fails, automatically retries with 3-day window
-- Enhanced 5xx error logging with detailed request parameters and response body for debugging
-
-## [ 1.5.4 ]
-
-### Fixed
-- Use interval-specific last_synced timestamps so hourly retries are not blocked by successful daily/monthly syncs
-
 ## [ 1.5.3 ]
 
 ### Fixed
