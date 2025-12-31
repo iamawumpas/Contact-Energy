@@ -155,6 +155,9 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Starting background usage sync task for contract %s", self.contract_id)
             await self.usage_coordinator.async_sync_usage()
             _LOGGER.debug("Background usage sync task completed for contract %s", self.contract_id)
+
+            # Notify listeners (including usage sensor) to reload cache after sync
+            self.async_update_listeners()
         except Exception as e:
             # Log errors but don't propagate - usage sync failures shouldn't break account data
             _LOGGER.error(

@@ -548,7 +548,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         """
         attributes = {
             "last_updated": None,
-            "version": "1.5.0",
+            "version": "1.5.1",
             "hourly_count": 0,
             "daily_count": 0,
             "monthly_count": 0,
