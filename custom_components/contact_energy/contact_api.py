@@ -13,6 +13,7 @@ import logging
 import time
 from datetime import date
 from typing import Any
+from urllib.parse import urlencode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -276,6 +277,13 @@ class ContactEnergyApi:
             "to": to_date.strftime("%Y-%m-%d"),  # End date
         }
 
+        # Home Assistant sometimes mutates aiohttp params when proxying through its
+        # internal session, which the Contact Energy API can reject (502). To avoid
+        # any HA-side rewriting, build the full query string manually exactly as the
+        # API expects (matches test_api.py behaviour).
+        query_string = urlencode(params)
+        full_url = f"{BASE_URL}/usage/v2/{contract_id}?{query_string}"
+
         # Set up headers with authentication token and API key
         headers = {
             "x-api-key": API_KEY,
@@ -286,16 +294,14 @@ class ContactEnergyApi:
 
         # Log the API request details for debugging (without sensitive token)
         _LOGGER.debug(
-            "Making usage API request: POST /usage/v2/%s with params=%s",
-            contract_id, params
+            "Making usage API request: POST %s", full_url
         )
 
         try:
             # Make POST request to usage endpoint
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{BASE_URL}/usage/v2/{contract_id}",
-                    params=params,
+                    full_url,
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=30)  # Longer timeout for potentially large data
                 ) as resp:

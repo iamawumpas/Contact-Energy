@@ -5,6 +5,37 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.4 ]
+
+### Fixed
+- Hourly usage sync now builds the exact usage API URL (matching test_api.py) to prevent Home Assistant from mutating query params, avoiding the 502 responses that stopped hourly downloads
+
+## [ 1.5.3 ]
+
+### Fixed
+- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
+- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
+
+## [ 1.5.2 ]
+
+### Fixed
+- Reload cache before writing usage sensor state so attributes populate immediately after sync
+- Align usage sensor unique_id schema with account/billing sensors for multi-account clarity
+
+## [ 1.5.1 ]
+
+### Fixed
+- Notify sensors immediately after usage sync so cached usage attributes refresh without waiting for the next daily coordinator run
+
+## [ 1.5.0 ]
+
+### Added
+- Usage data sensor `sensor.contact_energy_usage_{contract_id}` exposing cached hourly, daily, and monthly usage arrays
+- Sensor state reports last successful sync timestamp
+- Attributes include total, paid, free, and cost fields formatted for ApexCharts
+
+### Fixed
+- Cache reload on coordinator updates to keep attributes fresh after each sync
 ## [ 1.4.6 ]
 
 ### Fixed
