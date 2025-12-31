@@ -346,6 +346,22 @@ class ContactEnergyApi:
                             f"Invalid request parameters for usage API: {error_text[:100]}"
                         )
 
+                    # Handle server errors (5xx) with detailed logging
+                    if resp.status >= 500:
+                        error_text = await resp.text()
+                        _LOGGER.error(
+                            "Usage API returned server error %d for contract %s. "
+                            "Request params: ba=%s, interval=%s, from=%s, to=%s. "
+                            "Response: %s",
+                            resp.status, contract_id,
+                            params.get("ba"), params.get("interval"),
+                            params.get("from"), params.get("to"),
+                            error_text[:300]  # First 300 chars for debugging
+                        )
+                        raise ContactEnergyApiError(
+                            f"API returned status {resp.status}. Please try again later."
+                        )
+                    
                     # Handle other non-success status codes
                     if resp.status != 200:
                         error_text = await resp.text()
@@ -353,7 +369,7 @@ class ContactEnergyApi:
                             "Usage API returned unexpected status %d for contract %s. Response: %s",
                             resp.status, contract_id, error_text[:200]
                         )
-                        raise ContactEnergyConnectionError(
+                        raise ContactEnergyApiError(
                             f"API returned status {resp.status}. Please try again later."
                         )
 

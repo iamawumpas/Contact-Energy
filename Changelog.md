@@ -5,10 +5,23 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.5 ]
+
+### Fixed
+- Cap hourly sync to_date to today-2 days to avoid requesting data not yet processed by Contact Energy (24-72h delay)
+- Add fallback retry logic for hourly sync: if full window fails, automatically retries with 3-day window
+- Enhanced 5xx error logging with detailed request parameters and response body for debugging
+
+## [ 1.5.4 ]
+
+### Fixed
+- Use interval-specific last_synced timestamps so hourly retries are not blocked by successful daily/monthly syncs
+
 ## [ 1.5.3 ]
 
 ### Fixed
 - Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
+- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
 
 ## [ 1.5.2 ]
 
@@ -80,31 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Async File Operations**: Fixed blocking I/O warnings
   - File read/write operations now use executor to avoid blocking event loop
   - Resolves Home Assistant warnings about blocking calls in async context
-
-## [ 1.5.3 ]
-
-### Fixed
-- Usage sensor unique_id reverted to contract-based naming so entity_id matches account/billing schema without suffixes
-- Hourly sync now logs a warning when skipped due to API errors (e.g., 502) for visibility
-- Use interval-specific last_synced timestamps so hourly retries are not blocked by successful daily/monthly syncs
-  - Performance timing on all I/O operations
-  - Background sync runs independently without affecting account sensors
-
-### Technical Details
-- Usage data windows: 9 days hourly, 35 days daily, 18 months monthly
-- Daily sync at 2 AM with metadata checks to minimize API calls
-- Separate cache files per contract: `.usage_cache_<contract_id>.json`
-- Paid usage calculated as: total - free (offpeak) - promotional (uncharged)
-- Error isolation: usage failures don't break existing account sensors
-
-### Developer Tools
-- Added `feature.sh` script for beta/alpha release automation
-- Excluded `feature.sh` from HACS package
-
-### Notes
-- **Beta Release**: This is Phase 1 of 5 phases leading to v2.0
-- No user-facing sensors yet - data collection infrastructure only
-- Next phase (v1.5.x) will expose usage data as Home Assistant sensors
 
 ## [ 1.3.1 ]
 

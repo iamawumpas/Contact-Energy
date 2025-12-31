@@ -168,6 +168,8 @@ class UsageCoordinator:
 
         Hourly data is typically only available for the last 1-2 weeks from
         Contact Energy due to their data processing pipeline.
+        
+        Implements fallback retry: if full window fails, retries with last 3 days only.
         """
         interval = "hourly"
         config = USAGE_CONFIG[interval]
@@ -199,12 +201,42 @@ class UsageCoordinator:
             )
 
             # Download hourly data from API
-            hourly_data = await self.api.get_usage(
-                self.contract_id,
-                interval="hourly",
-                from_date=from_date,
-                to_date=to_date
-            )
+            try:
+                hourly_data = await self.api.get_usage(
+                    self.contract_id,
+                    interval="hourly",
+                    from_date=from_date,
+                    to_date=to_date
+                )
+                _LOGGER.info(
+                    "Successfully fetched hourly data for contract %s with full %d-day window",
+                    self.contract_id, (to_date - from_date).days + 1
+                )
+            except ContactEnergyApiError as api_err:
+                # If full window fails, try fallback with shorter 3-day window
+                _LOGGER.warning(
+                    "Full hourly window failed for contract %s: %s. Attempting fallback with 3-day window.",
+                    self.contract_id, str(api_err)
+                )
+                
+                # Calculate fallback range: last 3 days from to_date
+                fallback_from = to_date - timedelta(days=2)  # 3 days total including to_date
+                _LOGGER.info(
+                    "Fallback: fetching hourly data for contract %s from %s to %s (3 days)",
+                    self.contract_id, fallback_from, to_date
+                )
+                
+                # Retry with shorter window
+                hourly_data = await self.api.get_usage(
+                    self.contract_id,
+                    interval="hourly",
+                    from_date=fallback_from,
+                    to_date=to_date
+                )
+                _LOGGER.info(
+                    "Fallback successful: fetched hourly data for contract %s with 3-day window",
+                    self.contract_id
+                )
 
             # Update cache with new data
             added_count = self.cache.update_hourly(hourly_data)
@@ -496,9 +528,20 @@ class UsageCoordinator:
             - First sync: Download (today - window) to today
             - Incremental: Download (last_cached_date + 1 day) to today
             - Never download more than max_lookback limit
+            - Hourly: Cap to_date to yesterday (today-2) due to 24-72h processing delay
         """
         config = USAGE_CONFIG[interval]
         today = date.today()
+        
+        # For hourly, cap to_date to yesterday (today-2 for safety) to avoid requesting
+        # data that hasn't been processed yet (Contact Energy has 24-72h delay)
+        if interval == "hourly":
+            safe_end_date = today - timedelta(days=2)
+            _LOGGER.debug(
+                "Hourly sync for contract %s: capping to_date from today (%s) to %s to avoid processing delay",
+                self.contract_id, today, safe_end_date
+            )
+            today = safe_end_date
 
         # Get existing cache range
         if interval == "hourly":
