@@ -5,6 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.4.1 ]
+
+### Fixed
+- **API Response Parsing**: Handle both dict and list response formats from usage API
+  - API can return `{"usage": [...]}` or `[...]` directly
+  - Prevents AttributeError when API returns list format
+- **Async File Operations**: Fixed blocking I/O warnings
+  - File read/write operations now use executor to avoid blocking event loop
+  - Resolves Home Assistant warnings about blocking calls in async context
+
 ## [ 1.4.0 ]
 
 ### Added
