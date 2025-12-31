@@ -222,13 +222,10 @@ Display just your current balance:
     </td>
     <td style="vertical-align: top;">
       <strong>YAML</strong>
-
-```yaml
-type: entity
+      <pre><code>type: entity
 entity: sensor.my_address_icp123_current_balance
 name: Account Balance
-icon: mdi:currency-usd
-```
+icon: mdi:currency-usd</code></pre>
     </td>
   </tr>
 </table>
