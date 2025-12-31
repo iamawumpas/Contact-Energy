@@ -441,12 +441,23 @@ class ContactEnergyApi:
         _LOGGER.debug("Parsing usage response for contract %s (%s interval)", contract_id, interval)
 
         # Extract usage array from response
-        # API returns: {"usage": [...records...]}
-        usage_array = data.get("usage", [])
+        # API can return either:
+        # - {"usage": [...records...]} (dict format)
+        # - [...records...] (list format - direct array)
+        if isinstance(data, list):
+            # Direct list response
+            usage_array = data
+        elif isinstance(data, dict):
+            # Dict with 'usage' key
+            usage_array = data.get("usage", [])
+        else:
+            error_msg = f"Invalid API response type: expected dict or list, got {type(data)}"
+            _LOGGER.error("%s Response: %s", error_msg, str(data)[:200])
+            raise ContactEnergyApiError(error_msg)
 
         # Validate response structure
         if not isinstance(usage_array, list):
-            error_msg = f"Invalid API response: 'usage' field is not a list. Got type: {type(usage_array)}"
+            error_msg = f"Invalid API response: usage data is not a list. Got type: {type(usage_array)}"
             _LOGGER.error("%s Response: %s", error_msg, str(data)[:200])
             raise ContactEnergyApiError(error_msg)
 

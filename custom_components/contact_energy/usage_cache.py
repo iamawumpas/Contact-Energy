@@ -148,8 +148,14 @@ class UsageCache:
 
         try:
             # Read cache file
-            with open(self.cache_path, "r", encoding="utf-8") as f:
-                self.data = json.load(f)
+            # Use synchronous read in executor to avoid blocking event loop
+            def _read_cache():
+                with open(self.cache_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            
+            import asyncio
+            loop = asyncio.get_event_loop()
+            self.data = await loop.run_in_executor(None, _read_cache)
 
             # Validate basic structure
             if not isinstance(self.data, dict):
@@ -236,12 +242,20 @@ class UsageCache:
             temp_path = self.cache_path.with_suffix(".tmp")
 
             # Write to temporary file first (atomic operation)
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, indent=2, ensure_ascii=False)
-
-            # Atomically rename temp file to actual cache file
-            # This ensures cache is never partially written
-            temp_path.replace(self.cache_path)
+            # Use synchronous write in executor to avoid blocking event loop
+            def _write_cache():
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    json.dump(self.data, f, indent=2, ensure_ascii=False)
+                # Atomically rename temp file to actual cache file
+                temp_path.replace(self.cache_path)
+            
+            import asyncio
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _write_cache)
+            
+            import asyncio
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _write_cache)
 
             elapsed = time.time() - start_time
 
