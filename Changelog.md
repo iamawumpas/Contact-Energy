@@ -5,6 +5,17 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.6 ]
+
+### Fixed
+- Usage sensor now registers with the sensor platform so its hourly/daily/monthly attributes populate for dashboards
+
+## [ 1.5.5 ]
+
+### Fixed
+- Hourly usage sync now retries with brief backoff and, if needed, splits the window into 5-day chunks to avoid transient 502 errors
+- Daily and monthly usage sync share the same retry helper to smooth over intermittent API hiccups
+
 ## [ 1.5.4 ]
 
 ### Fixed

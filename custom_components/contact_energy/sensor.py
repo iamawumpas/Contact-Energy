@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ContactEnergyCoordinator
+from .usage_sensor import ContactEnergyUsageSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -127,6 +128,13 @@ async def async_setup_entry(
         ),
         ContactEnergyAccountDetailSensor(
             coordinator, config_entry, entity_name, "is_prepay"
+        ),
+        # Usage sensor surfaces cached hourly/daily/monthly data for charting
+        ContactEnergyUsageSensor(
+            coordinator,
+            config_entry,
+            entity_name,
+            contract_id=config_entry.data.get("contract_id", "unknown"),
         ),
     ]
 

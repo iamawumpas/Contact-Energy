@@ -33,13 +33,32 @@ fi
 
 echo -e "${YELLOW}Release script started for version ${VERSION}${NC}"
 
-# Step 1: Instruct the agent to write the changelog
+# Step 1: Instruct the agent to write the changelog and wait for completion
+# Human-friendly note: we pause here until the agent finishes the changelog and signals readiness.
 echo -e "${YELLOW}Step 1: Changelog generation${NC}"
 echo "Please instruct the agent to write the changelog entry for version ${VERSION}"
-echo "Run this command and provide the changelog details:"
-echo ""
-echo -e "${GREEN}Ask the agent to write the changelog for version ${VERSION}${NC}"
-echo ""
+echo "The agent should add the entry to Changelog.md in the required format and then create a .changelog_ready file in the repo root."
+echo "Waiting for the agent to finish..."
+
+# Wait loop: agent touches .changelog_ready after updating the changelog; we also verify the expected header exists.
+SECONDS=0
+MAX_WAIT=60  # 60s safety cutoff to avoid hanging indefinitely
+while true; do
+    if [ -f .changelog_ready ] && grep -q "^## \[ ${VERSION} \]" Changelog.md; then
+        echo -e "${GREEN}✓ Changelog for ${VERSION} detected and agent ready signal received${NC}"
+        break
+    fi
+
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+        echo -e "${RED}Error: Timed out waiting for changelog for version ${VERSION}${NC}"
+        exit 1
+    fi
+
+    sleep 5
+done
+
+# Clean up agent ready signal before proceeding
+rm -f .changelog_ready
 
 # Step 2: Update README.md with version badge
 echo -e "${YELLOW}Step 2: Updating README.md${NC}"
@@ -61,7 +80,8 @@ echo -e "${YELLOW}Step 4: Updating HACS.json${NC}"
 sed -i "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"${VERSION}\"/" HACS.json
 echo -e "${GREEN}✓ HACS.json updated${NC}"
 
-# Stage all modified files before commit
+# Stage all modified files before commit (ensure sentinel is gone)
+rm -f .changelog_ready
 git add -A
 
 # Step 5: Commit all files
