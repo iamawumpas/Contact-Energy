@@ -5,16 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.5.1 ]
-
-### Fixed
-- Notify sensors immediately after usage sync so cached usage attributes refresh without waiting for the next daily coordinator run
-
 ## [ 1.5.2 ]
 
 ### Fixed
 - Reload cache before writing usage sensor state so attributes populate immediately after sync
 - Align usage sensor unique_id schema with account/billing sensors for multi-account clarity
+
+## [ 1.5.1 ]
+
+### Fixed
+- Notify sensors immediately after usage sync so cached usage attributes refresh without waiting for the next daily coordinator run
 
 ## [ 1.5.0 ]
 
