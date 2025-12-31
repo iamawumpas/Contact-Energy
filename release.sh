@@ -40,7 +40,6 @@ echo "Run this command and provide the changelog details:"
 echo ""
 echo -e "${GREEN}Ask the agent to write the changelog for version ${VERSION}${NC}"
 echo ""
-read -p "Press Enter after the agent has updated Changelog.md: "
 
 # Step 2: Update README.md with version badge
 echo -e "${YELLOW}Step 2: Updating README.md${NC}"

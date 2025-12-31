@@ -28,7 +28,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from .usage_cache import UsageCache
-from .contact_api import ContactEnergyApi, ContactEnergyApiError, ContactEnergyAuthError
+from .contact_api import ContactEnergyApi, ContactEnergyApiError, ContactEnergyAuthError, ContactEnergyConnectionError
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -198,12 +198,11 @@ class UsageCoordinator:
                 self.contract_id, from_date, to_date, (to_date - from_date).days + 1
             )
 
-            # Download hourly data from API
-            hourly_data = await self.api.get_usage(
-                self.contract_id,
+            # Download hourly data with retry and optional range splitting to dodge transient 502s
+            hourly_data = await self._fetch_usage_with_resilience(
                 interval="hourly",
                 from_date=from_date,
-                to_date=to_date
+                to_date=to_date,
             )
 
             # Update cache with new data
@@ -280,12 +279,11 @@ class UsageCoordinator:
                 self.contract_id, from_date, to_date, (to_date - from_date).days + 1
             )
 
-            # Download daily data from API
-            daily_data = await self.api.get_usage(
-                self.contract_id,
+            # Download daily data with basic retry (shared helper) in case of intermittent errors
+            daily_data = await self._fetch_usage_with_resilience(
                 interval="daily",
                 from_date=from_date,
-                to_date=to_date
+                to_date=to_date,
             )
 
             # Update cache with new data
@@ -363,12 +361,11 @@ class UsageCoordinator:
                 ((to_date.year - from_date.year) * 12 + (to_date.month - from_date.month))
             )
 
-            # Download monthly data from API
-            monthly_data = await self.api.get_usage(
-                self.contract_id,
+            # Download monthly data with basic retry (shared helper)
+            monthly_data = await self._fetch_usage_with_resilience(
                 interval="monthly",
                 from_date=from_date,
-                to_date=to_date
+                to_date=to_date,
             )
 
             # Update cache with new data
@@ -407,6 +404,75 @@ class UsageCoordinator:
                 "Unexpected error during monthly sync for contract %s: %s. Skipping monthly sync.",
                 self.contract_id, str(e), exc_info=True
             )
+
+    async def _fetch_usage_with_resilience(
+        self,
+        interval: str,
+        from_date: date,
+        to_date: date,
+        *,
+        allow_split: bool = True,
+        max_attempts: int = 3,
+    ) -> list[dict]:
+        """Fetch usage with retry and optional split for transient HTTP errors.
+
+        Human-friendly note: retries soak up brief API hiccups, and splitting the
+        hourly window into smaller slices avoids the backend occasionally 502-ing
+        on long ranges. Daily/monthly just get the retry layer.
+        """
+
+        # Quick retry loop with increasing backoff (1s, 2s, ...)
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return await self.api.get_usage(
+                    self.contract_id,
+                    interval=interval,
+                    from_date=from_date,
+                    to_date=to_date,
+                )
+            except (ContactEnergyApiError, ContactEnergyConnectionError) as err:
+                if attempt >= max_attempts:
+                    last_error = err
+                    break
+
+                backoff = attempt  # simple linear backoff keeps it fast but polite
+                _LOGGER.warning(
+                    "Retrying %s usage for contract %s after error (%s). attempt=%d/%d, backoff=%ds",
+                    interval, self.contract_id, str(err), attempt, max_attempts, backoff
+                )
+                await asyncio.sleep(backoff)
+
+        # If hourly still fails and splitting is allowed, break the window into 5-day slices
+        if interval == "hourly" and allow_split:
+            span_days = (to_date - from_date).days + 1
+            if span_days > 1:
+                _LOGGER.warning(
+                    "Splitting hourly sync for contract %s into smaller windows after repeated errors",
+                    self.contract_id
+                )
+                chunk_size = 5
+                merged: list[dict] = []
+                cursor = from_date
+                while cursor <= to_date:
+                    chunk_end = min(cursor + timedelta(days=chunk_size - 1), to_date)
+                    _LOGGER.debug(
+                        "Hourly chunk fetch for contract %s: %s to %s",
+                        self.contract_id, cursor, chunk_end
+                    )
+                    merged.extend(
+                        await self._fetch_usage_with_resilience(
+                            interval=interval,
+                            from_date=cursor,
+                            to_date=chunk_end,
+                            allow_split=False,
+                            max_attempts=max_attempts,
+                        )
+                    )
+                    cursor = chunk_end + timedelta(days=1)
+                return merged
+
+        # Out of options: surface the last error up to the caller
+        raise last_error
 
     def _should_sync(self, interval: str) -> bool:
         """Determine if sync is needed for an interval based on metadata.
