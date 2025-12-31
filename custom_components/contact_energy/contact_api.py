@@ -480,37 +480,48 @@ class ContactEnergyApi:
 
                 # Extract total energy consumed (kWh)
                 # API field: 'value'
-                total_kwh = float(record.get("value", 0.0))
+                # Use 'or 0.0' to handle None values (API returns None for some fields)
+                total_kwh = float(record.get("value") or 0.0)
 
                 # Extract free energy components
                 # Off-peak value: Free hours usage (e.g., night rate, contact-free hours)
                 # API field: 'offpeakValue'
-                offpeak_kwh = float(record.get("offpeakValue", 0.0))
+                # Note: This is 0.0 on days/times when free hours are not offered
+                offpeak_kwh = float(record.get("offpeakValue") or 0.0)
 
                 # Uncharged value: Promotional credits or unmetered usage
                 # API field: 'unchargedValue'
-                uncharged_kwh = float(record.get("unchargedValue", 0.0))
+                uncharged_kwh = float(record.get("unchargedValue") or 0.0)
 
                 # Calculate total free energy (sum of all free components)
+                # Free = 0.0 when no free hours are offered
+                # Free > 0.0 when free hours are active (Contact Energy promotions)
                 free_kwh = offpeak_kwh + uncharged_kwh
 
                 # Calculate paid energy (what the customer is charged for)
-                # Paid = Total consumed - All free energy
+                # Business Logic:
+                # - When free hours NOT offered: free=0.0, paid=total
+                # - When free hours ARE offered: free>0, paid=total-free
+                # - When ALL usage is during free hours: free=total, paid=0.0
+                # Note: Negative values should NEVER occur (no solar/PV buy-back in current system)
                 paid_kwh = total_kwh - free_kwh
 
-                # Ensure paid never goes negative (data consistency check)
-                # This can happen if API returns inconsistent free/total values
+                # Handle API data quality issues where free > total
+                # This should not happen in normal operation (no solar/PV buy-back)
+                # If it occurs, it's an API data inconsistency - treat as all usage was free
                 if paid_kwh < 0:
                     _LOGGER.warning(
-                        "Negative paid usage detected for contract %s at %s: "
-                        "total=%.2f, free=%.2f, calculated_paid=%.2f. Setting paid to 0.",
-                        contract_id, timestamp, total_kwh, free_kwh, paid_kwh
+                        "API data inconsistency for contract %s at %s: "
+                        "free usage (%.3f kWh) exceeds total (%.3f kWh). "
+                        "This should not occur (no solar/PV in system). Setting paid=0.0.",
+                        contract_id, timestamp, free_kwh, total_kwh
                     )
                     paid_kwh = 0.0
 
                 # Extract cost in NZD
                 # API field: 'dollarValue'
-                cost_nzd = float(record.get("dollarValue", 0.0))
+                # Note: API returns None for historical data where cost is not available
+                cost_nzd = float(record.get("dollarValue") or 0.0)
 
                 # Build standardized record structure
                 parsed_record = {

@@ -5,6 +5,21 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.4.2 ]
+
+### Fixed
+- **None Value Handling**: Fixed parsing errors when API returns None for dollarValue field
+  - Updated to use `or 0.0` instead of default parameter to properly handle None values
+  - Resolves "float() argument must be a string or a real number, not 'NoneType'" errors
+  - Applies to all numeric fields: value, offpeakValue, unchargedValue, dollarValue
+  
+### Improved
+- **Business Logic Clarification**: Enhanced usage calculation documentation
+  - Free energy is always 0.0 kWh on days/times when free hours are not offered
+  - Paid energy is 0.0 kWh when all usage occurs during free hours
+  - Negative kWh values should never occur (no solar/PV buy-back in current system)
+  - API data inconsistencies (free > total) are now logged as warnings
+
 ## [ 1.4.1 ]
 
 ### Fixed
