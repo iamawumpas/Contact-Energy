@@ -5,6 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.0 ]
+
+### Added
+- Usage data sensor `sensor.contact_energy_usage_{contract_id}` exposing cached hourly, daily, and monthly usage arrays
+- Sensor state reports last successful sync timestamp
+- Attributes include total, paid, free, and cost fields formatted for ApexCharts
+
+### Fixed
+- Cache reload on coordinator updates to keep attributes fresh after each sync
+
 ## [ 1.4.6 ]
 
 ### Fixed
