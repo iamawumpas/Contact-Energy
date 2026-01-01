@@ -21,6 +21,7 @@ A comprehensive card displaying all your account information in a compact, organ
 - ✅ Date formatting
 - ✅ Grouped sensor display by category
 - ✅ Countdown displays for upcoming dates
+- ✅ **Programmatic calculation** of "Days Until Next Bill" from Next Bill Date sensor
 - ✅ Responsive design
 - ✅ Scrollable for long lists
 
@@ -46,6 +47,7 @@ This is a visual representation of how the card appears in Lovelace:
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Next Bill</td></tr>
 <tr><td style="padding: 4px 4px;">Next Bill Date</td><td style="padding: 4px 4px; text-align: right;">2025-02-01</td></tr>
 <tr><td style="padding: 4px 4px;">Days Until Next Bill</td><td style="padding: 4px 4px; text-align: right;">33 days</td></tr>
+<tr><td colspan="2" style="padding: 4px 4px;"><em style="font-size: 11px; opacity: 0.7;">* Calculated from Next Bill Date</em></td></tr>
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);"><em>(Additional sections: Account Settings, Contract Details, Payment Plans below in full card)</em></td></tr>
 </tbody>
 </table>
@@ -58,6 +60,10 @@ This is a visual representation of how the card appears in Lovelace:
 ```yaml
 type: markdown
 content: >+
+
+  {# CONFIGURATION: Set your entity base name here (change this to match your sensors) #}
+  {% set address_icp = 'my_address_icp123' %}
+
 
   {# Define all entity names that should be formatted as currency ($X.XX) #}
   {% set currency_names = [
@@ -77,42 +83,41 @@ content: >+
   ] %}
 
 
-  {# Define groups and their entities - Replace with your actual sensor names #}
+  {# Define groups and their entities - Uses address_icp variable #}
   {% set groups = [
     ('Account Balance', [
-      ('Current Balance', 'sensor.my_address_icp123_current_balance'),
-      ('Prepay Debt Balance', 'sensor.my_address_icp123_prepay_debt_balance'),
-      ('Refund Eligible', 'sensor.my_address_icp123_refund_eligible'),
-      ('Maximum Refund', 'sensor.my_address_icp123_maximum_refund')
+      ('Current Balance', 'sensor.' + address_icp + '_current_balance'),
+      ('Prepay Debt Balance', 'sensor.' + address_icp + '_prepay_debt_balance'),
+      ('Refund Eligible', 'sensor.' + address_icp + '_refund_eligible'),
+      ('Maximum Refund', 'sensor.' + address_icp + '_maximum_refund')
     ]),
     ('Billing Information', [
-      ('Amount Due', 'sensor.my_address_icp123_amount_due'),
-      ('Amount Paid', 'sensor.my_address_icp123_amount_paid'),
-      ('Discount Total', 'sensor.my_address_icp123_discount_total'),
-      ('Payment Due Date', 'sensor.my_address_icp123_payment_due_date'),
-      ('Days Until Overdue', 'sensor.my_address_icp123_days_until_overdue')
+      ('Amount Due', 'sensor.' + address_icp + '_amount_due'),
+      ('Amount Paid', 'sensor.' + address_icp + '_amount_paid'),
+      ('Discount Total', 'sensor.' + address_icp + '_discount_total'),
+      ('Payment Due Date', 'sensor.' + address_icp + '_payment_due_date'),
+      ('Days Until Overdue', 'sensor.' + address_icp + '_days_until_overdue')
     ]),
     ('Next Bill', [
-      ('Next Bill Date', 'sensor.my_address_icp123_next_bill_date'),
-      ('Days Until Next Bill', 'sensor.my_address_icp123_days_until_next_bill')
+      ('Next Bill Date', 'sensor.' + address_icp + '_next_bill_date')
     ]),
     ('Account Settings', [
-      ('Correspondence Preference', 'sensor.my_address_icp123_correspondence_preference'),
-      ('Payment Method', 'sensor.my_address_icp123_payment_method'),
-      ('Billing Frequency', 'sensor.my_address_icp123_billing_frequency')
+      ('Correspondence Preference', 'sensor.' + address_icp + '_correspondence_preference'),
+      ('Payment Method', 'sensor.' + address_icp + '_payment_method'),
+      ('Billing Frequency', 'sensor.' + address_icp + '_billing_frequency')
     ]),
     ('Contract Details', [
-      ('Account Nickname', 'sensor.my_address_icp123_account_nickname'),
-      ('ICP', 'sensor.my_address_icp123_icp'),
-      ('Address', 'sensor.my_address_icp123_address'),
-      ('Product Name', 'sensor.my_address_icp123_product_name'),
-      ('Contract Type', 'sensor.my_address_icp123_contract_type'),
-      ('Contract Status', 'sensor.my_address_icp123_contract_status')
+      ('Account Nickname', 'sensor.' + address_icp + '_account_nickname'),
+      ('ICP', 'sensor.' + address_icp + '_icp'),
+      ('Address', 'sensor.' + address_icp + '_address'),
+      ('Product Name', 'sensor.' + address_icp + '_product_name'),
+      ('Contract Type', 'sensor.' + address_icp + '_contract_type'),
+      ('Contract Status', 'sensor.' + address_icp + '_contract_status')
     ]),
     ('Payment Plans', [
-      ('Direct Debit', 'sensor.my_address_icp123_is_direct_debit'),
-      ('Smooth Pay', 'sensor.my_address_icp123_is_smooth_pay'),
-      ('Prepay', 'sensor.my_address_icp123_is_prepay')
+      ('Direct Debit', 'sensor.' + address_icp + '_is_direct_debit'),
+      ('Smooth Pay', 'sensor.' + address_icp + '_is_smooth_pay'),
+      ('Prepay', 'sensor.' + address_icp + '_is_prepay')
     ])
   ] %}
 
@@ -170,6 +175,22 @@ content: >+
   {% endfor %}
 
 
+  {# Calculate and add "Days Until Next Bill" programmatically #}
+  {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
+  {% set next_bill_date_str = states(next_bill_date_entity) %}
+  {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
+    {% set next_bill_date = strptime(next_bill_date_str, '%Y-%m-%d') %}
+    {% set today = now().date() %}
+    {% set days_diff = (next_bill_date.date() - today).days %}
+    {% if days_diff < 0 %}
+      {% set days_text = (days_diff | abs | string) + ' days overdue' %}
+    {% else %}
+      {% set days_text = days_diff | string + ' days' %}
+    {% endif %}
+    {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;Days Until Next Bill</small></td><td align="right" style="padding: 4px 8px;"><small>' + days_text + '</small></td></tr>' %}
+  {% endif %}
+
+
   <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
     <colgroup>
       <col style="width: 60%;">
@@ -199,7 +220,9 @@ card_mod:
 
 ### Customization
 
-1. **Replace sensor names**: Change all instances of `my_address_icp123` to match your actual sensor entity IDs
+1. **Set your address_icp variable**: Change the `address_icp` value at the top (line 4) from `'my_address_icp123'` to match your actual sensor base name
+   - Example: `{% set address_icp = '71_oroua_st_0000000966tr348' %}`
+   - This single change updates all sensor references throughout the card
 2. **Update header**: Change `My Address<br>ICP123` to your property address and ICP
 3. **Adjust height**: Modify `height: 500px` to fit your sidebar
 4. **Add/Remove groups**: Modify the `groups` list to show only sensors you want
