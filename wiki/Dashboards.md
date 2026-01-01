@@ -7,6 +7,7 @@ This page provides examples for displaying your Contact Energy data in Home Assi
 - [Markdown Card - Sidebar Layout](#markdown-card---sidebar-layout)
 - [Entity Cards](#entity-cards)
 - [Custom Cards](#custom-cards)
+- [ApexCharts Examples](#apexcharts-examples)
 - [Automations Using Sensors](#automations-using-sensors)
 
 ---
@@ -346,7 +347,138 @@ period:
 
 ## ApexCharts Examples
 
-⚠️ **Usage sensors not yet implemented** - These examples are placeholders for future functionality.
+### Hourly Usage Chart (Last 10 Days)
+
+Visualize your hourly energy consumption with ApexCharts, showing free and paid usage separately.
+
+**Requirements:**
+- Custom card: [apexcharts-card](https://github.com/RomRider/apexcharts-card)
+- Sensor: `sensor.contact_energy_usage_<contract_id>` with hourly data
+
+**Features:**
+- ✅ Displays last 10 days of hourly data
+- ✅ Separate series for free (blue) and paid (yellow) usage
+- ✅ Gradient fill for visual appeal
+- ✅ Responsive datetime axis with day labels
+- ✅ Single-point configuration via template variable
+
+**Setup:**
+
+1. Replace `address_icp` in the YAML with your ICP code (e.g., `0000000966tr348`):
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Hourly Usage (Last 10 Days)
+  show_states: false
+apex_config:
+  chart:
+    height: 300
+  legend:
+    position: top
+  xaxis:
+    type: datetime
+    labels:
+      format: ddd
+graph_span: 10d
+span:
+  entity_index: 0
+series:
+  - entity: sensor.contact_energy_usage_0000000966tr348
+    name: Free
+    color: '#008FFB'
+    type: column
+    data_generator: |
+      return Object.entries(entity.attributes.hourly_free_data || {})
+        .map(([time, value]) => [new Date(time).getTime(), value]);
+    fill:
+      type: gradient
+      gradient:
+        shadeIntensity: 0.3
+        opacityFrom: 1
+        opacityTo: 0.1
+  - entity: sensor.contact_energy_usage_0000000966tr348
+    name: Paid
+    color: '#FEB019'
+    type: column
+    data_generator: |
+      return Object.entries(entity.attributes.hourly_data || {})
+        .map(([time, value]) => [new Date(time).getTime(), value]);
+    fill:
+      type: gradient
+      gradient:
+        shadeIntensity: 0.3
+        opacityFrom: 1
+        opacityTo: 0.1
+card_mod:
+  style:
+    apexcharts$: |
+      .apexcharts-canvas {
+        filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.15));
+      }
+```
+
+Or use a template variable for easier management across multiple accounts:
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Hourly Usage (Last 10 Days)
+  show_states: false
+variables:
+  address_icp: '0000000966tr348'  # Change this to your ICP
+apex_config:
+  chart:
+    height: 300
+  legend:
+    position: top
+  xaxis:
+    type: datetime
+    labels:
+      format: ddd
+graph_span: 10d
+span:
+  entity_index: 0
+series:
+  - entity: sensor.contact_energy_usage_{{ variables.address_icp }}
+    name: Free
+    color: '#008FFB'
+    type: column
+    data_generator: |
+      return Object.entries(entity.attributes.hourly_free_data || {})
+        .map(([time, value]) => [new Date(time).getTime(), value]);
+    fill:
+      type: gradient
+      gradient:
+        shadeIntensity: 0.3
+        opacityFrom: 1
+        opacityTo: 0.1
+  - entity: sensor.contact_energy_usage_{{ variables.address_icp }}
+    name: Paid
+    color: '#FEB019'
+    type: column
+    data_generator: |
+      return Object.entries(entity.attributes.hourly_data || {})
+        .map(([time, value]) => [new Date(time).getTime(), value]);
+    fill:
+      type: gradient
+      gradient:
+        shadeIntensity: 0.3
+        opacityFrom: 1
+        opacityTo: 0.1
+card_mod:
+  style:
+    apexcharts$: |
+      .apexcharts-canvas {
+        filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.15));
+      }
+```
+
+**Sample Dashboard File:**
+
+A complete dashboard example with this chart is available in [`assets/chart_hourly_usage.yaml`](../assets/chart_hourly_usage.yaml).
 
 ### Daily Usage Chart
 
