@@ -35,6 +35,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entry_id, entry_data in hass.data[DOMAIN].items():
             coordinator = entry_data.get("coordinator")
             if coordinator:
+                # Check if a sync is already in progress
+                if hasattr(coordinator, 'usage_coordinator'):
+                    if coordinator.usage_coordinator._force_sync_mode:
+                        _LOGGER.warning(
+                            "Skipping refresh for entry %s: sync already in progress",
+                            entry_id
+                        )
+                        continue
+                
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
                 # Force account data refresh
                 await coordinator.async_request_refresh()
