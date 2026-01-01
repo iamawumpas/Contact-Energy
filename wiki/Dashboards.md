@@ -147,13 +147,11 @@ content: >+
           {# Parse the date string - Contact Energy API returns format like "20 Jan 2026" #}
           {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y') %}
           {% if next_bill_date %}
-            {# Make the parsed date timezone-aware using as_local #}
-            {% set next_bill_aware = as_local(next_bill_date) %}
-            {# Get today at start of day (timezone-aware) #}
-            {% set today_start = now().replace(hour=0, minute=0, second=0, microsecond=0) %}
-            {# Calculate the timedelta and extract days #}
-            {% set time_delta = next_bill_aware - today_start %}
-            {% set days_diff = time_delta.days %}
+            {# Simple timestamp-based calculation #}
+            {% set bill_epoch = next_bill_date.timestamp() %}
+            {% set now_epoch = now().timestamp() %}
+            {% set seconds_until = bill_epoch - now_epoch %}
+            {% set days_diff = (seconds_until / 86400) | round(0, 'floor') | int %}
             {% if days_diff < 0 %}
               {% set value = (days_diff | abs | string) + ' days overdue' %}
             {% elif days_diff == 0 %}
