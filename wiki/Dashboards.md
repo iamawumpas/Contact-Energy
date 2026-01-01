@@ -144,23 +144,17 @@ content: >+
         {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
         {% set next_bill_date_str = states(next_bill_date_entity) %}
         {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
-          {# Parse the date string - Contact Energy API returns format like "20 Jan 2026" #}
-          {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y') %}
-          {% if next_bill_date %}
-            {# Simple timestamp-based calculation #}
-            {% set bill_epoch = next_bill_date.timestamp() %}
-            {% set now_epoch = now().timestamp() %}
-            {% set seconds_until = bill_epoch - now_epoch %}
-            {% set days_diff = (seconds_until / 86400) | round(0, 'floor') | int %}
-            {% if days_diff < 0 %}
-              {% set value = (days_diff | abs | string) + ' days overdue' %}
-            {% elif days_diff == 0 %}
-              {% set value = 'Today' %}
-            {% else %}
-              {% set value = days_diff | string + ' days' %}
-            {% endif %}
+          {# Parse the date and calculate using as_timestamp filter #}
+          {% set next_bill_datetime = strptime(next_bill_date_str, '%d %b %Y') %}
+          {% set bill_ts = as_timestamp(next_bill_datetime) | float %}
+          {% set now_ts = as_timestamp(now()) | float %}
+          {% set days_until = ((bill_ts - now_ts) / 86400) | round(0, 'floor') | int %}
+          {% if days_until < 0 %}
+            {% set value = (days_until | abs | string) + ' days overdue' %}
+          {% elif days_until == 0 %}
+            {% set value = 'Today' %}
           {% else %}
-            {% set value = '—' %}
+            {% set value = days_until | string + ' days' %}
           {% endif %}
         {% else %}
           {% set value = '—' %}
