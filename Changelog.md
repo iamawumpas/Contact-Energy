@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.11 ]
+
+### Fixed
+- Fixed force_sync implementation to properly bypass time thresholds using a flag-based approach
+- Service now correctly forces data download regardless of when last sync occurred
+- Previous implementation was incorrectly manipulating cache metadata which got overwritten on cache reload
+
 ## [ 1.6.10 ]
 
 ### Fixed
