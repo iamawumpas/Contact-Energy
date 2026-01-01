@@ -72,12 +72,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         
         Additionally, triggers usage data sync as a background task (non-blocking).
         Usage sync failures do not affect account data updates.
+        
+        NOTE: If account data fetch fails after 2 retries, the integration will
+        continue with usage sync using the known contract ID. This allows basic
+        functionality when the accounts endpoint is experiencing server issues.
 
         Returns:
-            Dictionary containing the account data.
+            Dictionary containing the account data, or a minimal dict if fetch fails.
 
         Raises:
-            UpdateFailed: If the API request fails.
+            UpdateFailed: If unable to authenticate or get token.
         """
         try:
             _LOGGER.debug("Fetching account information from Contact Energy API")
@@ -119,17 +123,43 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                     raise UpdateFailed(f"Re-authentication failed: {str(auth_err)}") from auth_err
                 
                 # Retry fetching account data with the new token
-                account_data = await self.api_client.get_accounts()
-                _LOGGER.debug("Successfully fetched account data after re-authentication")
-                
-                # Trigger usage sync after successful re-auth (Phase 1 / v1.4.0)
-                _LOGGER.debug("Triggering background usage sync for contract %s (after re-auth)", self.contract_id)
-                self.hass.async_create_task(
-                    self._async_sync_usage(),
-                    name=f"usage_sync_{self.contract_id}"
-                )
-                
-                return account_data
+                try:
+                    account_data = await self.api_client.get_accounts()
+                    _LOGGER.debug("Successfully fetched account data after re-authentication")
+                    
+                    # Trigger usage sync after successful re-auth (Phase 1 / v1.4.0)
+                    _LOGGER.debug("Triggering background usage sync for contract %s (after re-auth)", self.contract_id)
+                    self.hass.async_create_task(
+                        self._async_sync_usage(),
+                        name=f"usage_sync_{self.contract_id}"
+                    )
+                    
+                    return account_data
+                    
+                except Exception as retry_error:
+                    # Account data fetch failed even after re-auth
+                    # Log the error but continue with usage sync using known contract ID
+                    _LOGGER.warning(
+                        f"Account fetch failed after re-authentication: {str(retry_error)}. "
+                        "Proceeding with usage sync only using contract ID {self.contract_id}"
+                    )
+                    
+                    # Still trigger usage sync as it doesn't need account data
+                    _LOGGER.debug("Triggering background usage sync for contract %s (fallback mode)", self.contract_id)
+                    self.hass.async_create_task(
+                        self._async_sync_usage(),
+                        name=f"usage_sync_{self.contract_id}"
+                    )
+                    
+                    # Return minimal account data structure to keep coordinator happy
+                    # The sensor will still work with usage data even if account info is unavailable
+                    return {
+                        "accountsSummary": [{
+                            "id": "",
+                            "nickname": "Unknown Account",
+                            "contracts": [{"contractId": self.contract_id}]
+                        }]
+                    }
 
         except ContactEnergyApiError as e:
             # API returned an error - convert to UpdateFailed for coordinator handling
