@@ -485,6 +485,24 @@ class ContactEnergyApi:
         # Log record count before parsing
         _LOGGER.debug("Parsing %d raw usage records from API", len(usage_array))
 
+        # Log first record structure for debugging (especially for hourly data)
+        if len(usage_array) > 0 and interval == "hourly":
+            first_record = usage_array[0]
+            _LOGGER.debug(
+                "First hourly record structure - keys: %s",
+                list(first_record.keys())
+            )
+            _LOGGER.debug(
+                "First hourly record values - date=%s, value=%s, paid=%s, free=%s, offpeakValue=%s, unchargedValue=%s, dollarValue=%s",
+                first_record.get("date"),
+                first_record.get("value"),
+                first_record.get("paid"),
+                first_record.get("free"),
+                first_record.get("offpeakValue"),
+                first_record.get("unchargedValue"),
+                first_record.get("dollarValue")
+            )
+
         parsed_records = []
 
         # Process each usage record from API
@@ -504,44 +522,33 @@ class ContactEnergyApi:
                 # Use 'or 0.0' to handle None values (API returns None for some fields)
                 total_kwh = float(record.get("value") or 0.0)
 
-                # Hourly data: Free and Paid are mutually exclusive
-                # (Either the hour was during free hours OR paid hours, but not both)
-                if interval == "hourly":
-                    # For hourly: use API paid/free directly
-                    paid_kwh = float(record.get("paid") or 0.0)
-                    free_kwh = float(record.get("free") or 0.0)
-                    _LOGGER.debug(
-                        "Hourly record: timestamp=%s, total=%.3f, paid=%.3f, free=%.3f (mutually exclusive)",
-                        timestamp, total_kwh, paid_kwh, free_kwh
-                    )
+                # All intervals use the same calculation: paid = total - free
+                # Free energy = offpeak + uncharged components
+                # This works for hourly, daily, and monthly data
+                # Extract free energy components
+                offpeak_kwh = float(record.get("offpeakValue") or 0.0)
+                uncharged_kwh = float(record.get("unchargedValue") or 0.0)
                 
-                # Daily/Monthly data: Free and Paid are complementary
-                # (paid + free = total, both can exist in same record)
-                else:
-                    # Extract free energy components
-                    # Off-peak value: Free hours usage (e.g., night rate, contact-free hours)
-                    # API field: 'offpeakValue'
-                    offpeak_kwh = float(record.get("offpeakValue") or 0.0)
-
-                    # Uncharged value: Promotional credits or unmetered usage
-                    # API field: 'unchargedValue'
-                    uncharged_kwh = float(record.get("unchargedValue") or 0.0)
-
-                    # Calculate total free energy (sum of all free components)
-                    free_kwh = offpeak_kwh + uncharged_kwh
-
-                    # Cap free usage at total to prevent data inconsistencies
-                    if free_kwh > total_kwh:
-                        _LOGGER.debug(
-                            "Capping free usage at total for contract %s at %s: "
-                            "free=%.3f kWh capped to total=%.3f kWh",
-                            contract_id, timestamp, free_kwh, total_kwh
-                        )
-                        free_kwh = total_kwh
-
-                    # Calculate paid energy (what the customer is charged for)
-                    # paid = total - free (complementary components)
-                    paid_kwh = total_kwh - free_kwh
+                # Calculate total free energy (sum of all free components)
+                free_kwh = offpeak_kwh + uncharged_kwh
+                
+                # Cap free usage at total to prevent data inconsistencies
+                if free_kwh > total_kwh:
+                    _LOGGER.debug(
+                        "Capping free usage at total for contract %s at %s: "
+                        "free=%.3f kWh capped to total=%.3f kWh",
+                        contract_id, timestamp, free_kwh, total_kwh
+                    )
+                    free_kwh = total_kwh
+                
+                # Calculate paid energy (what the customer is charged for)
+                # paid = total - free (complementary components)
+                paid_kwh = total_kwh - free_kwh
+                
+                _LOGGER.debug(
+                    "%s record: timestamp=%s, total=%.3f, paid=%.3f, free=%.3f (offpeak=%.3f, uncharged=%.3f)",
+                    interval.capitalize(), timestamp, total_kwh, paid_kwh, free_kwh, offpeak_kwh, uncharged_kwh
+                )
 
                 # Extract cost in NZD
                 # API field: 'dollarValue'

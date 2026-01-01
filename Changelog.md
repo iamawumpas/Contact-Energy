@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.8 ]
+
+### Fixed
+- Fixed hourly sensor showing paid=0 and free=0 by using correct API fields
+- Hourly data now calculates free energy from offpeakValue and unchargedValue (same as daily/monthly)
+- Applied unified calculation across all intervals: free = offpeak + uncharged, paid = total - free
+- This matches how daily/monthly data is properly calculated and aligns with Contact Energy API structure
+
 ## [ 1.6.7 ]
 
 ### Fixed
