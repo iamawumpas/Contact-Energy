@@ -272,15 +272,13 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         try:
             import asyncio
             loop = asyncio.get_event_loop()
-            loop.create_task(self._async_reload_cache())
+            # Create task to reload cache and update state after it completes
+            loop.create_task(self._async_reload_cache_and_update())
         except Exception as e:
             _LOGGER.error(
                 "Error reloading cache for contract %s: %s",
                 self._contract_id, str(e)
             )
-
-        # Notify HA that sensor state/attributes have changed
-        self.async_write_ha_state()
 
     async def _async_reload_cache(self) -> None:
         """Reload cache data from disk asynchronously.
@@ -338,10 +336,26 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         try:
             import asyncio
             loop = asyncio.get_event_loop()
-            loop.create_task(self._async_reload_cache())
+            # Create task to reload cache and update state after it completes
+            loop.create_task(self._async_reload_cache_and_update())
         except Exception as e:
             _LOGGER.error(
                 "Error reloading cache on usage update for contract %s: %s",
                 self._contract_id, str(e)
             )
-        self.async_write_ha_state()
+    
+    async def _async_reload_cache_and_update(self) -> None:
+        """Reload cache from disk and update Home Assistant state.
+        
+        Called when usage coordinator signals that new data is available.
+        This ensures state is updated AFTER cache has been reloaded.
+        """
+        try:
+            await self._async_reload_cache()
+            # Now that cache is reloaded, update HA state with new attributes
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error(
+                "Error in cache reload and update for contract %s: %s",
+                self._contract_id, str(e), exc_info=True
+            )

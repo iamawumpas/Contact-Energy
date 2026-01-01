@@ -5,6 +5,12 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.5.8 ]
+
+### Fixed
+- Fixed race condition where usage sensor state was written before cache reload completed, causing sensor to show 0 records despite successful data sync
+- Usage sensor now waits for cache reload to finish before updating Home Assistant state, ensuring hourly/daily/monthly attributes populate immediately with correct counts
+
 ## [ 1.5.7 ]
 
 ### Fixed
