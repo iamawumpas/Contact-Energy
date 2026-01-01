@@ -149,8 +149,11 @@ content: >+
             {% set next_bill_date = strptime(next_bill_date_str, '%Y-%m-%d', None) %}
           {% endif %}
           {% if next_bill_date is not none %}
-            {% set today = now().date() %}
-            {% set days_diff = (next_bill_date.date() - today).days %}
+            {# Calculate days difference using timestamps #}
+            {% set next_bill_timestamp = as_timestamp(next_bill_date) %}
+            {% set today_timestamp = as_timestamp(now()) %}
+            {% set seconds_diff = next_bill_timestamp - today_timestamp %}
+            {% set days_diff = (seconds_diff / 86400) | int %}
             {% if days_diff < 0 %}
               {% set value = (days_diff | abs | string) + ' days overdue' %}
             {% else %}
