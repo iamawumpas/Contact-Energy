@@ -145,19 +145,16 @@ class ContactEnergyApi:
             raise ContactEnergyAuthError("Not authenticated. Please authenticate first.")
 
         # Set up headers with authentication token for API request
+        # Note: GET requests typically don't include Content-Type header
         headers = {
             "x-api-key": API_KEY,
             "session": self.token,
             "authorization": self.token,
-            "Content-Type": "application/json",
         }
 
         try:
-            # Build query string with ba parameter (empty value required by API)
-            # Using urlencode to avoid Home Assistant session mutation issues
-            params = {"ba": ""}
-            query_string = urlencode(params)
-            full_url = f"{BASE_URL}/accounts/v2?{query_string}"
+            # Build URL without query parameters (ba parameter may be causing 502 errors)
+            full_url = f"{BASE_URL}/accounts/v2"
             
             _LOGGER.debug(f"Making accounts API request: GET {full_url}")
             

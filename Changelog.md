@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.6 ]
+
+### Fixed
+- Removed Content-Type header from accounts API GET request (may cause 502 on some API servers)
+- GET requests typically should not include Content-Type header
+- Attempting to remove ba parameter entirely from accounts endpoint URL
+
 ## [ 1.6.5 ]
 
 ### Fixed
