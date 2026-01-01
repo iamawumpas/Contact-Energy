@@ -144,11 +144,14 @@ content: >+
         {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
         {% set next_bill_date_str = states(next_bill_date_entity) %}
         {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
-          {# Parse the date and calculate using as_timestamp filter #}
-          {% set next_bill_datetime = strptime(next_bill_date_str, '%d %b %Y') %}
-          {% set bill_ts = as_timestamp(next_bill_datetime) | float %}
-          {% set now_ts = as_timestamp(now()) | float %}
-          {% set days_until = ((bill_ts - now_ts) / 86400) | round(0, 'floor') | int %}
+          {# Parse date: "20 Jan 2026" format #}
+          {% set parsed_date = strptime(next_bill_date_str, '%d %b %Y') %}
+          {# Add time to make it end of day (23:59:59) to ensure we don't lose a day #}
+          {% set next_bill_eod = parsed_date.replace(hour=23, minute=59, second=59) %}
+          {# Calculate days difference #}
+          {% set bill_timestamp = as_timestamp(next_bill_eod) %}
+          {% set now_timestamp = as_timestamp(now()) %}
+          {% set days_until = ((bill_timestamp - now_timestamp) / 86400) | int %}
           {% if days_until < 0 %}
             {% set value = (days_until | abs | string) + ' days overdue' %}
           {% elif days_until == 0 %}
