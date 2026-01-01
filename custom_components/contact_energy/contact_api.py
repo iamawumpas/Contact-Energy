@@ -156,7 +156,7 @@ class ContactEnergyApi:
             # Request account information from the API
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"{BASE_URL}/accounts/v2?ba=", headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                    f"{BASE_URL}/accounts/v2", headers=headers, timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     # Handle account retrieval response
                     if resp.status == 401:
