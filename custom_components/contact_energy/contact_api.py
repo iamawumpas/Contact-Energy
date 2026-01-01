@@ -533,17 +533,6 @@ class ContactEnergyApi:
                 # API field: 'dollarValue'
                 # Note: API returns None for historical data where cost is not available
                 cost_nzd = float(record.get("dollarValue") or 0.0)
-                # - When free hours NOT offered: free=0.0, paid=total
-                # - When free hours ARE offered: free>0, paid=total-free
-                # - When ALL usage is during free hours: free=total, paid=0.0
-                # Note: Negative values should NEVER occur (no solar/PV buy-back in current system)
-                #       Free is capped at total above to ensure paid >= 0
-                paid_kwh = total_kwh - free_kwh
-
-                # Extract cost in NZD
-                # API field: 'dollarValue'
-                # Note: API returns None for historical data where cost is not available
-                cost_nzd = float(record.get("dollarValue") or 0.0)
 
                 # Build standardized record structure
                 parsed_record = {
