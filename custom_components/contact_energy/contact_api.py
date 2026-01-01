@@ -153,11 +153,21 @@ class ContactEnergyApi:
         }
 
         try:
+            # Build query string with ba parameter (empty value required by API)
+            # Using urlencode to avoid Home Assistant session mutation issues
+            params = {"ba": ""}
+            query_string = urlencode(params)
+            full_url = f"{BASE_URL}/accounts/v2?{query_string}"
+            
+            _LOGGER.debug(f"Making accounts API request: GET {full_url}")
+            
             # Request account information from the API
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"{BASE_URL}/accounts/v2", headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                    full_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
+                    _LOGGER.debug(f"Accounts API response: status={resp.status}, content_type={resp.content_type}")
+                    
                     # Handle account retrieval response
                     if resp.status == 401:
                         raise ContactEnergyAuthError("Your session has expired. Please re-authenticate.")
