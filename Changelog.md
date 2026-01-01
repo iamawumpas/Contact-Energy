@@ -5,6 +5,22 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.0 ] - Phase 3: ApexCharts Integration
+
+### Added
+- **ApexCharts Hourly Usage Chart** - New sensor attributes for ApexCharts visualization
+- Added `hourly_data` attribute: Dictionary of paid usage keyed by ISO datetime timestamps
+- Added `hourly_free_data` attribute: Dictionary of free usage keyed by ISO datetime timestamps
+- Created `assets/chart_hourly_usage.yaml` dashboard example with working ApexCharts configuration
+- Updated Dashboards wiki with ApexCharts setup guides and step-by-step configuration
+
+### Features
+- View hourly usage for the last 10 days with separate series for free (blue) and paid (yellow) consumption
+- Integrated with Home Assistant's ApexCharts Card custom component
+- Supports template variables for single-point configuration across multiple accounts
+- Automatic datetime parsing and axis formatting
+- Gradient fill effects and responsive design
+
 ## [ 1.5.9 ]
 
 ### Changed
