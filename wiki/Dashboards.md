@@ -147,10 +147,11 @@ content: >+
           {# Parse the date string - Contact Energy API returns format like "20 Jan 2026" #}
           {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y') %}
           {% if next_bill_date %}
-            {# Calculate difference: convert both to timestamps, get difference in days #}
-            {% set bill_ts = as_timestamp(next_bill_date) %}
-            {% set now_ts = as_timestamp(now().replace(hour=0, minute=0, second=0, microsecond=0)) %}
-            {% set days_diff = ((bill_ts - now_ts) / 86400) | int %}
+            {# Get today at midnight for date-only comparison #}
+            {% set today_midnight = now().replace(hour=0, minute=0, second=0, microsecond=0) %}
+            {# Calculate the timedelta and extract days #}
+            {% set time_delta = next_bill_date - today_midnight %}
+            {% set days_diff = time_delta.days %}
             {% if days_diff < 0 %}
               {% set value = (days_diff | abs | string) + ' days overdue' %}
             {% elif days_diff == 0 %}
