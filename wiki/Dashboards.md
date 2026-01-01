@@ -179,15 +179,21 @@ content: >+
   {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
   {% set next_bill_date_str = states(next_bill_date_entity) %}
   {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
-    {% set next_bill_date = strptime(next_bill_date_str, '%Y-%m-%d') %}
-    {% set today = now().date() %}
-    {% set days_diff = (next_bill_date.date() - today).days %}
-    {% if days_diff < 0 %}
-      {% set days_text = (days_diff | abs | string) + ' days overdue' %}
-    {% else %}
-      {% set days_text = days_diff | string + ' days' %}
+    {# Try to parse the date - handle both 'YYYY-MM-DD' and 'DD Mon YYYY' formats #}
+    {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y', None) %}
+    {% if next_bill_date is none %}
+      {% set next_bill_date = strptime(next_bill_date_str, '%Y-%m-%d', None) %}
     {% endif %}
-    {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;Days Until Next Bill</small></td><td align="right" style="padding: 4px 8px;"><small>' + days_text + '</small></td></tr>' %}
+    {% if next_bill_date is not none %}
+      {% set today = now().date() %}
+      {% set days_diff = (next_bill_date.date() - today).days %}
+      {% if days_diff < 0 %}
+        {% set days_text = (days_diff | abs | string) + ' days overdue' %}
+      {% else %}
+        {% set days_text = days_diff | string + ' days' %}
+      {% endif %}
+      {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;Days Until Next Bill</small></td><td align="right" style="padding: 4px 8px;"><small>' + days_text + '</small></td></tr>' %}
+    {% endif %}
   {% endif %}
 
 
