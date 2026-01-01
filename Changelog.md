@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed AttributeError in refresh_data service when accessing cache metadata
+- Fixed incorrect method name in force_sync (should call async_sync_usage not sync_usage_data)
 - Service now correctly accesses cache.data["metadata"] instead of cache.metadata
 
 ## [ 1.6.9 ]

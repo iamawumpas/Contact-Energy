@@ -185,7 +185,7 @@ class UsageCoordinator:
         
         try:
             # Perform sync (will bypass time checks due to None last_synced)
-            await self.sync_usage_data()
+            await self.async_sync_usage()
         finally:
             # Restore original timestamp if sync failed
             # (successful sync will set a new timestamp anyway)
