@@ -101,6 +101,7 @@ class UsageCoordinator:
         self.api = api
         self.contract_id = contract_id
         self.cache = UsageCache(contract_id)
+        self._force_sync_mode = False  # Flag to bypass time threshold checks
 
         _LOGGER.debug(
             "UsageCoordinator initialized for contract %s",
@@ -173,24 +174,20 @@ class UsageCoordinator:
         """Force a usage data sync, bypassing time thresholds.
 
         This method is called by the refresh_data service to force an immediate
-        sync regardless of when the last sync occurred. It temporarily disables
-        the time threshold checks by clearing the last sync timestamp.
+        sync regardless of when the last sync occurred. It sets a flag to bypass
+        time threshold checks in _should_sync().
         """
         _LOGGER.info("Force sync requested for contract %s", self.contract_id)
         
-        # Temporarily clear last sync time to bypass threshold checks
-        await self.cache.load()
-        original_last_synced = self.cache.data.get("metadata", {}).get("last_synced")
-        self.cache.data["metadata"]["last_synced"] = None
+        # Set flag to bypass time threshold checks
+        self._force_sync_mode = True
         
         try:
-            # Perform sync (will bypass time checks due to None last_synced)
+            # Perform sync (will bypass time checks due to force flag)
             await self.async_sync_usage()
         finally:
-            # Restore original timestamp if sync failed
-            # (successful sync will set a new timestamp anyway)
-            if self.cache.data.get("metadata", {}).get("last_synced") is None:
-                self.cache.data["metadata"]["last_synced"] = original_last_synced
+            # Reset flag
+            self._force_sync_mode = False
 
     async def _sync_hourly(self) -> None:
         """Sync hourly usage data with incremental download logic.
@@ -519,10 +516,19 @@ class UsageCoordinator:
             bool: True if sync is needed, False if cache is still fresh
 
         Logic:
+            - If force_sync_mode is True: return True (forced sync)
             - If never synced before: return True (first sync)
             - If last_synced + sync_interval < now: return True (time for refresh)
             - Otherwise: return False (cache is still fresh)
         """
+        # Check if force sync mode is enabled
+        if self._force_sync_mode:
+            _LOGGER.debug(
+                "Force sync mode enabled for %s (contract %s)",
+                interval, self.contract_id
+            )
+            return True
+
         config = USAGE_CONFIG[interval]
         sync_interval = timedelta(hours=config["sync_interval_hours"])
 
