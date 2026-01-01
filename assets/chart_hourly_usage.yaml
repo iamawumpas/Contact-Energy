@@ -13,35 +13,71 @@ apex_config:
     labels:
       format: ddd
 graph_span: 10d
-span:
-  entity_index: 0
 series:
-  - entity: sensor.contact_energy_usage_{{ address_icp }}
+  - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     name: Free
     color: '#008FFB'
     type: column
     data_generator: |
-      return Object.entries(entity.attributes.hourly_free_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
-  - entity: sensor.contact_energy_usage_{{ address_icp }}
+      // Get all data from sensor attribute
+      const allData = entity.attributes.hourly_free_data || {};
+      
+      // Generate all hourly slots for last 10 days
+      const now = new Date();
+      const tenDaysAgo = new Date(now);
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      
+      const result = [];
+      const current = new Date(tenDaysAgo);
+      current.setHours(0, 0, 0, 0);
+      
+      // Create entry for each hour in the last 10 days
+      while (current <= now) {
+        const isoString = current.toISOString();
+        // Find matching data (handles timezone offset variations)
+        let value = 0.0;
+        for (const [key, val] of Object.entries(allData)) {
+          if (key.substring(0, 13) === isoString.substring(0, 13)) {
+            value = val;
+            break;
+          }
+        }
+        result.push([current.getTime(), value]);
+        current.setHours(current.getHours() + 1);
+      }
+      return result;
+  - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     name: Paid
     color: '#FEB019'
     type: column
     data_generator: |
-      return Object.entries(entity.attributes.hourly_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
+      // Get all data from sensor attribute
+      const allData = entity.attributes.hourly_data || {};
+      
+      // Generate all hourly slots for last 10 days
+      const now = new Date();
+      const tenDaysAgo = new Date(now);
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      
+      const result = [];
+      const current = new Date(tenDaysAgo);
+      current.setHours(0, 0, 0, 0);
+      
+      // Create entry for each hour in the last 10 days
+      while (current <= now) {
+        const isoString = current.toISOString();
+        // Find matching data (handles timezone offset variations)
+        let value = 0.0;
+        for (const [key, val] of Object.entries(allData)) {
+          if (key.substring(0, 13) === isoString.substring(0, 13)) {
+            value = val;
+            break;
+          }
+        }
+        result.push([current.getTime(), value]);
+        current.setHours(current.getHours() + 1);
+      }
+      return result;
 card_mod:
   style:
     apexcharts$: |

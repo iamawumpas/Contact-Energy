@@ -490,34 +490,49 @@ class ContactEnergyApi:
                 # Use 'or 0.0' to handle None values (API returns None for some fields)
                 total_kwh = float(record.get("value") or 0.0)
 
-                # Extract free energy components
-                # Off-peak value: Free hours usage (e.g., night rate, contact-free hours)
-                # API field: 'offpeakValue'
-                # Note: This is 0.0 on days/times when free hours are not offered
-                offpeak_kwh = float(record.get("offpeakValue") or 0.0)
-
-                # Uncharged value: Promotional credits or unmetered usage
-                # API field: 'unchargedValue'
-                uncharged_kwh = float(record.get("unchargedValue") or 0.0)
-
-                # Calculate total free energy (sum of all free components)
-                # Free = 0.0 when no free hours are offered
-                # Free > 0.0 when free hours are active (Contact Energy promotions)
-                free_kwh = offpeak_kwh + uncharged_kwh
-
-                # Cap free usage at total to prevent data inconsistencies
-                # In rare cases, API reports free > total due to rounding or data quality
-                # Since this is estimated usage data (not billing), cap free at total
-                if free_kwh > total_kwh:
+                # Hourly data: Free and Paid are mutually exclusive
+                # (Either the hour was during free hours OR paid hours, but not both)
+                if interval == "hourly":
+                    # For hourly: use API paid/free directly
+                    paid_kwh = float(record.get("paid") or 0.0)
+                    free_kwh = float(record.get("free") or 0.0)
                     _LOGGER.debug(
-                        "Capping free usage at total for contract %s at %s: "
-                        "free=%.3f kWh capped to total=%.3f kWh",
-                        contract_id, timestamp, free_kwh, total_kwh
+                        "Hourly record: timestamp=%s, total=%.3f, paid=%.3f, free=%.3f (mutually exclusive)",
+                        timestamp, total_kwh, paid_kwh, free_kwh
                     )
-                    free_kwh = total_kwh
+                
+                # Daily/Monthly data: Free and Paid are complementary
+                # (paid + free = total, both can exist in same record)
+                else:
+                    # Extract free energy components
+                    # Off-peak value: Free hours usage (e.g., night rate, contact-free hours)
+                    # API field: 'offpeakValue'
+                    offpeak_kwh = float(record.get("offpeakValue") or 0.0)
 
-                # Calculate paid energy (what the customer is charged for)
-                # Business Logic:
+                    # Uncharged value: Promotional credits or unmetered usage
+                    # API field: 'unchargedValue'
+                    uncharged_kwh = float(record.get("unchargedValue") or 0.0)
+
+                    # Calculate total free energy (sum of all free components)
+                    free_kwh = offpeak_kwh + uncharged_kwh
+
+                    # Cap free usage at total to prevent data inconsistencies
+                    if free_kwh > total_kwh:
+                        _LOGGER.debug(
+                            "Capping free usage at total for contract %s at %s: "
+                            "free=%.3f kWh capped to total=%.3f kWh",
+                            contract_id, timestamp, free_kwh, total_kwh
+                        )
+                        free_kwh = total_kwh
+
+                    # Calculate paid energy (what the customer is charged for)
+                    # paid = total - free (complementary components)
+                    paid_kwh = total_kwh - free_kwh
+
+                # Extract cost in NZD
+                # API field: 'dollarValue'
+                # Note: API returns None for historical data where cost is not available
+                cost_nzd = float(record.get("dollarValue") or 0.0)
                 # - When free hours NOT offered: free=0.0, paid=total
                 # - When free hours ARE offered: free>0, paid=total-free
                 # - When ALL usage is during free hours: free=total, paid=0.0
@@ -551,8 +566,8 @@ class ContactEnergyApi:
 
         # Log parsing results
         _LOGGER.debug(
-            "Successfully parsed %d/%d usage records for contract %s",
-            len(parsed_records), len(usage_array), contract_id
+            "Successfully parsed %d/%d usage records for contract %s (%s interval)",
+            len(parsed_records), len(usage_array), contract_id, interval
         )
 
         # Warn if many records failed to parse (>10% failure rate)
@@ -560,8 +575,8 @@ class ContactEnergyApi:
             failure_rate = (len(usage_array) - len(parsed_records)) / len(usage_array)
             if failure_rate > 0.1:
                 _LOGGER.warning(
-                    "High parse failure rate for contract %s: %.1f%% (%d/%d records failed)",
-                    contract_id, failure_rate * 100,
+                    "High parse failure rate for contract %s (%s interval): %.1f%% (%d/%d records failed)",
+                    contract_id, interval, failure_rate * 100,
                     len(usage_array) - len(parsed_records), len(usage_array)
                 )
 

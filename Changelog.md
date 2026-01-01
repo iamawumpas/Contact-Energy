@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.1 ]
+
+### Fixed
+- Fixed hourly usage data parsing to correctly handle mutually exclusive paid/free data
+- Hourly intervals now use API paid/free values directly instead of calculating from components
+- Daily/monthly intervals continue to calculate paid as total - free (complementary breakdown)
+- Added timezone-aware datetime matching in ApexCharts data_generator for reliable data lookup
+- Chart now properly fills missing dates with 0.0 values for continuous timeline display
+
 ## [ 1.6.0 ]
 
 ### Added
