@@ -99,8 +99,7 @@ content: >+
       ('Days Until Overdue', 'sensor.' + address_icp + '_days_until_overdue')
     ]),
     ('Next Bill', [
-      ('Next Bill Date', 'sensor.' + address_icp + '_next_bill_date'),
-      ('Days Until Next Bill', '__CALCULATED__')
+      ('Next Bill Date', 'sensor.' + address_icp + '_next_bill_date')
     ]),
     ('Account Settings', [
       ('Correspondence Preference', 'sensor.' + address_icp + '_correspondence_preference'),
@@ -139,32 +138,7 @@ content: >+
     
     {# Iterate over the entities within the current group #}
     {% for name, entity_id in entities %}
-      {# Special handling for calculated Days Until Next Bill #}
-      {% if entity_id == '__CALCULATED__' and name == 'Days Until Next Bill' %}
-        {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
-        {% set next_bill_date_str = states(next_bill_date_entity) %}
-        {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
-          {# Parse date: "20 Jan 2026" format #}
-          {% set parsed_date = strptime(next_bill_date_str, '%d %b %Y') %}
-          {# Add time to make it end of day (23:59:59) to ensure we don't lose a day #}
-          {% set next_bill_eod = parsed_date.replace(hour=23, minute=59, second=59) %}
-          {# Calculate days difference #}
-          {% set bill_timestamp = as_timestamp(next_bill_eod) %}
-          {% set now_timestamp = as_timestamp(now()) %}
-          {% set days_until = ((bill_timestamp - now_timestamp) / 86400) | int %}
-          {% if days_until < 0 %}
-            {% set value = (days_until | abs | string) + ' days overdue' %}
-          {% elif days_until == 0 %}
-            {% set value = 'Today' %}
-          {% else %}
-            {% set value = days_until | string + ' days' %}
-          {% endif %}
-        {% else %}
-          {% set value = '—' %}
-        {% endif %}
-      {% else %}
-        {% set value = states(entity_id) %}
-      {% endif %}
+      {% set value = states(entity_id) %}
       
       {% set formatted_value = value %}
 
