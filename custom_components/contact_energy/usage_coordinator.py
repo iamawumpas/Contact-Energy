@@ -445,7 +445,7 @@ class UsageCoordinator:
                     break
 
                 backoff = attempt  # simple linear backoff keeps it fast but polite
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "Retrying %s usage for contract %s after error (%s). attempt=%d/%d, backoff=%ds",
                     interval, self.contract_id, str(err), attempt, max_attempts, backoff
                 )
@@ -455,7 +455,7 @@ class UsageCoordinator:
         if interval == "hourly" and allow_split:
             span_days = (to_date - from_date).days + 1
             if span_days > 1:
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "Splitting hourly sync for contract %s into smaller windows after repeated errors",
                     self.contract_id
                 )

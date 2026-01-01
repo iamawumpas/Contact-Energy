@@ -355,8 +355,9 @@ class ContactEnergyApi:
                     # Handle other non-success status codes
                     if resp.status != 200:
                         error_text = await resp.text()
-                        _LOGGER.error(
-                            "Usage API returned unexpected status %d for contract %s. Response: %s",
+                        # Log as debug since retries/chunking handle transient errors automatically
+                        _LOGGER.debug(
+                            "Usage API returned status %d for contract %s (will retry). Response: %s",
                             resp.status, contract_id, error_text[:200]
                         )
                         raise ContactEnergyConnectionError(
