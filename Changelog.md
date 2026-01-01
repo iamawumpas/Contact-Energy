@@ -5,7 +5,7 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.6.0 ] - Phase 3: ApexCharts Integration
+## [ 1.6.0 ]
 
 ### Added
 - **ApexCharts Hourly Usage Chart** - New sensor attributes for ApexCharts visualization
