@@ -174,6 +174,13 @@ class ContactEnergyApi:
                     if resp.status == 403:
                         raise ContactEnergyAuthError("Access denied. Please contact Contact Energy support.")
                     if resp.status != 200:
+                        # Try to get error details from response body
+                        try:
+                            error_data = await resp.json()
+                            _LOGGER.debug(f"API error response body: {error_data}")
+                        except Exception:
+                            error_text = await resp.text()
+                            _LOGGER.debug(f"API error response text: {error_text}")
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please check your internet connection and try again."
                         )
