@@ -180,8 +180,8 @@ class UsageCoordinator:
         
         # Temporarily clear last sync time to bypass threshold checks
         await self.cache.load()
-        original_last_synced = self.cache.metadata.get("last_synced")
-        self.cache.metadata["last_synced"] = None
+        original_last_synced = self.cache.data.get("metadata", {}).get("last_synced")
+        self.cache.data["metadata"]["last_synced"] = None
         
         try:
             # Perform sync (will bypass time checks due to None last_synced)
@@ -189,8 +189,8 @@ class UsageCoordinator:
         finally:
             # Restore original timestamp if sync failed
             # (successful sync will set a new timestamp anyway)
-            if self.cache.metadata.get("last_synced") is None:
-                self.cache.metadata["last_synced"] = original_last_synced
+            if self.cache.data.get("metadata", {}).get("last_synced") is None:
+                self.cache.data["metadata"]["last_synced"] = original_last_synced
 
     async def _sync_hourly(self) -> None:
         """Sync hourly usage data with incremental download logic.

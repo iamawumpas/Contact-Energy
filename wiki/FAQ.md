@@ -43,9 +43,32 @@ This is intentional to minimize API load and respect Contact Energy's systems. T
 
 ### Can I force a manual update?
 
-Not currently. The integration updates automatically on its schedule. You can trigger an update by:
-- Restarting Home Assistant
-- Reloading the integration (Settings → Integrations → Contact Energy → three dots → Reload)
+Yes! Use the **`contact_energy.refresh_data`** service to manually trigger an immediate data refresh:
+
+**Method 1: Developer Tools**
+1. Go to Developer Tools → Actions
+2. Select action: `contact_energy.refresh_data`
+3. Click "Perform Action"
+
+**Method 2: Automation/Script**
+```yaml
+service: contact_energy.refresh_data
+```
+
+**Method 3: Button Card**
+```yaml
+type: button
+name: Refresh Contact Energy
+tap_action:
+  action: call-service
+  service: contact_energy.refresh_data
+icon: mdi:refresh
+```
+
+This service bypasses the normal 24-hour sync interval and forces immediate download of both account data and usage data.
+
+You can also reload the integration:
+- Settings → Integrations → Contact Energy → three dots → Reload
 
 ### Why is there a delay in usage data?
 

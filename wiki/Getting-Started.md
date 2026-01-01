@@ -94,7 +94,11 @@ This guide will walk you through installing and configuring the Contact Energy i
 
 - Sensors will show "Unknown" or "Unavailable" initially
 - The first update occurs at the next scheduled time (01:00 AM)
-- Wait for the automatic update, or restart Home Assistant to trigger it sooner
+- **To force an immediate update**, use the `contact_energy.refresh_data` service:
+  1. Go to **Developer Tools** → **Actions**
+  2. Select action: `contact_energy.refresh_data`
+  3. Click **Perform Action**
+- Alternatively, restart Home Assistant or reload the integration
 
 ## Verifying Installation
 
@@ -153,9 +157,16 @@ This guide will walk you through installing and configuring the Contact Energy i
 
 **Solution**:
 - This is normal for the first few hours after setup
+- **Force an immediate update** using the `contact_energy.refresh_data` service (see below)
 - Wait for the next scheduled update (01:00 AM)
 - Check **Settings** → **System** → **Logs** for any error messages
-- Restart Home Assistant to trigger an immediate update
+- Restart Home Assistant or reload the integration
+
+**To force an immediate data refresh:**
+1. Go to **Developer Tools** → **Actions**
+2. Select action: `contact_energy.refresh_data`
+3. Click **Perform Action**
+4. Wait 5-10 seconds for data to download
 
 ## Next Steps
 
