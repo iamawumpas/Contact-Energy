@@ -144,18 +144,17 @@ content: >+
         {% set next_bill_date_entity = 'sensor.' + address_icp + '_next_bill_date' %}
         {% set next_bill_date_str = states(next_bill_date_entity) %}
         {% if next_bill_date_str not in ['unknown', 'unavailable', 'none'] and next_bill_date_str %}
-          {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y', None) %}
-          {% if next_bill_date is none %}
-            {% set next_bill_date = strptime(next_bill_date_str, '%Y-%m-%d', None) %}
-          {% endif %}
-          {% if next_bill_date is not none %}
-            {# Calculate days difference using timestamps #}
-            {% set next_bill_timestamp = as_timestamp(next_bill_date) %}
-            {% set today_timestamp = as_timestamp(now()) %}
-            {% set seconds_diff = next_bill_timestamp - today_timestamp %}
-            {% set days_diff = (seconds_diff / 86400) | int %}
+          {# Parse the date string - Contact Energy API returns format like "20 Jan 2026" #}
+          {% set next_bill_date = strptime(next_bill_date_str, '%d %b %Y') %}
+          {% if next_bill_date %}
+            {# Calculate difference: convert both to timestamps, get difference in days #}
+            {% set bill_ts = as_timestamp(next_bill_date) %}
+            {% set now_ts = as_timestamp(now().replace(hour=0, minute=0, second=0, microsecond=0)) %}
+            {% set days_diff = ((bill_ts - now_ts) / 86400) | int %}
             {% if days_diff < 0 %}
               {% set value = (days_diff | abs | string) + ' days overdue' %}
+            {% elif days_diff == 0 %}
+              {% set value = 'Today' %}
             {% else %}
               {% set value = days_diff | string + ' days' %}
             {% endif %}
