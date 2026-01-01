@@ -169,6 +169,29 @@ class UsageCoordinator:
                 self.contract_id, overall_elapsed, str(e), exc_info=True
             )
 
+    async def force_sync(self) -> None:
+        """Force a usage data sync, bypassing time thresholds.
+
+        This method is called by the refresh_data service to force an immediate
+        sync regardless of when the last sync occurred. It temporarily disables
+        the time threshold checks by clearing the last sync timestamp.
+        """
+        _LOGGER.info("Force sync requested for contract %s", self.contract_id)
+        
+        # Temporarily clear last sync time to bypass threshold checks
+        await self.cache.load()
+        original_last_synced = self.cache.metadata.get("last_synced")
+        self.cache.metadata["last_synced"] = None
+        
+        try:
+            # Perform sync (will bypass time checks due to None last_synced)
+            await self.sync_usage_data()
+        finally:
+            # Restore original timestamp if sync failed
+            # (successful sync will set a new timestamp anyway)
+            if self.cache.metadata.get("last_synced") is None:
+                self.cache.metadata["last_synced"] = original_last_synced
+
     async def _sync_hourly(self) -> None:
         """Sync hourly usage data with incremental download logic.
 

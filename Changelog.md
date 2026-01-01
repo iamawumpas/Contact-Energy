@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.9 ]
+
+### Added
+- New `contact_energy.refresh_data` service to manually trigger data downloads
+- Service forces immediate refresh of both account data and usage data, bypassing the normal 24-hour sync interval
+- Useful for on-demand updates without waiting for scheduled syncs
+- Can be called from Developer Tools, automations, scripts, or button cards
+
 ## [ 1.6.8 ]
 
 ### Fixed

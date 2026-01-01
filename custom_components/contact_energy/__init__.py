@@ -9,7 +9,9 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import config_validation as cv
+import voluptuous as vol
 
 from .const import DOMAIN
 from .contact_api import ContactEnergyApi
@@ -20,6 +22,35 @@ _LOGGER = logging.getLogger(__name__)
 # List of platforms (sensors, binary_sensors, etc.) that this integration supports.
 # Add sensor platform for account information sensors
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for Contact Energy integration."""
+    
+    async def handle_refresh_data(call: ServiceCall) -> None:
+        """Handle the refresh_data service call."""
+        _LOGGER.info("Manual data refresh requested via service call")
+        
+        # Refresh all configured entries
+        for entry_id, entry_data in hass.data[DOMAIN].items():
+            coordinator = entry_data.get("coordinator")
+            if coordinator:
+                _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
+                # Force account data refresh
+                await coordinator.async_request_refresh()
+                # Force usage sync (bypass time thresholds)
+                if hasattr(coordinator, 'usage_coordinator'):
+                    await coordinator.usage_coordinator.force_sync()
+    
+    # Register the service only once
+    if not hass.services.has_service(DOMAIN, "refresh_data"):
+        hass.services.async_register(
+            DOMAIN,
+            "refresh_data",
+            handle_refresh_data,
+            schema=vol.Schema({}),
+        )
+        _LOGGER.info("Registered refresh_data service")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -94,6 +125,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Load all platforms defined in PLATFORMS for this config entry
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # Register services
+    await async_setup_services(hass)
+    
     return True
 
 

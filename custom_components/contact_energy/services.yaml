@@ -1,0 +1,6 @@
+# Service definitions for Contact Energy integration
+
+refresh_data:
+  name: Refresh data
+  description: Force an immediate refresh of account and usage data, bypassing the normal 24-hour sync interval.
+  fields: {}

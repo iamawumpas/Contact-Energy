@@ -38,5 +38,11 @@
         "description": "Configure Contact Energy options"
       }
     }
+  },
+  "services": {
+    "refresh_data": {
+      "name": "Refresh data",
+      "description": "Force an immediate refresh of account and usage data, bypassing the normal 24-hour sync interval."
+    }
   }
 }
