@@ -58,8 +58,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
 
-                                # Ensure the coordinator does not start a background usage sync; we'll run one explicitly
-                                coordinator._skip_next_usage_sync = True
+                # Ensure the coordinator does not start a background usage sync; we'll run one explicitly
+                coordinator._skip_next_usage_sync = True
 
                 # Always re-authenticate with username/password before a manual refresh
                 # to avoid relying on short-lived/expired tokens.
