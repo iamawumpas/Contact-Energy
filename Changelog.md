@@ -12,6 +12,11 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.23 ]
+
+### Fixed
+- Manual refresh now quietly skips when a sync is active or just finished, logging an info message instead of raising an error to avoid user-facing UI errors.
+
 ## [ 1.6.22 ]
 
 ### Fixed

@@ -49,8 +49,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         "Manual refresh cannot run right now because a sync is active "
                         "or just finished. Please try again in 60s."
                     )
-                    _LOGGER.warning("%s (entry=%s)", message, entry_id)
-                    raise HomeAssistantError(message)
+                    # Surface a gentle notice without raising to avoid UI errors
+                    _LOGGER.info("%s (entry=%s)", message, entry_id)
+                    return
 
                 # Mark sync as in-progress and set cool-down window
                 entry_data["sync_in_progress"] = True
