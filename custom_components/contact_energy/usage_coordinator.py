@@ -42,7 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 # These windows define how much historical data to keep in cache
 USAGE_CONFIG = {
     "hourly": {
-        "window_days": 9,  # Keep last 9 days of hourly data
+        "window_days": 14,  # Keep last 14 days of hourly data
         "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_days": 14,  # API limit (Contact Energy provides ~2 weeks)
     },
@@ -227,12 +227,54 @@ class UsageCoordinator:
                 self.contract_id, from_date, to_date, (to_date - from_date).days + 1
             )
 
-            # Download hourly data with retry and optional range splitting to dodge transient 502s
-            hourly_data = await self._fetch_usage_with_resilience(
-                interval="hourly",
-                from_date=from_date,
-                to_date=to_date,
-            )
+            # Download hourly data in 2-day chunks to avoid API 502s
+            # Split immediately rather than waiting for failures
+            span_days = (to_date - from_date).days + 1
+            if span_days > 2:
+                _LOGGER.debug(
+                    "Splitting hourly sync for contract %s into 2-day chunks",
+                    self.contract_id
+                )
+                chunk_size = 2
+                hourly_data: list[dict] = []
+                cursor = from_date
+                while cursor <= to_date:
+                    chunk_end = min(cursor + timedelta(days=chunk_size - 1), to_date)
+                    _LOGGER.debug(
+                        "Fetching hourly chunk for contract %s: %s to %s",
+                        self.contract_id, cursor, chunk_end
+                    )
+                    try:
+                        chunk_data = await self._fetch_usage_with_resilience(
+                            interval="hourly",
+                            from_date=cursor,
+                            to_date=chunk_end,
+                            allow_split=False,
+                        )
+                        if chunk_data:
+                            hourly_data.extend(chunk_data)
+                            _LOGGER.debug(
+                                "Retrieved %d hourly records for chunk %s to %s",
+                                len(chunk_data), cursor, chunk_end
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "No hourly data returned for chunk %s to %s, continuing",
+                                cursor, chunk_end
+                            )
+                    except Exception as chunk_err:
+                        _LOGGER.warning(
+                            "Failed to fetch hourly chunk %s to %s: %s. Skipping chunk.",
+                            cursor, chunk_end, str(chunk_err)
+                        )
+                    cursor = chunk_end + timedelta(days=1)
+            else:
+                # Small range, fetch directly
+                hourly_data = await self._fetch_usage_with_resilience(
+                    interval="hourly",
+                    from_date=from_date,
+                    to_date=to_date,
+                )
 
             # Update cache with new data
             added_count = self.cache.update_hourly(hourly_data)
@@ -471,15 +513,15 @@ class UsageCoordinator:
                 )
                 await asyncio.sleep(backoff)
 
-        # If hourly still fails and splitting is allowed, break the window into 5-day slices
+        # If hourly still fails and splitting is allowed, break the window into 2-day slices
         if interval == "hourly" and allow_split:
             span_days = (to_date - from_date).days + 1
             if span_days > 1:
                 _LOGGER.debug(
-                    "Splitting hourly sync for contract %s into smaller windows after repeated errors",
+                    "Splitting hourly sync for contract %s into 2-day windows after repeated errors",
                     self.contract_id
                 )
-                chunk_size = 5
+                chunk_size = 2
                 merged: list[dict] = []
                 cursor = from_date
                 while cursor <= to_date:
@@ -488,15 +530,26 @@ class UsageCoordinator:
                         "Hourly chunk fetch for contract %s: %s to %s",
                         self.contract_id, cursor, chunk_end
                     )
-                    merged.extend(
-                        await self._fetch_usage_with_resilience(
+                    try:
+                        chunk_data = await self._fetch_usage_with_resilience(
                             interval=interval,
                             from_date=cursor,
                             to_date=chunk_end,
                             allow_split=False,
                             max_attempts=max_attempts,
                         )
-                    )
+                        if chunk_data:
+                            merged.extend(chunk_data)
+                        else:
+                            _LOGGER.debug(
+                                "No data returned for hourly chunk %s to %s, continuing",
+                                cursor, chunk_end
+                            )
+                    except Exception as chunk_err:
+                        _LOGGER.warning(
+                            "Failed to fetch hourly chunk %s to %s: %s. Skipping chunk.",
+                            cursor, chunk_end, str(chunk_err)
+                        )
                     cursor = chunk_end + timedelta(days=1)
                 return merged
 

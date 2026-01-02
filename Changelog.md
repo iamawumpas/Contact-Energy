@@ -12,6 +12,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.24 ]
+
+### Changed
+- Hourly usage data window increased from 9 to 14 days for better historical coverage.
+- Hourly data now downloads in 2-day chunks proactively to avoid API 502 errors on large date ranges.
+- Empty responses from API chunks are handled gracefully without failing the entire sync.
+
 ## [ 1.6.23 ]
 
 ### Fixed
