@@ -162,34 +162,58 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return sensor attributes containing all usage data.
+        """Return sensor attributes containing usage data optimized for Home Assistant.
 
         Attributes include:
-            - hourly_usage: List of hourly records (last 9 days)
-            - daily_usage: List of daily records (last 35 days)
-            - monthly_usage: List of monthly records (last 18 months)
-            - hourly_count: Number of hourly records
-            - daily_count: Number of daily records
-            - monthly_count: Number of monthly records
-            - last_updated: Cache last update timestamp
+            - summary: Daily and monthly totals with cost breakdown
+            - hourly_usage: Dict of paid usage (peak + off-peak) keyed by ISO datetime
+            - hourly_free_usage: Dict of free usage keyed by ISO datetime
+            - hourly_peak_usage: Dict of peak usage keyed by ISO datetime
+            - hourly_offpeak_usage: Dict of off-peak usage keyed by ISO datetime
+            - daily_usage: Dict of paid usage keyed by date string
+            - daily_free_usage: Dict of free usage keyed by date string
+            - daily_peak_usage: Dict of peak usage keyed by date string
+            - daily_offpeak_usage: Dict of off-peak usage keyed by date string
+            - monthly_usage: Dict of paid usage keyed by month string
+            - monthly_free_usage: Dict of free usage keyed by month string
+            - hourly_count/daily_count/monthly_count: Total records in cache
+            - last_updated: Cache last sync timestamp
             - version: Cache format version
 
         Returns:
-            Dictionary of sensor attributes
+            Dictionary of sensor attributes (optimized for Home Assistant database)
         """
+        # Initialize attributes with empty data structures and summaries
         attributes = {
             "last_updated": None,
-            "version": "1.5.0",
+            "version": "1.6.14",
+            "summary": {
+                "daily_total_kwh": 0.0,
+                "daily_peak_kwh": 0.0,
+                "daily_offpeak_kwh": 0.0,
+                "daily_free_kwh": 0.0,
+                "daily_cost_nzd": 0.0,
+                "daily_count": 0,
+                "monthly_total_kwh": 0.0,
+                "monthly_cost_nzd": 0.0,
+                "monthly_count": 0,
+            },
             "hourly_count": 0,
             "daily_count": 0,
             "monthly_count": 0,
-            "hourly_usage": [],
-            "hourly_data": {},  # Keyed by datetime for ApexCharts (paid: peak + off-peak)
-            "hourly_free_data": {},  # Keyed by datetime for ApexCharts (free/unpaid)
-            "hourly_offpeak_data": {},  # Keyed by datetime for ApexCharts (off-peak billed)
-            "hourly_peak_data": {},  # Keyed by datetime for ApexCharts (peak billed)
-            "daily_usage": [],
-            "monthly_usage": [],
+            # Hourly usage dicts keyed by ISO datetime for ApexCharts
+            "hourly_usage": {},  # paid usage (peak + off-peak)
+            "hourly_free_usage": {},  # free/unpaid usage
+            "hourly_peak_usage": {},  # peak rate usage
+            "hourly_offpeak_usage": {},  # off-peak rate usage
+            # Daily usage dicts keyed by date string for ApexCharts
+            "daily_usage": {},  # paid usage (peak + off-peak)
+            "daily_free_usage": {},  # free/unpaid usage
+            "daily_peak_usage": {},  # peak rate usage
+            "daily_offpeak_usage": {},  # off-peak rate usage
+            # Monthly usage dicts keyed by month string for ApexCharts
+            "monthly_usage": {},  # paid usage (peak + off-peak)
+            "monthly_free_usage": {},  # free/unpaid usage
         }
 
         # Check if cache has data loaded
@@ -202,78 +226,96 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             metadata = self._cache.data.get("metadata", {})
             attributes["last_updated"] = metadata.get("last_synced")
 
-            # Extract hourly usage data
-            # Convert from dict keyed by timestamp to list sorted by time
+            # Extract hourly usage data - populate ApexCharts dicts keyed by ISO datetime
+            # This allows ApexCharts cards to directly consume the data for graphing
             hourly_dict = self._cache.data.get("hourly", {})
-            hourly_list = []
-            hourly_data_dict = {}  # For ApexCharts (paid usage: peak + off-peak)
-            hourly_free_data_dict = {}  # For ApexCharts (free/unpaid usage)
-            hourly_offpeak_data_dict = {}  # For ApexCharts (off-peak billed usage)
-            hourly_peak_data_dict = {}  # For ApexCharts (peak billed usage)
+            hourly_usage = {}  # paid usage (peak + off-peak)
+            hourly_free_usage = {}  # free/unpaid usage
+            hourly_peak_usage = {}  # peak rate usage
+            hourly_offpeak_usage = {}  # off-peak rate usage
             
             for timestamp, record in sorted(hourly_dict.items()):
-                hourly_list.append({
-                    "time": record.get("timestamp", timestamp),
-                    "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
-                    "peak": record.get("peak", 0.0),
-                    "offpeak": record.get("offpeak", 0.0),
-                    "free": record.get("free", 0.0),
-                    "cost": record.get("cost", 0.0),
-                })
-                # Populate ApexCharts data dicts keyed by ISO datetime string
-                hourly_data_dict[record.get("timestamp", timestamp)] = record.get("paid", 0.0)
-                hourly_free_data_dict[record.get("timestamp", timestamp)] = record.get("free", 0.0)
-                hourly_offpeak_data_dict[record.get("timestamp", timestamp)] = record.get("offpeak", 0.0)
-                hourly_peak_data_dict[record.get("timestamp", timestamp)] = record.get("peak", 0.0)
+                # Use ISO datetime as key for ApexCharts compatibility
+                ts_key = record.get("timestamp", timestamp)
+                hourly_usage[ts_key] = record.get("paid", 0.0)  # paid = peak + off-peak
+                hourly_free_usage[ts_key] = record.get("free", 0.0)  # free/unpaid
+                hourly_peak_usage[ts_key] = record.get("peak", 0.0)  # peak rate
+                hourly_offpeak_usage[ts_key] = record.get("offpeak", 0.0)  # off-peak rate
                 
-            attributes["hourly_usage"] = hourly_list
-            attributes["hourly_data"] = hourly_data_dict
-            attributes["hourly_free_data"] = hourly_free_data_dict
-            attributes["hourly_offpeak_data"] = hourly_offpeak_data_dict
-            attributes["hourly_peak_data"] = hourly_peak_data_dict
-            attributes["hourly_count"] = len(hourly_list)
+            attributes["hourly_usage"] = hourly_usage
+            attributes["hourly_free_usage"] = hourly_free_usage
+            attributes["hourly_peak_usage"] = hourly_peak_usage
+            attributes["hourly_offpeak_usage"] = hourly_offpeak_usage
+            attributes["hourly_count"] = len(hourly_dict)
 
-            # Extract daily usage data
+            # Extract daily usage data - populate ApexCharts dicts keyed by date string
             daily_dict = self._cache.data.get("daily", {})
-            daily_list = []
+            daily_usage = {}  # paid usage (peak + off-peak)
+            daily_free_usage = {}  # free/unpaid usage
+            daily_peak_usage = {}  # peak rate usage
+            daily_offpeak_usage = {}  # off-peak rate usage
+            daily_total_kwh = 0.0
+            daily_peak_kwh = 0.0
+            daily_offpeak_kwh = 0.0
+            daily_free_kwh = 0.0
+            daily_total_cost = 0.0
+            
             for date_key, record in sorted(daily_dict.items()):
-                daily_list.append({
-                    "date": date_key,
-                    "time": record.get("timestamp", date_key),
-                    "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
-                    "peak": record.get("peak", 0.0),
-                    "offpeak": record.get("offpeak", 0.0),
-                    "free": record.get("free", 0.0),
-                    "cost": record.get("cost", 0.0),
-                })
-            attributes["daily_usage"] = daily_list
-            attributes["daily_count"] = len(daily_list)
+                daily_usage[date_key] = record.get("paid", 0.0)  # paid = peak + off-peak
+                daily_free_usage[date_key] = record.get("free", 0.0)  # free/unpaid
+                daily_peak_usage[date_key] = record.get("peak", 0.0)  # peak rate
+                daily_offpeak_usage[date_key] = record.get("offpeak", 0.0)  # off-peak rate
+                # Accumulate totals for summary statistics
+                daily_total_kwh += record.get("total", 0.0)
+                daily_peak_kwh += record.get("peak", 0.0)
+                daily_offpeak_kwh += record.get("offpeak", 0.0)
+                daily_free_kwh += record.get("free", 0.0)
+                daily_total_cost += record.get("cost", 0.0)
+                
+            attributes["daily_usage"] = daily_usage
+            attributes["daily_free_usage"] = daily_free_usage
+            attributes["daily_peak_usage"] = daily_peak_usage
+            attributes["daily_offpeak_usage"] = daily_offpeak_usage
+            attributes["daily_count"] = len(daily_dict)
 
-            # Extract monthly usage data
+            # Extract monthly usage data - populate ApexCharts dicts keyed by month string
             monthly_dict = self._cache.data.get("monthly", {})
-            monthly_list = []
+            monthly_usage = {}  # paid usage (peak + off-peak)
+            monthly_free_usage = {}  # free/unpaid usage
+            monthly_total_kwh = 0.0
+            monthly_total_cost = 0.0
+            
             for month_key, record in sorted(monthly_dict.items()):
-                monthly_list.append({
-                    "month": month_key,
-                    "time": record.get("timestamp", month_key),
-                    "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
-                    "peak": record.get("peak", 0.0),
-                    "offpeak": record.get("offpeak", 0.0),
-                    "free": record.get("free", 0.0),
-                    "cost": record.get("cost", 0.0),
-                })
-            attributes["monthly_usage"] = monthly_list
-            attributes["monthly_count"] = len(monthly_list)
+                monthly_usage[month_key] = record.get("paid", 0.0)  # paid = peak + off-peak
+                monthly_free_usage[month_key] = record.get("free", 0.0)  # free/unpaid
+                # Accumulate totals for summary statistics
+                monthly_total_kwh += record.get("total", 0.0)
+                monthly_total_cost += record.get("cost", 0.0)
+                
+            attributes["monthly_usage"] = monthly_usage
+            attributes["monthly_free_usage"] = monthly_free_usage
+            attributes["monthly_count"] = len(monthly_dict)
+
+            # Update summary statistics for quick reference without expanding attributes
+            attributes["summary"] = {
+                "daily_total_kwh": round(daily_total_kwh, 2),
+                "daily_peak_kwh": round(daily_peak_kwh, 2),
+                "daily_offpeak_kwh": round(daily_offpeak_kwh, 2),
+                "daily_free_kwh": round(daily_free_kwh, 2),
+                "daily_cost_nzd": round(daily_total_cost, 2),
+                "daily_count": len(daily_dict),
+                "monthly_total_kwh": round(monthly_total_kwh, 2),
+                "monthly_cost_nzd": round(monthly_total_cost, 2),
+                "monthly_count": len(monthly_dict),
+            }
 
             _LOGGER.debug(
-                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d",
+                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d (size=%d bytes)",
                 self._contract_id,
                 attributes["hourly_count"],
                 attributes["daily_count"],
-                attributes["monthly_count"]
+                attributes["monthly_count"],
+                len(str(attributes))
             )
 
         except Exception as e:

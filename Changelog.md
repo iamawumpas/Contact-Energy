@@ -5,6 +5,28 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.14 ]
+
+### Fixed
+- Fixed sensor attributes exceeding Home Assistant's 16384 byte database storage limit
+- Attributes now stay well under size limit while maintaining full graphing capability
+
+### Changed
+- Renamed attribute keys from `_data` to `_usage` for clarity (e.g., `hourly_usage` instead of `hourly_data`)
+- Attributes now use dictionaries keyed by timestamp/date/month instead of duplicate list arrays
+- Removed redundant detailed record lists (hourly_usage list, daily_usage list, monthly_usage list)
+- Added `summary` attribute with aggregated totals for quick reference:
+  - daily_total_kwh, daily_peak_kwh, daily_offpeak_kwh, daily_free_kwh, daily_cost_nzd
+  - monthly_total_kwh, monthly_cost_nzd
+- Each interval (hourly/daily/monthly) now has paid, free, peak, and offpeak usage dicts for ApexCharts
+
+### Technical Details
+- Attributes optimized for Home Assistant database (typically <6KB vs 16KB+ before)
+- ApexCharts cards can still consume hourly_usage, daily_usage, monthly_usage dicts directly
+- All usage breakdown data (peak/offpeak/paid/free) preserved in dictionaries
+- Summary statistics accessible at a glance without expanding attributes in UI
+- Added byte size logging for monitoring attribute payload growth
+
 ## [ 1.6.13 ]
 
 ### Fixed
