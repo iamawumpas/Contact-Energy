@@ -6,12 +6,14 @@ energy consumption data and account information.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .contact_api import ContactEnergyApi
@@ -36,14 +38,23 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             coordinator = entry_data.get("coordinator")
             api_client = entry_data.get("api_client")
             if coordinator:
-                # Check if a sync is already in progress
-                if hasattr(coordinator, 'usage_coordinator'):
-                    if coordinator.usage_coordinator._force_sync_mode:
-                        _LOGGER.warning(
-                            "Skipping refresh for entry %s: sync already in progress",
-                            entry_id
-                        )
-                        continue
+                now = datetime.now(timezone.utc)
+                lock_until = entry_data.get("sync_lock_until")
+                sync_in_progress = entry_data.get("sync_in_progress", False)
+
+                # Block manual refresh if a sync is active or within cool-down
+                if (lock_until and now < lock_until) or sync_in_progress:
+                    wait_seconds = 60
+                    message = (
+                        "Manual refresh cannot run right now because a sync is active "
+                        "or just finished. Please try again in 60s."
+                    )
+                    _LOGGER.warning("%s (entry=%s)", message, entry_id)
+                    raise HomeAssistantError(message)
+
+                # Mark sync as in-progress and set cool-down window
+                entry_data["sync_in_progress"] = True
+                entry_data["sync_lock_until"] = now + timedelta(seconds=30)
                 
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
 
@@ -66,11 +77,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         # Skip the refresh for this entry if we cannot log in
                         continue
 
-                # Force account data refresh
-                await coordinator.async_request_refresh()
-                # Force usage sync (bypass time thresholds)
-                if hasattr(coordinator, 'usage_coordinator'):
-                    await coordinator.usage_coordinator.force_sync()
+                try:
+                    # Force account data refresh
+                    await coordinator.async_request_refresh()
+                    # Force usage sync (bypass time thresholds)
+                    if hasattr(coordinator, 'usage_coordinator'):
+                        await coordinator.usage_coordinator.force_sync()
+                finally:
+                    # Release the in-progress flag but keep the cool-down until expiry
+                    entry_data["sync_in_progress"] = False
     
     # Register the service only once
     if not hass.services.has_service(DOMAIN, "refresh_data"):
