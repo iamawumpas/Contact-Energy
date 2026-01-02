@@ -12,6 +12,12 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.26 ]
+
+### Fixed
+- Fixed TypeError in usage sensor when comparing datetime objects: "can't compare offset-naive and offset-aware datetimes"
+  - Now uses timezone-aware datetime (UTC) for 7-day hourly attribute cutoff calculation
+
 ## [ 1.6.25 ]
 
 ### Changed

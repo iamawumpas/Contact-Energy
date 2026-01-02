@@ -9,7 +9,7 @@ License: MIT
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from calendar import monthrange
 
@@ -291,8 +291,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             hourly_peak_usage = {}  # peak rate usage
             hourly_offpeak_usage = {}  # off-peak rate usage
             
-            # Calculate 7-day cutoff for hourly attributes
-            seven_days_ago = datetime.now() - timedelta(days=7)
+            # Calculate 7-day cutoff for hourly attributes (use timezone-aware datetime)
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             
             for timestamp, record in sorted(hourly_dict.items()):
                 # Parse timestamp to check if within last 7 days
