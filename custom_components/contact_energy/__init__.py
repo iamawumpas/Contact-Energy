@@ -105,12 +105,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         email=entry.data.get("email"),
         password=entry.data.get("password"),
     )
-    # Set token from stored config entry to avoid re-authentication on first load
-    api_client.token = entry.data.get("token")
-    api_client.segment = entry.data.get("segment")
-    api_client.bp = entry.data.get("bp")
     # Keep the account_id on the client so ba queries use the correct value (not BP)
     api_client.account_id = entry.data.get("account_id")
+
+    # Always authenticate on startup to avoid reusing expired tokens from config entry
+    try:
+        await api_client.authenticate()
+    except Exception as err:  # pragma: no cover - defensive guard
+        _LOGGER.error("Authentication failed during setup for %s: %s", entry.title, err)
+        return False
 
     # Get contract_id for usage data sync (Phase 1 / v1.4.0)
     contract_id = entry.data.get("contract_id")

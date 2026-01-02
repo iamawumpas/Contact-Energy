@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.15 ]
+
+### Fixed
+- Authenticate on startup instead of reusing stored tokens to avoid 502 errors from expired tokens after HA restarts
+- Fail setup early with a clear log if authentication fails during startup
+
+### Changed
+- Removed loading cached token/segment/bp from config entry; fresh token is always fetched on startup
+
 ## [ 1.6.14 ]
 
 ### Fixed
