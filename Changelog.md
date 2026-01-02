@@ -5,6 +5,31 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.16 ]
+
+### Fixed
+- Clarified that `paid_usage` and `free_usage` are mutually exclusive (when paid > 0, free = 0 and vice versa)
+
+### Added
+- Comprehensive yearly statistics:
+  - Calendar year totals and averages (total, paid, peak, offpeak, free, cost)
+  - Rolling 365-day totals and averages
+- Seasonal averages for NZ seasons (kWh per day):
+  - Spring (Sep-Nov), Summer (Dec-Feb), Autumn (Mar-Jun), Winter (Jul-Aug)
+- Daily averages in kWh per hour (total, paid, free, offpeak)
+- Monthly averages in kWh per day (total, paid, free, offpeak)
+- Additional monthly breakdown attributes:
+  - `monthly_peak_usage` - peak usage by month
+  - `monthly_offpeak_usage` - off-peak usage by month
+
+### Changed
+- **BREAKING**: Renamed sensor attributes for clarity:
+  - `hourly_usage` → `hourly_total_usage`
+  - `daily_usage` → `daily_total_usage`
+  - `monthly_usage` → `monthly_total_usage`
+- ApexCharts YAML must update attribute names to `*_total_usage` or use specific breakdowns (`*_paid_usage`, `*_free_usage`)
+- Summary statistics now include comprehensive breakdowns and averages for all time periods
+
 ## [ 1.6.15 ]
 
 ### Fixed
