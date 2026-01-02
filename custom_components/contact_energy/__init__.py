@@ -58,6 +58,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
 
+                                # Ensure the coordinator does not start a background usage sync; we'll run one explicitly
+                                coordinator._skip_next_usage_sync = True
+
                 # Always re-authenticate with username/password before a manual refresh
                 # to avoid relying on short-lived/expired tokens.
                 if api_client:
@@ -80,10 +83,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 try:
                     # Force account data refresh
                     await coordinator.async_request_refresh()
-                    # Force usage sync (bypass time thresholds)
+                    # Force usage sync (bypass time thresholds) - single run
                     if hasattr(coordinator, 'usage_coordinator'):
                         await coordinator.usage_coordinator.force_sync()
                 finally:
+                    coordinator._skip_next_usage_sync = False
                     # Release the in-progress flag but keep the cool-down until expiry
                     entry_data["sync_in_progress"] = False
     

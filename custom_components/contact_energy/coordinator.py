@@ -49,6 +49,8 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         )
         self.api_client = api_client
         self.contract_id = contract_id
+        # When True, skip spawning the background usage sync on the next refresh
+        self._skip_next_usage_sync = False
         
         # Initialize usage coordinator (Phase 1 / v1.4.0)
         # This handles background syncing of hourly/daily/monthly usage data
@@ -89,15 +91,19 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             try:
                 account_data = await self.api_client.get_accounts()
                 _LOGGER.debug("Successfully fetched account data")
-                
-                # Trigger usage sync as background task (Phase 1 / v1.4.0)
-                # This runs independently and doesn't block account data updates
-                # Usage sync errors are logged but don't fail the coordinator
-                _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
-                self.hass.async_create_task(
-                    self._async_sync_usage(),
-                    name=f"usage_sync_{self.contract_id}"
-                )
+
+                # Trigger usage sync unless the caller requested to skip once
+                if not self._skip_next_usage_sync:
+                    _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
+                    self.hass.async_create_task(
+                        self._async_sync_usage(),
+                        name=f"usage_sync_{self.contract_id}"
+                    )
+                else:
+                    _LOGGER.debug(
+                        "Skipping background usage sync for contract %s (skip requested)",
+                        self.contract_id,
+                    )
                 
                 return account_data
             
@@ -125,13 +131,19 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 try:
                     account_data = await self.api_client.get_accounts()
                     _LOGGER.debug("Successfully fetched account data after re-authentication")
-                    
-                    # Trigger usage sync after successful re-auth (Phase 1 / v1.4.0)
-                    _LOGGER.debug("Triggering background usage sync for contract %s (after re-auth)", self.contract_id)
-                    self.hass.async_create_task(
-                        self._async_sync_usage(),
-                        name=f"usage_sync_{self.contract_id}"
-                    )
+
+                    # Trigger usage sync after successful re-auth unless skipped
+                    if not self._skip_next_usage_sync:
+                        _LOGGER.debug("Triggering background usage sync for contract %s (after re-auth)", self.contract_id)
+                        self.hass.async_create_task(
+                            self._async_sync_usage(),
+                            name=f"usage_sync_{self.contract_id}"
+                        )
+                    else:
+                        _LOGGER.debug(
+                            "Skipping background usage sync for contract %s after re-auth (skip requested)",
+                            self.contract_id,
+                        )
                     
                     return account_data
                     

@@ -12,6 +12,12 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.21 ]
+
+### Fixed
+- Manual refresh now suppresses the coordinator’s automatic background usage sync, ensuring only one forced sync runs and preventing overlapping calls.
+- Monthly usage 404 responses are treated as no data available, avoiding repeated retry loops and noisy warnings.
+
 ## [ 1.6.20 ]
 
 ### Fixed

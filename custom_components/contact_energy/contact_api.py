@@ -350,6 +350,14 @@ class ContactEnergyApi:
 
                     # Handle not found errors (invalid contract ID)
                     if resp.status == 404:
+                        # For monthly, treat 404 as “no data currently available” to avoid noisy retries
+                        if interval == "monthly":
+                            _LOGGER.warning(
+                                "Usage API returned 404 (Not Found) for contract %s on monthly interval. Treating as no monthly data and continuing.",
+                                contract_id,
+                            )
+                            return []
+
                         _LOGGER.warning(
                             "Usage API returned 404 (Not Found) for contract %s. Contract may not exist.",
                             contract_id
