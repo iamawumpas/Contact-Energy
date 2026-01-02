@@ -12,6 +12,20 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.25 ]
+
+### Changed
+- Hourly data now downloads in 1-day chunks (reduced from 2-day) for maximum API stability.
+- Fallback chunking for hourly data also uses 1-day chunks instead of 2-day chunks.
+
+### Fixed
+- Fixed state attributes size exceeding Home Assistant's 16KB database limit:
+  - Hourly data in sensor attributes now limited to last 7 days (was all 14 days).
+  - Daily data in sensor attributes now limited to last 30 days (was all 35 days).
+  - Full data still cached and accessible via usage_cache_*.json files.
+  - Added `hourly_displayed_count` and `daily_displayed_count` attributes showing records visible in attributes.
+  - Statistics and summaries continue to use all cached data regardless of attribute limits.
+
 ## [ 1.6.24 ]
 
 ### Changed

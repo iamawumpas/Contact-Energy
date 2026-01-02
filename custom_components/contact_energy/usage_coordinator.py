@@ -227,15 +227,15 @@ class UsageCoordinator:
                 self.contract_id, from_date, to_date, (to_date - from_date).days + 1
             )
 
-            # Download hourly data in 2-day chunks to avoid API 502s
+            # Download hourly data in 1-day chunks to avoid API 502s
             # Split immediately rather than waiting for failures
             span_days = (to_date - from_date).days + 1
-            if span_days > 2:
+            if span_days > 1:
                 _LOGGER.debug(
-                    "Splitting hourly sync for contract %s into 2-day chunks",
+                    "Splitting hourly sync for contract %s into 1-day chunks",
                     self.contract_id
                 )
-                chunk_size = 2
+                chunk_size = 1
                 hourly_data: list[dict] = []
                 cursor = from_date
                 while cursor <= to_date:
@@ -513,15 +513,15 @@ class UsageCoordinator:
                 )
                 await asyncio.sleep(backoff)
 
-        # If hourly still fails and splitting is allowed, break the window into 2-day slices
+        # If hourly still fails and splitting is allowed, break the window into 1-day slices
         if interval == "hourly" and allow_split:
             span_days = (to_date - from_date).days + 1
             if span_days > 1:
                 _LOGGER.debug(
-                    "Splitting hourly sync for contract %s into 2-day windows after repeated errors",
+                    "Splitting hourly sync for contract %s into 1-day windows after repeated errors",
                     self.contract_id
                 )
-                chunk_size = 2
+                chunk_size = 1
                 merged: list[dict] = []
                 cursor = from_date
                 while cursor <= to_date:

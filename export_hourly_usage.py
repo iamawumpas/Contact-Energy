@@ -134,25 +134,24 @@ def write_markdown(records: List[Dict[str, Any]], start: dt.date, end: dt.date) 
 
 
 def main() -> None:
-    # Fixed date range: 2025-12-24 to 2026-01-01, split into smaller chunks to avoid 502
-    start = dt.date(2025, 12, 24)
-    end = dt.date(2026, 1, 1)
+    # Dynamic date range: last 10 days (today - 10 to today)
+    today = dt.date.today()
+    start = today - dt.timedelta(days=10)
+    end = today
 
     auth = authenticate()
     token = auth["token"]
     accounts = fetch_accounts(token)
     account_id, contract_id = pick_account_contract(accounts)
     
-    # Fetch in 3-day chunks to avoid 502 errors
+    # Fetch in 1-day chunks (10 separate requests)
     all_usage = []
     current = start
-    chunk_days = 3
     while current <= end:
-        chunk_end = min(current + dt.timedelta(days=chunk_days - 1), end)
-        print(f"Fetching {current} to {chunk_end}...")
-        usage = fetch_usage(token, account_id, contract_id, current, chunk_end)
+        print(f"Fetching {current}...")
+        usage = fetch_usage(token, account_id, contract_id, current, current)
         all_usage.extend(usage)
-        current = chunk_end + dt.timedelta(days=1)
+        current = current + dt.timedelta(days=1)
     
     parsed = parse_records(all_usage)
     write_markdown(parsed, start, end)

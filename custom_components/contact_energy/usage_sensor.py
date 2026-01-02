@@ -167,26 +167,30 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         Attributes include:
             - summary: Comprehensive statistics including daily/monthly/yearly/seasonal averages and totals
-            - hourly_total_usage: Dict of TOTAL usage keyed by ISO datetime
-            - hourly_paid_usage: Dict of paid usage (peak + off-peak) keyed by ISO datetime
-            - hourly_free_usage: Dict of free usage keyed by ISO datetime (mutually exclusive with paid)
-            - hourly_peak_usage: Dict of peak usage keyed by ISO datetime
-            - hourly_offpeak_usage: Dict of off-peak usage keyed by ISO datetime
-            - daily_total_usage: Dict of TOTAL usage keyed by date string
-            - daily_paid_usage: Dict of paid usage keyed by date string
-            - daily_free_usage: Dict of free usage keyed by date string (mutually exclusive with paid)
-            - daily_peak_usage: Dict of peak usage keyed by date string
-            - daily_offpeak_usage: Dict of off-peak usage keyed by date string
-            - monthly_total_usage: Dict of TOTAL usage keyed by month string
-            - monthly_paid_usage: Dict of paid usage keyed by month string
-            - monthly_free_usage: Dict of free usage keyed by month string (mutually exclusive with paid)
-            - monthly_peak_usage: Dict of peak usage keyed by month string
-            - monthly_offpeak_usage: Dict of off-peak usage keyed by month string
+            - hourly_total_usage: Dict of TOTAL usage keyed by ISO datetime (limited to last 7 days)
+            - hourly_paid_usage: Dict of paid usage (peak + off-peak) keyed by ISO datetime (limited to last 7 days)
+            - hourly_free_usage: Dict of free usage keyed by ISO datetime (limited to last 7 days)
+            - hourly_peak_usage: Dict of peak usage keyed by ISO datetime (limited to last 7 days)
+            - hourly_offpeak_usage: Dict of off-peak usage keyed by ISO datetime (limited to last 7 days)
+            - daily_total_usage: Dict of TOTAL usage keyed by date string (limited to last 30 days)
+            - daily_paid_usage: Dict of paid usage keyed by date string (limited to last 30 days)
+            - daily_free_usage: Dict of free usage keyed by date string (limited to last 30 days)
+            - daily_peak_usage: Dict of peak usage keyed by date string (limited to last 30 days)
+            - daily_offpeak_usage: Dict of off-peak usage keyed by date string (limited to last 30 days)
+            - monthly_total_usage: Dict of TOTAL usage keyed by month string (all available)
+            - monthly_paid_usage: Dict of paid usage keyed by month string (all available)
+            - monthly_free_usage: Dict of free usage keyed by month string (all available)
+            - monthly_peak_usage: Dict of peak usage keyed by month string (all available)
+            - monthly_offpeak_usage: Dict of off-peak usage keyed by month string (all available)
             - hourly_count/daily_count/monthly_count: Total records in cache
+            - hourly_displayed_count/daily_displayed_count: Records visible in attributes
             - last_updated: Cache last sync timestamp
             - version: Cache format version
 
-        Note: paid_usage and free_usage are mutually exclusive - when paid > 0, free = 0 and vice versa.
+        Note: 
+            - paid_usage and free_usage are mutually exclusive - when paid > 0, free = 0 and vice versa.
+            - Hourly/daily data is limited in attributes to stay under Home Assistant's 16KB limit.
+              Full data is available in the cache file at custom_components/contact_energy/data/usage_cache_*.json
 
         Returns:
             Dictionary of sensor attributes (optimized for Home Assistant database)
@@ -194,7 +198,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         # Initialize attributes with empty data structures and summaries
         attributes = {
             "last_updated": None,
-            "version": "1.6.17",
+            "version": "1.6.25",
             "summary": {
                 # Daily totals (all cached daily data)
                 "daily_total_kwh": 0.0,
@@ -278,7 +282,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             attributes["last_updated"] = metadata.get("last_synced")
 
             # Extract hourly usage data - populate ApexCharts dicts keyed by ISO datetime
-            # This allows ApexCharts cards to directly consume the data for graphing
+            # IMPORTANT: Limit to last 7 days to stay under Home Assistant's 16KB attribute limit
+            # The full 14-day cache is stored in usage_cache.json and accessible via other means
             hourly_dict = self._cache.data.get("hourly", {})
             hourly_total_usage = {}  # TOTAL usage (paid + free)
             hourly_paid_usage = {}  # paid usage (peak + off-peak)
@@ -286,7 +291,20 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             hourly_peak_usage = {}  # peak rate usage
             hourly_offpeak_usage = {}  # off-peak rate usage
             
+            # Calculate 7-day cutoff for hourly attributes
+            seven_days_ago = datetime.now() - timedelta(days=7)
+            
             for timestamp, record in sorted(hourly_dict.items()):
+                # Parse timestamp to check if within last 7 days
+                try:
+                    ts_obj = datetime.fromisoformat(record.get("timestamp", timestamp).replace("Z", "+00:00"))
+                    # Skip records older than 7 days
+                    if ts_obj < seven_days_ago:
+                        continue
+                except (ValueError, AttributeError):
+                    # If timestamp parsing fails, skip this record
+                    continue
+                
                 # Use ISO datetime as key for ApexCharts compatibility
                 ts_key = record.get("timestamp", timestamp)
                 hourly_total_usage[ts_key] = record.get("total", 0.0)  # total = paid + free
@@ -300,15 +318,20 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             attributes["hourly_free_usage"] = hourly_free_usage
             attributes["hourly_peak_usage"] = hourly_peak_usage
             attributes["hourly_offpeak_usage"] = hourly_offpeak_usage
-            attributes["hourly_count"] = len(hourly_dict)
+            attributes["hourly_count"] = len(hourly_dict)  # Count shows all cached records
+            attributes["hourly_displayed_count"] = len(hourly_total_usage)  # Count of records in attributes
 
             # Extract daily usage data - populate ApexCharts dicts keyed by date string
+            # IMPORTANT: Limit to last 30 days to stay under Home Assistant's 16KB attribute limit
             daily_dict = self._cache.data.get("daily", {})
             daily_total_usage = {}  # TOTAL usage (paid + free)
             daily_paid_usage = {}  # paid usage (peak + off-peak)
             daily_free_usage = {}  # free/unpaid usage
             daily_peak_usage = {}  # peak rate usage
             daily_offpeak_usage = {}  # off-peak rate usage
+            
+            # Calculate 30-day cutoff for daily attributes
+            thirty_days_ago = datetime.now() - timedelta(days=30)
             
             # Accumulators for summary statistics
             daily_total_kwh = 0.0
@@ -361,13 +384,15 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 free = record.get("free", 0.0)
                 cost = record.get("cost", 0.0)
                 
-                daily_total_usage[date_key] = total
-                daily_paid_usage[date_key] = paid
-                daily_free_usage[date_key] = free
-                daily_peak_usage[date_key] = peak
-                daily_offpeak_usage[date_key] = offpeak
+                # Only add to attributes dict if within last 30 days
+                if date_obj >= thirty_days_ago:
+                    daily_total_usage[date_key] = total
+                    daily_paid_usage[date_key] = paid
+                    daily_free_usage[date_key] = free
+                    daily_peak_usage[date_key] = peak
+                    daily_offpeak_usage[date_key] = offpeak
                 
-                # Accumulate totals for all cached daily data
+                # Accumulate totals for all cached daily data (for statistics)
                 daily_total_kwh += total
                 daily_paid_kwh += paid
                 daily_peak_kwh += peak
@@ -415,7 +440,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             attributes["daily_free_usage"] = daily_free_usage
             attributes["daily_peak_usage"] = daily_peak_usage
             attributes["daily_offpeak_usage"] = daily_offpeak_usage
-            attributes["daily_count"] = len(daily_dict)
+            attributes["daily_count"] = len(daily_dict)  # Count shows all cached records
+            attributes["daily_displayed_count"] = len(daily_total_usage)  # Count of records in attributes
 
             # Extract monthly usage data - populate ApexCharts dicts keyed by month string
             monthly_dict = self._cache.data.get("monthly", {})
