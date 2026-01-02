@@ -12,6 +12,11 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.19 ]
+
+### Fixed
+- Manual refresh now re-authenticates with stored credentials before fetching data to avoid expired session tokens, skipping the refresh if login fails.
+
 ## [ 1.6.18 ]
 
 ### Fixed

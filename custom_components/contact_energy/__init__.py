@@ -34,6 +34,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Refresh all configured entries
         for entry_id, entry_data in hass.data[DOMAIN].items():
             coordinator = entry_data.get("coordinator")
+            api_client = entry_data.get("api_client")
             if coordinator:
                 # Check if a sync is already in progress
                 if hasattr(coordinator, 'usage_coordinator'):
@@ -45,6 +46,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         continue
                 
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
+
+                # Always re-authenticate with username/password before a manual refresh
+                # to avoid relying on short-lived/expired tokens.
+                if api_client:
+                    try:
+                        _LOGGER.debug(
+                            "Manual refresh re-authenticating as %s for entry %s",
+                            api_client.email,
+                            entry_id,
+                        )
+                        await api_client.authenticate()
+                    except Exception as err:
+                        _LOGGER.error(
+                            "Manual refresh re-authentication failed for entry %s: %s",
+                            entry_id,
+                            err,
+                        )
+                        # Skip the refresh for this entry if we cannot log in
+                        continue
+
                 # Force account data refresh
                 await coordinator.async_request_refresh()
                 # Force usage sync (bypass time thresholds)
