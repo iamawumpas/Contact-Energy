@@ -194,7 +194,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         # Initialize attributes with empty data structures and summaries
         attributes = {
             "last_updated": None,
-            "version": "1.6.16",
+            "version": "1.6.17",
             "summary": {
                 # Daily totals (all cached daily data)
                 "daily_total_kwh": 0.0,

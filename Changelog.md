@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.17 ]
+
+### Fixed
+- **CRITICAL**: Fixed paid_usage and free_usage overlapping at same timestamps
+- Enforced mutual exclusivity: when unpaid > 0, paid/peak/offpeak = 0; when unpaid = 0, free = 0
+- Charts will now correctly show either paid OR free usage at each timestamp, never both
+
 ## [ 1.6.16 ]
 
 ### Fixed
