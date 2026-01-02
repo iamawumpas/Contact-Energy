@@ -44,9 +44,8 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            # Update once per day - Home Assistant will schedule this at the
-            # earliest possible time after 01:00 AM
-            update_interval=timedelta(days=1),
+            # Update hourly during testing so account/usage data refresh quickly
+            update_interval=timedelta(hours=1),
         )
         self.api_client = api_client
         self.contract_id = contract_id

@@ -59,6 +59,8 @@ class ContactEnergyApi:
         self.token: str | None = None
         self.segment: str | None = None
         self.bp: str | None = None
+        # Human-friendly note: account_id is the BA value required by usage/accounts calls.
+        self.account_id: str | None = None
 
     async def authenticate(self) -> dict[str, Any]:
         """Authenticate with Contact Energy API.
@@ -285,7 +287,8 @@ class ContactEnergyApi:
         # Build query parameters for API request
         # Format dates as YYYY-MM-DD strings required by API
         params = {
-            "ba": self.bp or "",  # Business partner (account) ID
+            # Use the Contact account_id for the required ba parameter (not the BP id)
+            "ba": self.account_id or "",
             "interval": interval,  # hourly, daily, or monthly
             "from": from_date.strftime("%Y-%m-%d"),  # Start date
             "to": to_date.strftime("%Y-%m-%d"),  # End date
@@ -356,7 +359,6 @@ class ContactEnergyApi:
                         )
 
                     # Handle bad request errors (invalid parameters)
-                    if resp.status == 400:
                         error_text = await resp.text()
                         _LOGGER.warning(
                             "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
@@ -525,29 +527,28 @@ class ContactEnergyApi:
                 # All intervals use the same calculation: paid = total - free
                 # Free energy = offpeak + uncharged components
                 # This works for hourly, daily, and monthly data
-                # Extract free energy components
+                # Extract energy components
                 offpeak_kwh = float(record.get("offpeakValue") or 0.0)
-                uncharged_kwh = float(record.get("unchargedValue") or 0.0)
-                
-                # Calculate total free energy (sum of all free components)
-                free_kwh = offpeak_kwh + uncharged_kwh
-                
-                # Cap free usage at total to prevent data inconsistencies
-                if free_kwh > total_kwh:
+                unpaid_kwh = float(record.get("unchargedValue") or 0.0)
+
+                # Peak (paid at normal rate) excludes off-peak and unpaid components
+                peak_kwh = total_kwh - offpeak_kwh - unpaid_kwh
+                if peak_kwh < 0:
                     _LOGGER.debug(
-                        "Capping free usage at total for contract %s at %s: "
-                        "free=%.3f kWh capped to total=%.3f kWh",
-                        contract_id, timestamp, free_kwh, total_kwh
+                        "Capping peak usage at 0 for contract %s at %s: peak calculated negative (total=%.3f, offpeak=%.3f, unpaid=%.3f)",
+                        contract_id, timestamp, total_kwh, offpeak_kwh, unpaid_kwh
                     )
-                    free_kwh = total_kwh
-                
-                # Calculate paid energy (what the customer is charged for)
-                # paid = total - free (complementary components)
-                paid_kwh = total_kwh - free_kwh
-                
+                    peak_kwh = 0.0
+
+                # Paid usage includes both peak and off-peak (off-peak is still billed at a reduced rate)
+                paid_total_kwh = peak_kwh + offpeak_kwh
+
+                # Free/unpaid usage is promotional/uncharged only
+                free_kwh = unpaid_kwh
+
                 _LOGGER.debug(
-                    "%s record: timestamp=%s, total=%.3f, paid=%.3f, free=%.3f (offpeak=%.3f, uncharged=%.3f)",
-                    interval.capitalize(), timestamp, total_kwh, paid_kwh, free_kwh, offpeak_kwh, uncharged_kwh
+                    "%s record: timestamp=%s, total=%.3f, paid_total=%.3f, peak=%.3f, offpeak=%.3f, free=%.3f",
+                    interval.capitalize(), timestamp, total_kwh, paid_total_kwh, peak_kwh, offpeak_kwh, free_kwh
                 )
 
                 # Extract cost in NZD
@@ -559,8 +560,10 @@ class ContactEnergyApi:
                 parsed_record = {
                     "timestamp": timestamp,  # ISO 8601 with timezone
                     "total": round(total_kwh, 3),  # Round to 3 decimal places (Wh precision)
-                    "paid": round(paid_kwh, 3),
-                    "free": round(free_kwh, 3),
+                    "paid": round(paid_total_kwh, 3),  # Total billed kWh (peak + off-peak)
+                    "peak": round(peak_kwh, 3),  # Billed at peak rate
+                    "offpeak": round(offpeak_kwh, 3),  # Billed at off-peak rate
+                    "free": round(free_kwh, 3),  # Unpaid/uncharged kWh (promotions)
                     "cost": round(cost_nzd, 2),  # Round to 2 decimal places (cents precision)
                 }
 

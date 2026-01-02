@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.6.12-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.6.13-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>

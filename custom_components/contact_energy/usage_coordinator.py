@@ -43,17 +43,17 @@ _LOGGER = logging.getLogger(__name__)
 USAGE_CONFIG = {
     "hourly": {
         "window_days": 9,  # Keep last 9 days of hourly data
-        "sync_interval_hours": 24,  # Sync once per day
+        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_days": 14,  # API limit (Contact Energy provides ~2 weeks)
     },
     "daily": {
         "window_days": 35,  # Keep last 35 days of daily data
-        "sync_interval_hours": 24,  # Sync once per day
+        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_days": 60,  # API limit (Contact Energy provides ~2 months)
     },
     "monthly": {
         "window_months": 18,  # Keep last 18 months of monthly data
-        "sync_interval_hours": 168,  # Sync once per week (7 days * 24 hours)
+        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_months": 24,  # API limit (Contact Energy provides ~2 years)
     },
 }

@@ -5,6 +5,30 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.6.13 ]
+
+### Fixed
+- Fixed critical bug where account_id was not being passed to API client, causing 502/404 errors
+- API now correctly uses account_id (ba parameter) instead of Business Partner ID for all requests
+- Usage data now includes cost/dollarValue in responses (was null due to missing ba parameter)
+
+### Changed
+- Usage calculation now correctly treats off-peak hours as billed usage (not free)
+- Free usage is now limited to promotional/uncharged hours only
+- New usage breakdown fields: peak (peak rate), offpeak (off-peak rate), paid (peak + off-peak), free (promotional)
+- All sync intervals changed to hourly (from daily) for faster testing and development
+- Sensor attributes now expose peak and off-peak data separately for ApexCharts graphing
+
+### Technical Details
+- Formulas now match actual billing:
+  - TOTAL = peak + offpeak + free
+  - PAID = peak + offpeak
+  - FREE = unpaid/promotional only
+  - PEAK = consumed at peak rate
+  - OFFPEAK = consumed at off-peak rate
+- New ApexCharts-ready attributes: hourly_peak_data, hourly_offpeak_data (in addition to existing hourly_data, hourly_free_data)
+- All usage records now include peak and offpeak fields for completeness
+
 ## [ 1.6.12 ]
 
 ### Fixed

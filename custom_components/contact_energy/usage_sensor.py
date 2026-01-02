@@ -184,8 +184,10 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             "daily_count": 0,
             "monthly_count": 0,
             "hourly_usage": [],
-            "hourly_data": {},  # Keyed by datetime for ApexCharts
-            "hourly_free_data": {},  # Keyed by datetime for ApexCharts
+            "hourly_data": {},  # Keyed by datetime for ApexCharts (paid: peak + off-peak)
+            "hourly_free_data": {},  # Keyed by datetime for ApexCharts (free/unpaid)
+            "hourly_offpeak_data": {},  # Keyed by datetime for ApexCharts (off-peak billed)
+            "hourly_peak_data": {},  # Keyed by datetime for ApexCharts (peak billed)
             "daily_usage": [],
             "monthly_usage": [],
         }
@@ -204,24 +206,32 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             # Convert from dict keyed by timestamp to list sorted by time
             hourly_dict = self._cache.data.get("hourly", {})
             hourly_list = []
-            hourly_data_dict = {}  # For ApexCharts (paid usage)
-            hourly_free_data_dict = {}  # For ApexCharts (free usage)
+            hourly_data_dict = {}  # For ApexCharts (paid usage: peak + off-peak)
+            hourly_free_data_dict = {}  # For ApexCharts (free/unpaid usage)
+            hourly_offpeak_data_dict = {}  # For ApexCharts (off-peak billed usage)
+            hourly_peak_data_dict = {}  # For ApexCharts (peak billed usage)
             
             for timestamp, record in sorted(hourly_dict.items()):
                 hourly_list.append({
                     "time": record.get("timestamp", timestamp),
                     "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),
+                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
+                    "peak": record.get("peak", 0.0),
+                    "offpeak": record.get("offpeak", 0.0),
                     "free": record.get("free", 0.0),
                     "cost": record.get("cost", 0.0),
                 })
                 # Populate ApexCharts data dicts keyed by ISO datetime string
                 hourly_data_dict[record.get("timestamp", timestamp)] = record.get("paid", 0.0)
                 hourly_free_data_dict[record.get("timestamp", timestamp)] = record.get("free", 0.0)
+                hourly_offpeak_data_dict[record.get("timestamp", timestamp)] = record.get("offpeak", 0.0)
+                hourly_peak_data_dict[record.get("timestamp", timestamp)] = record.get("peak", 0.0)
                 
             attributes["hourly_usage"] = hourly_list
             attributes["hourly_data"] = hourly_data_dict
             attributes["hourly_free_data"] = hourly_free_data_dict
+            attributes["hourly_offpeak_data"] = hourly_offpeak_data_dict
+            attributes["hourly_peak_data"] = hourly_peak_data_dict
             attributes["hourly_count"] = len(hourly_list)
 
             # Extract daily usage data
@@ -232,7 +242,9 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                     "date": date_key,
                     "time": record.get("timestamp", date_key),
                     "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),
+                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
+                    "peak": record.get("peak", 0.0),
+                    "offpeak": record.get("offpeak", 0.0),
                     "free": record.get("free", 0.0),
                     "cost": record.get("cost", 0.0),
                 })
@@ -247,7 +259,9 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                     "month": month_key,
                     "time": record.get("timestamp", month_key),
                     "total": record.get("total", 0.0),
-                    "paid": record.get("paid", 0.0),
+                    "paid": record.get("paid", 0.0),  # paid = peak + off-peak
+                    "peak": record.get("peak", 0.0),
+                    "offpeak": record.get("offpeak", 0.0),
                     "free": record.get("free", 0.0),
                     "cost": record.get("cost", 0.0),
                 })

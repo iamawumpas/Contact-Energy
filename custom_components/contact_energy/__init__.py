@@ -109,6 +109,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_client.token = entry.data.get("token")
     api_client.segment = entry.data.get("segment")
     api_client.bp = entry.data.get("bp")
+    # Keep the account_id on the client so ba queries use the correct value (not BP)
+    api_client.account_id = entry.data.get("account_id")
 
     # Get contract_id for usage data sync (Phase 1 / v1.4.0)
     contract_id = entry.data.get("contract_id")
