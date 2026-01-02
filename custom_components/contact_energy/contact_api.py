@@ -524,35 +524,54 @@ class ContactEnergyApi:
                 # Use 'or 0.0' to handle None values (API returns None for some fields)
                 total_kwh = float(record.get("value") or 0.0)
 
-                # All intervals use the same calculation: paid = total - free
-                # Free energy = offpeak + uncharged components
-                # This works for hourly, daily, and monthly data
                 # Extract energy components
                 offpeak_kwh = float(record.get("offpeakValue") or 0.0)
                 unpaid_kwh = float(record.get("unchargedValue") or 0.0)
 
-                # Paid and Free are mutually exclusive
-                # When unpaid > 0, it's free power hours - all usage is free, nothing is paid
+                # For hourly data: paid and free are mutually exclusive within a single hour
+                # When unpaid > 0, it's a free power hour - all usage is free, nothing is paid
                 # When unpaid = 0, it's normal billing - usage is either peak or off-peak (both paid)
-                if unpaid_kwh > 0:
-                    # Free power hours: all usage is free/unpaid
-                    free_kwh = unpaid_kwh
-                    paid_total_kwh = 0.0
-                    peak_kwh = 0.0
-                    offpeak_kwh = 0.0
+                #
+                # For daily/monthly data: paid and free can coexist
+                # A single day can have both paid hours (peak + offpeak) and free hours (uncharged)
+                if interval == "hourly":
+                    # Hourly: mutual exclusivity applies
+                    if unpaid_kwh > 0:
+                        # Free power hours: all usage is free/unpaid
+                        free_kwh = unpaid_kwh
+                        paid_total_kwh = 0.0
+                        peak_kwh = 0.0
+                        offpeak_kwh = 0.0
+                    else:
+                        # Normal billing: usage is either peak or off-peak (both paid)
+                        free_kwh = 0.0
+                        # Peak (paid at normal rate) excludes off-peak component
+                        peak_kwh = total_kwh - offpeak_kwh
+                        if peak_kwh < 0:
+                            _LOGGER.debug(
+                                "Capping peak usage at 0 for contract %s at %s: peak calculated negative (total=%.3f, offpeak=%.3f)",
+                                contract_id, timestamp, total_kwh, offpeak_kwh
+                            )
+                            peak_kwh = 0.0
+                        # Paid usage includes both peak and off-peak (off-peak is still billed at a reduced rate)
+                        paid_total_kwh = peak_kwh + offpeak_kwh
                 else:
-                    # Normal billing: usage is either peak or off-peak (both paid)
-                    free_kwh = 0.0
-                    # Peak (paid at normal rate) excludes off-peak component
-                    peak_kwh = total_kwh - offpeak_kwh
+                    # Daily/Monthly: both paid and free can exist on same day
+                    # Free is the uncharged component
+                    free_kwh = unpaid_kwh
+                    # Off-peak is the off-peak billed component
+                    # Peak is calculated as total minus off-peak, but only if unpaid is not part of total
+                    # If total includes uncharged, we need paid = total - free
+                    paid_total_kwh = total_kwh - unpaid_kwh
+                    # For peak/offpeak breakdown of the paid portion
+                    peak_kwh = paid_total_kwh - offpeak_kwh
                     if peak_kwh < 0:
                         _LOGGER.debug(
-                            "Capping peak usage at 0 for contract %s at %s: peak calculated negative (total=%.3f, offpeak=%.3f)",
-                            contract_id, timestamp, total_kwh, offpeak_kwh
+                            "Capping peak usage at 0 for contract %s at %s: peak calculated negative (paid_total=%.3f, offpeak=%.3f)",
+                            contract_id, timestamp, paid_total_kwh, offpeak_kwh
                         )
                         peak_kwh = 0.0
-                    # Paid usage includes both peak and off-peak (off-peak is still billed at a reduced rate)
-                    paid_total_kwh = peak_kwh + offpeak_kwh
+
 
                 _LOGGER.debug(
                     "%s record: timestamp=%s, total=%.3f, paid_total=%.3f, peak=%.3f, offpeak=%.3f, free=%.3f",

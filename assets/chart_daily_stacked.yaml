@@ -1,0 +1,109 @@
+type: custom:apexcharts-card
+all_series_config:
+  stroke_width: 2
+  show:
+    legend_value: false
+update_interval: 6h
+header:
+  show: true
+  title: Daily Usage of the last month
+graph_span: 35d
+now:
+  show: false
+  label: Now
+section_mode: false
+apex_config:
+  chart:
+    height: 200px
+    type: bar
+    stacked: true
+    parentHeightOffset: 35
+    padding:
+      left: 0
+      right: 0
+      top: 10
+      bottom: 0
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 90
+        - 100
+  plotOptions:
+    bar:
+      columnWidth: 100%
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+  xaxis:
+    type: datetime
+    tickPlacement: "on"
+    tickAmount: 10
+    labels:
+      format: dd MMM
+      datetimeUTC: true
+      show: true
+      rotate: -90
+      rotateAlways: true
+      hideOverlappingLabels: true
+      showDuplicates: false
+  yaxis:
+    min: 0
+    max: 70
+    title:
+      text: kWh
+series:
+  - entity: sensor.71_oroua_st_0000000966tr348_usage_2
+    attribute: daily_free_usage
+    name: Free
+    type: column
+    data_generator: |
+      return entity.attributes.daily_free_usage ? 
+        Object.entries(entity.attributes.daily_free_usage).map(([date, value]) => {
+          return [new Date(date).getTime(), value];
+        }) : [];
+    color: "#008FFB"
+    group_by:
+      func: last
+      duration: 1d
+  - entity: sensor.71_oroua_st_0000000966tr348_usage_2
+    attribute: daily_paid_usage
+    name: Paid
+    type: column
+    data_generator: |
+      return entity.attributes.daily_paid_usage ? 
+        Object.entries(entity.attributes.daily_paid_usage).map(([date, value]) => {
+          return [new Date(date).getTime(), value];
+        }) : [];
+    color: "#FEB019"
+    group_by:
+      func: last
+      duration: 1d
+card_mod:
+  style: |
+    .apexcharts-xaxis-label {
+      font-size: 10px !important; 
+    }
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+    .apexcharts-legend {
+      margin-top: -10px !important;    
+      padding-top: 0px !important;
+    }
+    .apexcharts-canvas {
+      margin-top: -15px !important;    
+    }
+    ha-card {
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      box-shadow: none;
+    }
