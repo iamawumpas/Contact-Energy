@@ -12,17 +12,23 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.6.26 ]
+
+## [ 1.6.28 ]
 
 ### Fixed
-- Fixed TypeError in usage sensor when comparing datetime objects: "can't compare offset-naive and offset-aware datetimes"
-  - Now uses timezone-aware datetime (UTC) for 7-day hourly attribute cutoff calculation
+- Restored hourly electricity usage attribute names (`hourly_paid_usage`, `hourly_free_usage`, `hourly_usage`) and kept legacy aliases so ApexCharts dashboards can load hourly data again.
 
 ## [ 1.6.27 ]
 
 ### Changed
 - Trimmed usage sensor attributes to paid and free series only while keeping full history windows (10 days hourly, 35 days daily, 18 months monthly) so charts stay gap-free but attributes stay under Home Assistant's size limits.
 - Dropped zero/null values from exposed attributes to further reduce payload size without losing meaningful data.
+
+## [ 1.6.26 ]
+
+### Fixed
+- Fixed TypeError in usage sensor when comparing datetime objects: "can't compare offset-naive and offset-aware datetimes"
+  - Now uses timezone-aware datetime (UTC) for 7-day hourly attribute cutoff calculation
 
 ## [ 1.6.25 ]
 

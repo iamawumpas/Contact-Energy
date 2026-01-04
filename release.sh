@@ -24,6 +24,8 @@ if [ $# -ne 1 ]; then
 fi
 
 VERSION=$1
+BOOKMARK="release-${VERSION}-resume"
+AGENT_INSTRUCTION_FILE=".agent_bookmark"
 
 # Validate version format (x.y.z)
 if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -36,16 +38,38 @@ echo -e "${YELLOW}Release script started for version ${VERSION}${NC}"
 # Step 1: Instruct the agent to write the changelog and wait for completion
 # Human-friendly note: we pause here until the agent finishes the changelog and signals readiness.
 echo -e "${YELLOW}Step 1: Changelog generation${NC}"
-echo "Please instruct the agent to write the changelog entry for version ${VERSION}"
-echo "The agent should add the entry to Changelog.md in the required format and then create a .changelog_ready file in the repo root."
-echo "Waiting for the agent to finish..."
+echo "Automatically instructing the agent (see ${AGENT_INSTRUCTION_FILE})..."
+echo "Waiting for the agent to finish (polling for up to 60 seconds)..."
 
-# Wait loop: agent touches .changelog_ready after updating the changelog; we also verify the expected header exists.
+# Remove any stale ready marker before we start waiting
+rm -f .changelog_ready
+rm -f .bookmark_ack
+rm -f "${AGENT_INSTRUCTION_FILE}"
+
+# Write instruction for the agent including the bookmark name
+cat > "${AGENT_INSTRUCTION_FILE}" <<EOF
+Agent instructions for release ${VERSION}:
+- Bookmark: ${BOOKMARK}
+- Tasks:
+    1) Add the changelog entry for version ${VERSION} to Changelog.md using the required format.
+    2) Create .changelog_ready in the repo root when done.
+    3) Create .bookmark_ack containing the bookmark name (${BOOKMARK}).
+- After the script resumes, forget the bookmark name.
+EOF
+
+# Wait loop: proceed only when the sentinels exist, the changelog contains the header,
+# and the bookmark acknowledgement matches.
 SECONDS=0
 MAX_WAIT=60  # 60s safety cutoff to avoid hanging indefinitely
 while true; do
-    if [ -f .changelog_ready ] && grep -q "^## \[ ${VERSION} \]" Changelog.md; then
-        echo -e "${GREEN}✓ Changelog for ${VERSION} detected and agent ready signal received${NC}"
+    BOOKMARK_OK=false
+    if [ -f .bookmark_ack ] && grep -q "${BOOKMARK}" .bookmark_ack; then
+        BOOKMARK_OK=true
+    fi
+
+    if [ -f .changelog_ready ] && [ "${BOOKMARK_OK}" = true ] && grep -q "^## \[ ${VERSION} \]" Changelog.md; then
+        echo -e "${GREEN}✓ Changelog for ${VERSION} detected, bookmark ${BOOKMARK} acknowledged${NC}"
+        echo "Please instruct the agent to forget the bookmark name now."
         break
     fi
 
@@ -57,8 +81,10 @@ while true; do
     sleep 5
 done
 
-# Clean up agent ready signal before proceeding
+# Clean up agent ready signals before proceeding
 rm -f .changelog_ready
+rm -f .bookmark_ack
+rm -f "${AGENT_INSTRUCTION_FILE}"
 
 # Step 2: Update README.md with version badge
 echo -e "${YELLOW}Step 2: Updating README.md${NC}"

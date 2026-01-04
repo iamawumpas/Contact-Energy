@@ -172,8 +172,12 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         attributes = {
             "last_updated": None,
             "version": "1.6.27",
-            "hourly_data": {},  # paid kWh by ISO timestamp
-            "hourly_free_data": {},  # free kWh by ISO timestamp
+            "hourly_paid_usage": {},  # paid kWh by ISO timestamp
+            "hourly_free_usage": {},  # free kWh by ISO timestamp
+            "hourly_usage": {},  # alias for paid usage to match dashboards
+            # Legacy aliases kept for compatibility with 1.6.27 data naming
+            "hourly_data": {},  # deprecated alias for paid usage
+            "hourly_free_data": {},  # deprecated alias for free usage
             "daily_paid_usage": {},  # paid kWh by YYYY-MM-DD
             "daily_free_usage": {},  # free kWh by YYYY-MM-DD
             "monthly_paid_usage": {},  # paid kWh by YYYY-MM
@@ -210,10 +214,13 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             # Hourly: retain full cached window (10d target, 14d cache) but drop zeroes
             hourly_records = self._cache.data.get("hourly", {})
             for timestamp, record in hourly_records.items():
-                _add_non_zero(attributes["hourly_data"], timestamp, record.get("paid"))
-                _add_non_zero(attributes["hourly_free_data"], timestamp, record.get("free"))
+                _add_non_zero(attributes["hourly_paid_usage"], timestamp, record.get("paid"))
+                _add_non_zero(attributes["hourly_free_usage"], timestamp, record.get("free"))
+            attributes["hourly_usage"] = attributes["hourly_paid_usage"]
+            attributes["hourly_data"] = attributes["hourly_paid_usage"]
+            attributes["hourly_free_data"] = attributes["hourly_free_usage"]
             attributes["hourly_count"] = len(hourly_records)
-            attributes["hourly_displayed_count"] = len(attributes["hourly_data"]) + len(attributes["hourly_free_data"])
+            attributes["hourly_displayed_count"] = len(attributes["hourly_paid_usage"]) + len(attributes["hourly_free_usage"])
 
             # Daily: full 35-day window, keep paid/free only
             daily_records = self._cache.data.get("daily", {})
