@@ -163,397 +163,80 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return sensor attributes containing usage data optimized for Home Assistant.
+        """Return lean usage attributes sized for Home Assistant limits.
 
-        Attributes include:
-            - summary: Comprehensive statistics including daily/monthly/yearly/seasonal averages and totals
-            - hourly_total_usage: Dict of TOTAL usage keyed by ISO datetime (limited to last 7 days)
-            - hourly_paid_usage: Dict of paid usage (peak + off-peak) keyed by ISO datetime (limited to last 7 days)
-            - hourly_free_usage: Dict of free usage keyed by ISO datetime (limited to last 7 days)
-            - hourly_peak_usage: Dict of peak usage keyed by ISO datetime (limited to last 7 days)
-            - hourly_offpeak_usage: Dict of off-peak usage keyed by ISO datetime (limited to last 7 days)
-            - daily_total_usage: Dict of TOTAL usage keyed by date string (limited to last 30 days)
-            - daily_paid_usage: Dict of paid usage keyed by date string (limited to last 30 days)
-            - daily_free_usage: Dict of free usage keyed by date string (limited to last 30 days)
-            - daily_peak_usage: Dict of peak usage keyed by date string (limited to last 30 days)
-            - daily_offpeak_usage: Dict of off-peak usage keyed by date string (limited to last 30 days)
-            - monthly_total_usage: Dict of TOTAL usage keyed by month string (all available)
-            - monthly_paid_usage: Dict of paid usage keyed by month string (all available)
-            - monthly_free_usage: Dict of free usage keyed by month string (all available)
-            - monthly_peak_usage: Dict of peak usage keyed by month string (all available)
-            - monthly_offpeak_usage: Dict of off-peak usage keyed by month string (all available)
-            - hourly_count/daily_count/monthly_count: Total records in cache
-            - hourly_displayed_count/daily_displayed_count: Records visible in attributes
-            - last_updated: Cache last sync timestamp
-            - version: Cache format version
-
-        Note: 
-            - paid_usage and free_usage are mutually exclusive - when paid > 0, free = 0 and vice versa.
-            - Hourly/daily data is limited in attributes to stay under Home Assistant's 16KB limit.
-              Full data is available in the cache file at custom_components/contact_energy/data/usage_cache_*.json
-
-        Returns:
-            Dictionary of sensor attributes (optimized for Home Assistant database)
+        We expose only the fields ApexCharts needs while keeping the full
+        10d/35d/18m history intact. Empty/zero values are skipped to keep the
+        attribute payload compact.
         """
-        # Initialize attributes with empty data structures and summaries
         attributes = {
             "last_updated": None,
-            "version": "1.6.25",
-            "summary": {
-                # Daily totals (all cached daily data)
-                "daily_total_kwh": 0.0,
-                "daily_paid_kwh": 0.0,
-                "daily_peak_kwh": 0.0,
-                "daily_offpeak_kwh": 0.0,
-                "daily_free_kwh": 0.0,
-                "daily_cost_nzd": 0.0,
-                "daily_count": 0,
-                # Daily averages (kWh per hour)
-                "daily_average_usage": 0.0,
-                "daily_average_paid_usage": 0.0,
-                "daily_average_free_usage": 0.0,
-                "daily_average_offpeak_usage": 0.0,
-                # Monthly totals (all cached monthly data)
-                "monthly_total_kwh": 0.0,
-                "monthly_paid_kwh": 0.0,
-                "monthly_peak_kwh": 0.0,
-                "monthly_offpeak_kwh": 0.0,
-                "monthly_free_kwh": 0.0,
-                "monthly_cost_nzd": 0.0,
-                "monthly_count": 0,
-                # Monthly averages (kWh per day)
-                "monthly_average_usage": 0.0,
-                "monthly_average_paid_usage": 0.0,
-                "monthly_average_free_usage": 0.0,
-                "monthly_average_offpeak_usage": 0.0,
-                # Yearly statistics (calendar year)
-                "year_calendar_total_kwh": 0.0,
-                "year_calendar_paid_kwh": 0.0,
-                "year_calendar_peak_kwh": 0.0,
-                "year_calendar_offpeak_kwh": 0.0,
-                "year_calendar_free_kwh": 0.0,
-                "year_calendar_cost_nzd": 0.0,
-                "year_calendar_average_per_day": 0.0,
-                # Yearly statistics (rolling 365 days)
-                "year_rolling_total_kwh": 0.0,
-                "year_rolling_paid_kwh": 0.0,
-                "year_rolling_peak_kwh": 0.0,
-                "year_rolling_offpeak_kwh": 0.0,
-                "year_rolling_free_kwh": 0.0,
-                "year_rolling_cost_nzd": 0.0,
-                "year_rolling_average_per_day": 0.0,
-                # Seasonal averages (NZ seasons, kWh per day)
-                "season_spring_avg_per_day": 0.0,  # Sep-Nov
-                "season_summer_avg_per_day": 0.0,  # Dec-Feb
-                "season_autumn_avg_per_day": 0.0,  # Mar-Jun
-                "season_winter_avg_per_day": 0.0,  # Jul-Aug
-            },
+            "version": "1.6.27",
+            "hourly_data": {},  # paid kWh by ISO timestamp
+            "hourly_free_data": {},  # free kWh by ISO timestamp
+            "daily_paid_usage": {},  # paid kWh by YYYY-MM-DD
+            "daily_free_usage": {},  # free kWh by YYYY-MM-DD
+            "monthly_paid_usage": {},  # paid kWh by YYYY-MM
+            "monthly_free_usage": {},  # free kWh by YYYY-MM
             "hourly_count": 0,
             "daily_count": 0,
             "monthly_count": 0,
-            # Hourly usage dicts keyed by ISO datetime for ApexCharts
-            "hourly_total_usage": {},  # TOTAL usage (paid + free)
-            "hourly_paid_usage": {},  # paid usage (peak + off-peak) - mutually exclusive with free
-            "hourly_free_usage": {},  # free/unpaid usage - mutually exclusive with paid
-            "hourly_peak_usage": {},  # peak rate usage
-            "hourly_offpeak_usage": {},  # off-peak rate usage
-            # Daily usage dicts keyed by date string for ApexCharts
-            "daily_total_usage": {},  # TOTAL usage (paid + free)
-            "daily_paid_usage": {},  # paid usage (peak + off-peak) - mutually exclusive with free
-            "daily_free_usage": {},  # free/unpaid usage - mutually exclusive with paid
-            "daily_peak_usage": {},  # peak rate usage
-            "daily_offpeak_usage": {},  # off-peak rate usage
-            # Monthly usage dicts keyed by month string for ApexCharts
-            "monthly_total_usage": {},  # TOTAL usage (paid + free)
-            "monthly_paid_usage": {},  # paid usage (peak + off-peak) - mutually exclusive with free
-            "monthly_free_usage": {},  # free/unpaid usage - mutually exclusive with paid
-            "monthly_peak_usage": {},  # peak rate usage
-            "monthly_offpeak_usage": {},  # off-peak rate usage
+            "hourly_displayed_count": 0,
+            "daily_displayed_count": 0,
+            "monthly_displayed_count": 0,
         }
 
-        # Check if cache has data loaded
-        if not hasattr(self._cache, 'data') or not self._cache.data:
+        # No cache loaded yet
+        if not hasattr(self._cache, "data") or not self._cache.data:
             _LOGGER.debug("No cache data available for contract %s", self._contract_id)
             return attributes
 
+        def _add_non_zero(target: Dict[str, float], key: str, value: Any) -> None:
+            """Store only meaningful values to keep attributes small."""
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                return
+
+            if numeric == 0:
+                return
+
+            target[key] = round(numeric, 3)
+
         try:
-            # Extract metadata
             metadata = self._cache.data.get("metadata", {})
             attributes["last_updated"] = metadata.get("last_synced")
 
-            # Extract hourly usage data - populate ApexCharts dicts keyed by ISO datetime
-            # IMPORTANT: Limit to last 7 days to stay under Home Assistant's 16KB attribute limit
-            # The full 14-day cache is stored in usage_cache.json and accessible via other means
-            hourly_dict = self._cache.data.get("hourly", {})
-            hourly_total_usage = {}  # TOTAL usage (paid + free)
-            hourly_paid_usage = {}  # paid usage (peak + off-peak)
-            hourly_free_usage = {}  # free/unpaid usage
-            hourly_peak_usage = {}  # peak rate usage
-            hourly_offpeak_usage = {}  # off-peak rate usage
-            
-            # Calculate 7-day cutoff for hourly attributes (use timezone-aware datetime)
-            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-            
-            for timestamp, record in sorted(hourly_dict.items()):
-                # Parse timestamp to check if within last 7 days
-                try:
-                    ts_obj = datetime.fromisoformat(record.get("timestamp", timestamp).replace("Z", "+00:00"))
-                    # Skip records older than 7 days
-                    if ts_obj < seven_days_ago:
-                        continue
-                except (ValueError, AttributeError):
-                    # If timestamp parsing fails, skip this record
-                    continue
-                
-                # Use ISO datetime as key for ApexCharts compatibility
-                ts_key = record.get("timestamp", timestamp)
-                hourly_total_usage[ts_key] = record.get("total", 0.0)  # total = paid + free
-                hourly_paid_usage[ts_key] = record.get("paid", 0.0)  # paid = peak + off-peak
-                hourly_free_usage[ts_key] = record.get("free", 0.0)  # free/unpaid
-                hourly_peak_usage[ts_key] = record.get("peak", 0.0)  # peak rate
-                hourly_offpeak_usage[ts_key] = record.get("offpeak", 0.0)  # off-peak rate
-                
-            attributes["hourly_total_usage"] = hourly_total_usage
-            attributes["hourly_paid_usage"] = hourly_paid_usage
-            attributes["hourly_free_usage"] = hourly_free_usage
-            attributes["hourly_peak_usage"] = hourly_peak_usage
-            attributes["hourly_offpeak_usage"] = hourly_offpeak_usage
-            attributes["hourly_count"] = len(hourly_dict)  # Count shows all cached records
-            attributes["hourly_displayed_count"] = len(hourly_total_usage)  # Count of records in attributes
+            # Hourly: retain full cached window (10d target, 14d cache) but drop zeroes
+            hourly_records = self._cache.data.get("hourly", {})
+            for timestamp, record in hourly_records.items():
+                _add_non_zero(attributes["hourly_data"], timestamp, record.get("paid"))
+                _add_non_zero(attributes["hourly_free_data"], timestamp, record.get("free"))
+            attributes["hourly_count"] = len(hourly_records)
+            attributes["hourly_displayed_count"] = len(attributes["hourly_data"]) + len(attributes["hourly_free_data"])
 
-            # Extract daily usage data - populate ApexCharts dicts keyed by date string
-            # IMPORTANT: Limit to last 30 days to stay under Home Assistant's 16KB attribute limit
-            daily_dict = self._cache.data.get("daily", {})
-            daily_total_usage = {}  # TOTAL usage (paid + free)
-            daily_paid_usage = {}  # paid usage (peak + off-peak)
-            daily_free_usage = {}  # free/unpaid usage
-            daily_peak_usage = {}  # peak rate usage
-            daily_offpeak_usage = {}  # off-peak rate usage
-            
-            # Calculate 30-day cutoff for daily attributes
-            thirty_days_ago = datetime.now() - timedelta(days=30)
-            
-            # Accumulators for summary statistics
-            daily_total_kwh = 0.0
-            daily_paid_kwh = 0.0
-            daily_peak_kwh = 0.0
-            daily_offpeak_kwh = 0.0
-            daily_free_kwh = 0.0
-            daily_total_cost = 0.0
-            
-            # Yearly and seasonal statistics
-            current_year = datetime.now().year
-            rolling_365_start = datetime.now() - timedelta(days=365)
-            
-            year_calendar_total = 0.0
-            year_calendar_paid = 0.0
-            year_calendar_peak = 0.0
-            year_calendar_offpeak = 0.0
-            year_calendar_free = 0.0
-            year_calendar_cost = 0.0
-            year_calendar_days = 0
-            
-            year_rolling_total = 0.0
-            year_rolling_paid = 0.0
-            year_rolling_peak = 0.0
-            year_rolling_offpeak = 0.0
-            year_rolling_free = 0.0
-            year_rolling_cost = 0.0
-            year_rolling_days = 0
-            
-            # NZ Seasons: Spring (Sep-Nov), Summer (Dec-Feb), Autumn (Mar-Jun), Winter (Jul-Aug)
-            spring_total = 0.0
-            spring_days = 0
-            summer_total = 0.0
-            summer_days = 0
-            autumn_total = 0.0
-            autumn_days = 0
-            winter_total = 0.0
-            winter_days = 0
-            
-            for date_key, record in sorted(daily_dict.items()):
-                try:
-                    date_obj = datetime.strptime(date_key, "%Y-%m-%d")
-                except ValueError:
-                    continue
-                    
-                total = record.get("total", 0.0)
-                paid = record.get("paid", 0.0)
-                peak = record.get("peak", 0.0)
-                offpeak = record.get("offpeak", 0.0)
-                free = record.get("free", 0.0)
-                cost = record.get("cost", 0.0)
-                
-                # Only add to attributes dict if within last 30 days
-                if date_obj >= thirty_days_ago:
-                    daily_total_usage[date_key] = total
-                    daily_paid_usage[date_key] = paid
-                    daily_free_usage[date_key] = free
-                    daily_peak_usage[date_key] = peak
-                    daily_offpeak_usage[date_key] = offpeak
-                
-                # Accumulate totals for all cached daily data (for statistics)
-                daily_total_kwh += total
-                daily_paid_kwh += paid
-                daily_peak_kwh += peak
-                daily_offpeak_kwh += offpeak
-                daily_free_kwh += free
-                daily_total_cost += cost
-                
-                # Calendar year statistics
-                if date_obj.year == current_year:
-                    year_calendar_total += total
-                    year_calendar_paid += paid
-                    year_calendar_peak += peak
-                    year_calendar_offpeak += offpeak
-                    year_calendar_free += free
-                    year_calendar_cost += cost
-                    year_calendar_days += 1
-                
-                # Rolling 365 days statistics
-                if date_obj >= rolling_365_start:
-                    year_rolling_total += total
-                    year_rolling_paid += paid
-                    year_rolling_peak += peak
-                    year_rolling_offpeak += offpeak
-                    year_rolling_free += free
-                    year_rolling_cost += cost
-                    year_rolling_days += 1
-                
-                # Seasonal statistics (NZ seasons)
-                month = date_obj.month
-                if month in [9, 10, 11]:  # Spring: Sep-Nov
-                    spring_total += total
-                    spring_days += 1
-                elif month in [12, 1, 2]:  # Summer: Dec-Feb
-                    summer_total += total
-                    summer_days += 1
-                elif month in [3, 4, 5, 6]:  # Autumn: Mar-Jun
-                    autumn_total += total
-                    autumn_days += 1
-                elif month in [7, 8]:  # Winter: Jul-Aug
-                    winter_total += total
-                    winter_days += 1
-                
-            attributes["daily_total_usage"] = daily_total_usage
-            attributes["daily_paid_usage"] = daily_paid_usage
-            attributes["daily_free_usage"] = daily_free_usage
-            attributes["daily_peak_usage"] = daily_peak_usage
-            attributes["daily_offpeak_usage"] = daily_offpeak_usage
-            attributes["daily_count"] = len(daily_dict)  # Count shows all cached records
-            attributes["daily_displayed_count"] = len(daily_total_usage)  # Count of records in attributes
+            # Daily: full 35-day window, keep paid/free only
+            daily_records = self._cache.data.get("daily", {})
+            for date_key, record in daily_records.items():
+                _add_non_zero(attributes["daily_paid_usage"], date_key, record.get("paid"))
+                _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
+            attributes["daily_count"] = len(daily_records)
+            attributes["daily_displayed_count"] = len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"])
 
-            # Extract monthly usage data - populate ApexCharts dicts keyed by month string
-            monthly_dict = self._cache.data.get("monthly", {})
-            monthly_total_usage = {}  # TOTAL usage (paid + free)
-            monthly_paid_usage = {}  # paid usage (peak + off-peak)
-            monthly_free_usage = {}  # free/unpaid usage
-            monthly_peak_usage = {}  # peak rate usage
-            monthly_offpeak_usage = {}  # off-peak rate usage
-            
-            monthly_total_kwh = 0.0
-            monthly_paid_kwh = 0.0
-            monthly_peak_kwh = 0.0
-            monthly_offpeak_kwh = 0.0
-            monthly_free_kwh = 0.0
-            monthly_total_cost = 0.0
-            monthly_total_days = 0  # Sum of days in each month for averaging
-            
-            for month_key, record in sorted(monthly_dict.items()):
-                total = record.get("total", 0.0)
-                paid = record.get("paid", 0.0)
-                peak = record.get("peak", 0.0)
-                offpeak = record.get("offpeak", 0.0)
-                free = record.get("free", 0.0)
-                cost = record.get("cost", 0.0)
-                
-                monthly_total_usage[month_key] = total
-                monthly_paid_usage[month_key] = paid
-                monthly_free_usage[month_key] = free
-                monthly_peak_usage[month_key] = peak
-                monthly_offpeak_usage[month_key] = offpeak
-                
-                # Accumulate totals for summary statistics
-                monthly_total_kwh += total
-                monthly_paid_kwh += paid
-                monthly_peak_kwh += peak
-                monthly_offpeak_kwh += offpeak
-                monthly_free_kwh += free
-                monthly_total_cost += cost
-                
-                # Calculate days in this month for averaging
-                try:
-                    year, month = map(int, month_key.split("-"))
-                    days_in_month = monthrange(year, month)[1]
-                    monthly_total_days += days_in_month
-                except (ValueError, IndexError):
-                    pass
-                
-            attributes["monthly_total_usage"] = monthly_total_usage
-            attributes["monthly_paid_usage"] = monthly_paid_usage
-            attributes["monthly_free_usage"] = monthly_free_usage
-            attributes["monthly_peak_usage"] = monthly_peak_usage
-            attributes["monthly_offpeak_usage"] = monthly_offpeak_usage
-            attributes["monthly_count"] = len(monthly_dict)
-
-            # Update summary statistics for quick reference without expanding attributes
-            attributes["summary"] = {
-                # Daily totals (all cached daily data)
-                "daily_total_kwh": round(daily_total_kwh, 2),
-                "daily_paid_kwh": round(daily_paid_kwh, 2),
-                "daily_peak_kwh": round(daily_peak_kwh, 2),
-                "daily_offpeak_kwh": round(daily_offpeak_kwh, 2),
-                "daily_free_kwh": round(daily_free_kwh, 2),
-                "daily_cost_nzd": round(daily_total_cost, 2),
-                "daily_count": len(daily_dict),
-                # Daily averages (kWh per hour) - divide by 24
-                "daily_average_usage": round(daily_total_kwh / 24, 3) if daily_total_kwh > 0 else 0.0,
-                "daily_average_paid_usage": round(daily_paid_kwh / 24, 3) if daily_paid_kwh > 0 else 0.0,
-                "daily_average_free_usage": round(daily_free_kwh / 24, 3) if daily_free_kwh > 0 else 0.0,
-                "daily_average_offpeak_usage": round(daily_offpeak_kwh / 24, 3) if daily_offpeak_kwh > 0 else 0.0,
-                # Monthly totals (all cached monthly data)
-                "monthly_total_kwh": round(monthly_total_kwh, 2),
-                "monthly_paid_kwh": round(monthly_paid_kwh, 2),
-                "monthly_peak_kwh": round(monthly_peak_kwh, 2),
-                "monthly_offpeak_kwh": round(monthly_offpeak_kwh, 2),
-                "monthly_free_kwh": round(monthly_free_kwh, 2),
-                "monthly_cost_nzd": round(monthly_total_cost, 2),
-                "monthly_count": len(monthly_dict),
-                # Monthly averages (kWh per day) - divide by total days in all months
-                "monthly_average_usage": round(monthly_total_kwh / monthly_total_days, 2) if monthly_total_days > 0 else 0.0,
-                "monthly_average_paid_usage": round(monthly_paid_kwh / monthly_total_days, 2) if monthly_total_days > 0 else 0.0,
-                "monthly_average_free_usage": round(monthly_free_kwh / monthly_total_days, 2) if monthly_total_days > 0 else 0.0,
-                "monthly_average_offpeak_usage": round(monthly_offpeak_kwh / monthly_total_days, 2) if monthly_total_days > 0 else 0.0,
-                # Yearly statistics (calendar year)
-                "year_calendar_total_kwh": round(year_calendar_total, 2),
-                "year_calendar_paid_kwh": round(year_calendar_paid, 2),
-                "year_calendar_peak_kwh": round(year_calendar_peak, 2),
-                "year_calendar_offpeak_kwh": round(year_calendar_offpeak, 2),
-                "year_calendar_free_kwh": round(year_calendar_free, 2),
-                "year_calendar_cost_nzd": round(year_calendar_cost, 2),
-                "year_calendar_average_per_day": round(year_calendar_total / year_calendar_days, 2) if year_calendar_days > 0 else 0.0,
-                # Yearly statistics (rolling 365 days)
-                "year_rolling_total_kwh": round(year_rolling_total, 2),
-                "year_rolling_paid_kwh": round(year_rolling_paid, 2),
-                "year_rolling_peak_kwh": round(year_rolling_peak, 2),
-                "year_rolling_offpeak_kwh": round(year_rolling_offpeak, 2),
-                "year_rolling_free_kwh": round(year_rolling_free, 2),
-                "year_rolling_cost_nzd": round(year_rolling_cost, 2),
-                "year_rolling_average_per_day": round(year_rolling_total / year_rolling_days, 2) if year_rolling_days > 0 else 0.0,
-                # Seasonal averages (NZ seasons, kWh per day)
-                "season_spring_avg_per_day": round(spring_total / spring_days, 2) if spring_days > 0 else 0.0,  # Sep-Nov
-                "season_summer_avg_per_day": round(summer_total / summer_days, 2) if summer_days > 0 else 0.0,  # Dec-Feb
-                "season_autumn_avg_per_day": round(autumn_total / autumn_days, 2) if autumn_days > 0 else 0.0,  # Mar-Jun
-                "season_winter_avg_per_day": round(winter_total / winter_days, 2) if winter_days > 0 else 0.0,  # Jul-Aug
-            }
+            # Monthly: full 18-month window, keep paid/free only
+            monthly_records = self._cache.data.get("monthly", {})
+            for month_key, record in monthly_records.items():
+                _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
+                _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
+            attributes["monthly_count"] = len(monthly_records)
+            attributes["monthly_displayed_count"] = len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"])
 
             _LOGGER.debug(
-                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d (size=%d bytes)",
+                "Loaded usage data for contract %s: hourly=%d (%d displayed), daily=%d (%d displayed), monthly=%d (%d displayed)",
                 self._contract_id,
-                attributes["hourly_count"],
-                attributes["daily_count"],
-                attributes["monthly_count"],
-                len(str(attributes))
+                attributes["hourly_count"], attributes["hourly_displayed_count"],
+                attributes["daily_count"], attributes["daily_displayed_count"],
+                attributes["monthly_count"], attributes["monthly_displayed_count"],
             )
 
         except Exception as e:
