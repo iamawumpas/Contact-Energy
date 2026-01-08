@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.9 ]
+
+### Fixed
+- Changed asyncio lock from instance-level to class-level (shared across all UsageCache instances per contract)
+- Multiple components (coordinator, usage sensor, energy sensors) now properly serialize cache saves
+- Resolved race condition where separate UsageCache instances had separate locks that didn't protect each other
+
 ## [ 1.7.8 ]
 
 ### Fixed

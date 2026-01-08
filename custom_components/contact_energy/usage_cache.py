@@ -57,6 +57,10 @@ class UsageCache:
         cache.prune_daily(window_days=35)
         await cache.save()
     """
+    
+    # Class-level dictionary of locks, one per contract ID
+    # Shared across all UsageCache instances to prevent concurrent saves
+    _locks: dict[str, asyncio.Lock] = {}
 
     def __init__(self, contract_id: str, cache_dir: Optional[Path] = None):
         """Initialize cache manager for a specific contract.
@@ -84,8 +88,11 @@ class UsageCache:
         # This will be populated by load() or remain empty for new cache
         self.data: dict[str, Any] = self._create_empty_cache()
 
-        # Lock to prevent concurrent save operations
-        self._save_lock = asyncio.Lock()
+        # Get or create shared lock for this contract ID
+        # All UsageCache instances for the same contract share this lock
+        if contract_id not in UsageCache._locks:
+            UsageCache._locks[contract_id] = asyncio.Lock()
+        self._save_lock = UsageCache._locks[contract_id]
 
         _LOGGER.debug(
             "UsageCache initialized for contract %s: cache_path=%s",
