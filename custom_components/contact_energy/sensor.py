@@ -17,7 +17,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.const import UnitOfEnergy
 
 from .const import DOMAIN
 from .coordinator import ContactEnergyCoordinator
@@ -375,127 +375,127 @@ class ContactEnergyNextBillSensor(CoordinatorEntity, SensorEntity):
         return None
 
 
-class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
+class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
+    """Energy sensors for Home Assistant Energy dashboard.
 
+    Exposes cumulative paid/free energy as total_increasing sensors so they can
+    participate in HA's long-term statistics and Energy dashboard flows.
+    """
 
-    class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
-        """Energy sensors for Home Assistant Energy dashboard.
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
 
-        Exposes cumulative paid/free energy as total_increasing sensors so they can
-        participate in HA's long-term statistics and Energy dashboard flows.
-        """
+    def __init__(
+        self,
+        coordinator: ContactEnergyCoordinator,
+        config_entry: ConfigType,
+        entity_name: str,
+        contract_id: str,
+        energy_kind: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self.config_entry = config_entry
+        self._entity_name = entity_name
+        self._contract_id = contract_id
+        self._energy_kind = energy_kind  # "paid" or "free"
+        self._cache = UsageCache(contract_id)
+        self._latest_totals = {"paid": 0.0, "free": 0.0}
 
-        _attr_device_class = SensorDeviceClass.ENERGY
-        _attr_state_class = SensorStateClass.TOTAL_INCREASING
-        _attr_native_unit_of_measurement = ENERGY_KILO_WATT_HOUR
+        name_suffix = "Paid Energy" if energy_kind == "paid" else "Free Energy"
+        self._attr_name = f"{entity_name} {name_suffix}"
+        self._attr_unique_id = f"contact_energy_{energy_kind}_usage_{contract_id}"
+        self._attr_icon = "mdi:lightning-bolt"
 
-        def __init__(
-            self,
-            coordinator: ContactEnergyCoordinator,
-            config_entry: ConfigType,
-            entity_name: str,
-            contract_id: str,
-            energy_kind: str,
-        ) -> None:
-            super().__init__(coordinator)
-            self.config_entry = config_entry
-            self._entity_name = entity_name
-            self._contract_id = contract_id
-            self._energy_kind = energy_kind  # "paid" or "free"
-            self._cache = UsageCache(contract_id)
-            self._latest_totals = {"paid": 0.0, "free": 0.0}
+    @property
+    def native_value(self) -> float:
+        """Return the cumulative paid/free energy in kWh."""
+        return float(self._latest_totals.get(self._energy_kind, 0.0))
 
-            name_suffix = "Paid Energy" if energy_kind == "paid" else "Free Energy"
-            self._attr_name = f"{entity_name} {name_suffix}"
-            self._attr_unique_id = f"contact_energy_{energy_kind}_usage_{contract_id}"
-            self._attr_icon = "mdi:lightning-bolt"
+    @property
+    def device_info(self):
+        """Group under the contract device."""
+        return {
+            "identifiers": {(DOMAIN, self._contract_id)},
+            "name": f"Contact Energy {self._entity_name}",
+            "manufacturer": "Contact Energy",
+            "model": "Energy Account",
+        }
 
-        @property
-        def native_value(self) -> float:
-            """Return the cumulative paid/free energy in kWh."""
-            return float(self._latest_totals.get(self._energy_kind, 0.0))
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
 
-        @property
-        def device_info(self):
-            """Group under the contract device."""
-            return {
-                "identifiers": {(DOMAIN, self._contract_id)},
-                "name": f"Contact Energy {self._entity_name}",
-                "manufacturer": "Contact Energy",
-                "model": "Energy Account",
-            }
+        # Listen for usage updates from the coordinator
+        self._unsub_dispatcher = async_dispatcher_connect(
+            self.hass,
+            f"{DOMAIN}_usage_updated_{self._contract_id}",
+            self._handle_usage_update,
+        )
 
-        async def async_added_to_hass(self) -> None:
-            await super().async_added_to_hass()
+        # Initial cache load
+        await self._async_reload_cache()
+        self.async_write_ha_state()
 
-            # Listen for usage updates from the coordinator
-            self._unsub_dispatcher = async_dispatcher_connect(
-                self.hass,
-                f"{DOMAIN}_usage_updated_{self._contract_id}",
-                self._handle_usage_update,
+    async def async_will_remove_from_hass(self) -> None:
+        if hasattr(self, "_unsub_dispatcher") and self._unsub_dispatcher:
+            self._unsub_dispatcher()
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _handle_usage_update(self) -> None:
+        """Handle usage data refreshed by the usage coordinator."""
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._async_reload_cache_and_update())
+        except Exception as e:
+            _LOGGER.error(
+                "Error scheduling energy cache reload for contract %s: %s",
+                self._contract_id,
+                str(e),
             )
 
-            # Initial cache load
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle coordinator updates by reloading cache."""
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._async_reload_cache_and_update())
+        except Exception as e:
+            _LOGGER.error(
+                "Error reloading energy cache on coordinator update for contract %s: %s",
+                self._contract_id,
+                str(e),
+            )
+
+    async def _async_reload_cache(self) -> None:
+        """Load cache and recompute cumulative totals."""
+        try:
+            await self._cache.load()
+            self._latest_totals = self._cache.get_cumulative_totals()
+        except Exception as e:
+            _LOGGER.error(
+                "Failed to reload energy cache for contract %s: %s",
+                self._contract_id,
+                str(e),
+                exc_info=True,
+            )
+
+    async def _async_reload_cache_and_update(self) -> None:
+        try:
             await self._async_reload_cache()
             self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error(
+                "Error updating energy sensor for contract %s: %s",
+                self._contract_id,
+                str(e),
+                exc_info=True,
+            )
 
-        async def async_will_remove_from_hass(self) -> None:
-            if hasattr(self, "_unsub_dispatcher") and self._unsub_dispatcher:
-                self._unsub_dispatcher()
-            await super().async_will_remove_from_hass()
 
-        @callback
-        def _handle_usage_update(self) -> None:
-            """Handle usage data refreshed by the usage coordinator."""
-            try:
-                import asyncio
-                loop = asyncio.get_event_loop()
-                loop.create_task(self._async_reload_cache_and_update())
-            except Exception as e:
-                _LOGGER.error(
-                    "Error scheduling energy cache reload for contract %s: %s",
-                    self._contract_id,
-                    str(e),
-                )
-
-        @callback
-        def _handle_coordinator_update(self) -> None:
-            """Handle coordinator updates by reloading cache."""
-            try:
-                import asyncio
-                loop = asyncio.get_event_loop()
-                loop.create_task(self._async_reload_cache_and_update())
-            except Exception as e:
-                _LOGGER.error(
-                    "Error reloading energy cache on coordinator update for contract %s: %s",
-                    self._contract_id,
-                    str(e),
-                )
-
-        async def _async_reload_cache(self) -> None:
-            """Load cache and recompute cumulative totals."""
-            try:
-                await self._cache.load()
-                self._latest_totals = self._cache.get_cumulative_totals()
-            except Exception as e:
-                _LOGGER.error(
-                    "Failed to reload energy cache for contract %s: %s",
-                    self._contract_id,
-                    str(e),
-                    exc_info=True,
-                )
-
-        async def _async_reload_cache_and_update(self) -> None:
-            try:
-                await self._async_reload_cache()
-                self.async_write_ha_state()
-            except Exception as e:
-                _LOGGER.error(
-                    "Error updating energy sensor for contract %s: %s",
-                    self._contract_id,
-                    str(e),
-                    exc_info=True,
-                )
+class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
     """Represents a Contact Energy account detail sensor.
 
     Provides access to account settings such as correspondence preference,
