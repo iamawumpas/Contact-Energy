@@ -21,6 +21,7 @@ Author: Contact Energy Integration
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -82,6 +83,9 @@ class UsageCache:
         # Initialize empty data structure
         # This will be populated by load() or remain empty for new cache
         self.data: dict[str, Any] = self._create_empty_cache()
+
+        # Lock to prevent concurrent save operations
+        self._save_lock = asyncio.Lock()
 
         _LOGGER.debug(
             "UsageCache initialized for contract %s: cache_path=%s",
@@ -233,10 +237,16 @@ class UsageCache:
         or corrupted, even if the process is interrupted.
 
         Updates metadata (last_synced, record counts, date ranges) before saving.
+        Protected by asyncio lock to prevent concurrent writes from multiple sensors.
 
         Raises:
             OSError: If unable to create directory or write file
         """
+        async with self._save_lock:
+            await self._do_save()
+
+    async def _do_save(self) -> None:
+        """Internal save implementation (called within lock)."""
         start_time = time.time()
 
         _LOGGER.debug("Saving cache for contract %s to %s", self.contract_id, self.cache_path)

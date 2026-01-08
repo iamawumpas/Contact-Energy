@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.7 ]
+
+### Fixed
+- Added asyncio lock to prevent race condition when multiple energy sensors (paid/free) save cache simultaneously
+- Energy sensor cache saves are now serialized to prevent FileNotFoundError during concurrent writes
+
 ## [ 1.7.6 ]
 
 ### Fixed
