@@ -583,7 +583,8 @@ class UsageCache:
                 record_date = date.fromisoformat(date_str)
                 if record_date < sensor_start_date:
                     continue
-            paid_sum += float(record.get("paid") or 0.0)
+            # Sum paid_total (paid electricity) and free (off-peak free hours)
+            paid_sum += float(record.get("paid_total") or 0.0)
             free_sum += float(record.get("free") or 0.0)
 
         return {
