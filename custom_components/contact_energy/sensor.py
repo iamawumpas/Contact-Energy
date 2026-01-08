@@ -494,6 +494,13 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
             # Get cumulative totals only for data after sensor start date
             totals = self._cache.get_cumulative_totals(sensor_start_date)
             self._latest_totals = totals
+            _LOGGER.debug(
+                "Energy sensor for contract %s computed totals: paid=%.3f kWh, free=%.3f kWh (start_date=%s)",
+                self._contract_id,
+                totals.get("paid", 0.0),
+                totals.get("free", 0.0),
+                sensor_start_date.isoformat(),
+            )
         except Exception as e:
             _LOGGER.error(
                 "Failed to reload energy cache for contract %s: %s",
