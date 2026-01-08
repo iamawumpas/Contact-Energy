@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.10 ]
+
+### Fixed
+- Energy sensors now initialize with earliest cached date instead of today's date
+- Energy Dashboard can now display historical usage data from cache
+- Users will see immediate data in Energy Dashboard instead of waiting for new data
+
 ## [ 1.7.9 ]
 
 ### Fixed

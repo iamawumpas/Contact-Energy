@@ -478,8 +478,10 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
             from datetime import date
             sensor_start_date = self._cache.get_energy_sensor_start_date()
             if sensor_start_date is None:
-                # Set to today so we only track NEW data going forward
-                sensor_start_date = date.today()
+                # Set to earliest date in cached data so Energy Dashboard can show historical data
+                # Use daily data range as it's more stable than hourly (which has rolling window)
+                from_date, _ = self._cache.get_daily_range()
+                sensor_start_date = from_date if from_date else date.today()
                 self._cache.set_energy_sensor_start_date(sensor_start_date)
                 # Save immediately - this is one-time initialization after coordinator has already saved
                 await self._cache.save()
