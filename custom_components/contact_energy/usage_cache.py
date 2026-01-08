@@ -272,10 +272,6 @@ class UsageCache:
             import asyncio
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, _write_cache)
-            
-            import asyncio
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, _write_cache)
 
             elapsed = time.time() - start_time
 
