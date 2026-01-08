@@ -1,7 +1,0 @@
-Agent instructions for release 1.7.17:
-- Bookmark: release-1.7.17-resume
-- Tasks:
-    1) Add the changelog entry for version 1.7.17 to Changelog.md using the required format.
-    2) Create .changelog_ready in the repo root when done.
-    3) Create .bookmark_ack containing the bookmark name (release-1.7.17-resume).
-- After the script resumes, forget the bookmark name.
