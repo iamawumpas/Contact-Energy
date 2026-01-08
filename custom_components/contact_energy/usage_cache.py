@@ -104,6 +104,9 @@ class UsageCache:
                     "paid_kwh": 0.0,
                     "free_kwh": 0.0,
                 },
+                "energy_sensor": {
+                    "start_date": None,
+                },
                 "hourly": {
                     "from": None,
                     "to": None,
@@ -540,13 +543,18 @@ class UsageCache:
 
         return (before_count, after_count)
 
-    def get_cumulative_totals(self) -> dict[str, float]:
-        """Get cumulative paid/free totals including pruned history.
+    def get_cumulative_totals(self, sensor_start_date: Optional[date] = None) -> dict[str, float]:
+        """Get cumulative paid/free totals for energy sensors.
 
-        Returns a mapping with paid and free totals accumulated from the
-        persisted baseline plus current daily cache contents. This keeps
-        total_increasing energy sensors monotonic even when old daily data
-        is pruned.
+        Only counts energy consumed on or after the sensor_start_date to prevent
+        historical data from appearing as a spike in the Energy Dashboard.
+
+        Args:
+            sensor_start_date: Only count records from this date forward.
+                              If None, counts all records (legacy behavior).
+
+        Returns:
+            dict: Mapping with 'paid' and 'free' cumulative kWh totals.
         """
         cumulative = self._ensure_cumulative_metadata()
 
@@ -556,7 +564,12 @@ class UsageCache:
         paid_sum = 0.0
         free_sum = 0.0
 
-        for record in self.data.get("daily", {}).values():
+        # Only sum daily records on or after sensor start date
+        for date_str, record in self.data.get("daily", {}).items():
+            if sensor_start_date is not None:
+                record_date = date.fromisoformat(date_str)
+                if record_date < sensor_start_date:
+                    continue
             paid_sum += float(record.get("paid") or 0.0)
             free_sum += float(record.get("free") or 0.0)
 
@@ -569,6 +582,29 @@ class UsageCache:
         """Ensure cumulative metadata exists and return it."""
         metadata = self.data.setdefault("metadata", {})
         return metadata.setdefault("cumulative", {"paid_kwh": 0.0, "free_kwh": 0.0})
+
+    def get_energy_sensor_start_date(self) -> Optional[date]:
+        """Get the energy sensor start date from cache metadata.
+
+        Returns:
+            date: The date when energy sensor tracking began, or None if not set.
+        """
+        metadata = self.data.get("metadata", {})
+        energy_sensor = metadata.get("energy_sensor", {})
+        start_date_str = energy_sensor.get("start_date")
+        if start_date_str:
+            return date.fromisoformat(start_date_str)
+        return None
+
+    def set_energy_sensor_start_date(self, start_date: date) -> None:
+        """Set the energy sensor start date in cache metadata.
+
+        Args:
+            start_date: The date when energy sensor tracking should begin.
+        """
+        metadata = self.data.setdefault("metadata", {})
+        energy_sensor = metadata.setdefault("energy_sensor", {})
+        energy_sensor["start_date"] = start_date.isoformat()
 
     def prune_monthly(self, window_months: int = 18) -> tuple[int, int]:
         """Remove monthly records older than the specified window.

@@ -473,7 +473,24 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
         """Load cache and recompute cumulative totals."""
         try:
             await self._cache.load()
-            self._latest_totals = self._cache.get_cumulative_totals()
+
+            # Initialize sensor start date on first load
+            from datetime import date
+            sensor_start_date = self._cache.get_energy_sensor_start_date()
+            if sensor_start_date is None:
+                # Set to today so we only track NEW data going forward
+                sensor_start_date = date.today()
+                self._cache.set_energy_sensor_start_date(sensor_start_date)
+                await self._cache.save()
+                _LOGGER.info(
+                    "Energy sensor for contract %s initialized with start_date=%s",
+                    self._contract_id,
+                    sensor_start_date.isoformat(),
+                )
+
+            # Get cumulative totals only for data after sensor start date
+            totals = self._cache.get_cumulative_totals(sensor_start_date)
+            self._latest_totals = totals
         except Exception as e:
             _LOGGER.error(
                 "Failed to reload energy cache for contract %s: %s",

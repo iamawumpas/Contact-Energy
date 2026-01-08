@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.4 ]
+
+### Fixed
+- Energy Dashboard sensors now only track new data after sensor creation, preventing historical cache data from appearing as a large spike
+- Energy sensors initialize with start_date set to today, ignoring existing cached historical data
+- Cumulative energy totals now filter by sensor start date to maintain accurate statistics
+
 ## [ 1.7.3 ]
 
 ### Changed
