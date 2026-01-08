@@ -7,7 +7,6 @@ This page provides examples for displaying your Contact Energy data in Home Assi
 - [Markdown Card - Sidebar Layout](#markdown-card---sidebar-layout)
 - [Entity Cards](#entity-cards)
 - [Custom Cards](#custom-cards)
-- [ApexCharts Examples](#apexcharts-examples)
 - [Automations Using Sensors](#automations-using-sensors)
 
 ---
@@ -22,7 +21,6 @@ A comprehensive card displaying all your account information in a compact, organ
 - ✅ Date formatting
 - ✅ Grouped sensor display by category
 - ✅ Countdown displays for upcoming dates
-- ✅ **Programmatic calculation** of "Days Until Next Bill" from Next Bill Date sensor
 - ✅ Responsive design
 - ✅ Scrollable for long lists
 
@@ -48,7 +46,6 @@ This is a visual representation of how the card appears in Lovelace:
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);">Next Bill</td></tr>
 <tr><td style="padding: 4px 4px;">Next Bill Date</td><td style="padding: 4px 4px; text-align: right;">2025-02-01</td></tr>
 <tr><td style="padding: 4px 4px;">Days Until Next Bill</td><td style="padding: 4px 4px; text-align: right;">33 days</td></tr>
-<tr><td colspan="2" style="padding: 4px 4px;"><em style="font-size: 11px; opacity: 0.7;">* Calculated from Next Bill Date</em></td></tr>
 <tr><td colspan="2" style="padding: 6px 4px; font-weight: 600; background: rgba(255,255,255,0.05);"><em>(Additional sections: Account Settings, Contract Details, Payment Plans below in full card)</em></td></tr>
 </tbody>
 </table>
@@ -61,10 +58,6 @@ This is a visual representation of how the card appears in Lovelace:
 ```yaml
 type: markdown
 content: >+
-
-  {# CONFIGURATION: Set your entity base name here (change this to match your sensors) #}
-  {% set address_icp = 'my_address_icp123' %}
-
 
   {# Define all entity names that should be formatted as currency ($X.XX) #}
   {% set currency_names = [
@@ -84,41 +77,42 @@ content: >+
   ] %}
 
 
-  {# Define groups and their entities - Uses address_icp variable #}
+  {# Define groups and their entities - Replace with your actual sensor names #}
   {% set groups = [
     ('Account Balance', [
-      ('Current Balance', 'sensor.' + address_icp + '_current_balance'),
-      ('Prepay Debt Balance', 'sensor.' + address_icp + '_prepay_debt_balance'),
-      ('Refund Eligible', 'sensor.' + address_icp + '_refund_eligible'),
-      ('Maximum Refund', 'sensor.' + address_icp + '_maximum_refund')
+      ('Current Balance', 'sensor.my_address_icp123_current_balance'),
+      ('Prepay Debt Balance', 'sensor.my_address_icp123_prepay_debt_balance'),
+      ('Refund Eligible', 'sensor.my_address_icp123_refund_eligible'),
+      ('Maximum Refund', 'sensor.my_address_icp123_maximum_refund')
     ]),
     ('Billing Information', [
-      ('Amount Due', 'sensor.' + address_icp + '_amount_due'),
-      ('Amount Paid', 'sensor.' + address_icp + '_amount_paid'),
-      ('Discount Total', 'sensor.' + address_icp + '_discount_total'),
-      ('Payment Due Date', 'sensor.' + address_icp + '_payment_due_date'),
-      ('Days Until Overdue', 'sensor.' + address_icp + '_days_until_overdue')
+      ('Amount Due', 'sensor.my_address_icp123_amount_due'),
+      ('Amount Paid', 'sensor.my_address_icp123_amount_paid'),
+      ('Discount Total', 'sensor.my_address_icp123_discount_total'),
+      ('Payment Due Date', 'sensor.my_address_icp123_payment_due_date'),
+      ('Days Until Overdue', 'sensor.my_address_icp123_days_until_overdue')
     ]),
     ('Next Bill', [
-      ('Next Bill Date', 'sensor.' + address_icp + '_next_bill_date')
+      ('Next Bill Date', 'sensor.my_address_icp123_next_bill_date'),
+      ('Days Until Next Bill', 'sensor.my_address_icp123_days_until_next_bill')
     ]),
     ('Account Settings', [
-      ('Correspondence Preference', 'sensor.' + address_icp + '_correspondence_preference'),
-      ('Payment Method', 'sensor.' + address_icp + '_payment_method'),
-      ('Billing Frequency', 'sensor.' + address_icp + '_billing_frequency')
+      ('Correspondence Preference', 'sensor.my_address_icp123_correspondence_preference'),
+      ('Payment Method', 'sensor.my_address_icp123_payment_method'),
+      ('Billing Frequency', 'sensor.my_address_icp123_billing_frequency')
     ]),
     ('Contract Details', [
-      ('Account Nickname', 'sensor.' + address_icp + '_account_nickname'),
-      ('ICP', 'sensor.' + address_icp + '_icp'),
-      ('Address', 'sensor.' + address_icp + '_address'),
-      ('Product Name', 'sensor.' + address_icp + '_product_name'),
-      ('Contract Type', 'sensor.' + address_icp + '_contract_type'),
-      ('Contract Status', 'sensor.' + address_icp + '_contract_status')
+      ('Account Nickname', 'sensor.my_address_icp123_account_nickname'),
+      ('ICP', 'sensor.my_address_icp123_icp'),
+      ('Address', 'sensor.my_address_icp123_address'),
+      ('Product Name', 'sensor.my_address_icp123_product_name'),
+      ('Contract Type', 'sensor.my_address_icp123_contract_type'),
+      ('Contract Status', 'sensor.my_address_icp123_contract_status')
     ]),
     ('Payment Plans', [
-      ('Direct Debit', 'sensor.' + address_icp + '_is_direct_debit'),
-      ('Smooth Pay', 'sensor.' + address_icp + '_is_smooth_pay'),
-      ('Prepay', 'sensor.' + address_icp + '_is_prepay')
+      ('Direct Debit', 'sensor.my_address_icp123_is_direct_debit'),
+      ('Smooth Pay', 'sensor.my_address_icp123_is_smooth_pay'),
+      ('Prepay', 'sensor.my_address_icp123_is_prepay')
     ])
   ] %}
 
@@ -205,9 +199,7 @@ card_mod:
 
 ### Customization
 
-1. **Set your address_icp variable**: Change the `address_icp` value at the top (line 4) from `'my_address_icp123'` to match your actual sensor base name
-   - Example: `{% set address_icp = '71_oroua_st_0000000966tr348' %}`
-   - This single change updates all sensor references throughout the card
+1. **Replace sensor names**: Change all instances of `my_address_icp123` to match your actual sensor entity IDs
 2. **Update header**: Change `My Address<br>ICP123` to your property address and ICP
 3. **Adjust height**: Modify `height: 500px` to fit your sidebar
 4. **Add/Remove groups**: Modify the `groups` list to show only sensors you want
@@ -242,15 +234,8 @@ icon: mdi:currency-usd</code></pre>
 
 Show upcoming payment information:
 
-<table>
-  <tr>
-    <td style="vertical-align: top; padding-right: 12px;">
-      <strong>Preview</strong><br>
-      <img src="https://raw.githubusercontent.com/iamawumpas/Contact-Energy/main/assets/payment_due_card.png" alt="Payment Due Card" style="max-width: 220px; height: auto;">
-    </td>
-    <td style="vertical-align: top;">
-      <strong>YAML</strong>
-      <pre><code>type: entities
+```yaml
+type: entities
 title: Payment Due
 entities:
   - entity: sensor.my_address_icp123_amount_due
@@ -259,10 +244,8 @@ entities:
     name: Due Date
   - entity: sensor.my_address_icp123_days_until_overdue
     name: Days Remaining
-    icon: mdi:calendar-clock</code></pre>
-    </td>
-  </tr>
-</table>
+    icon: mdi:calendar-clock
+```
 
 ### Contract Information Card
 
@@ -347,138 +330,7 @@ period:
 
 ## ApexCharts Examples
 
-### Hourly Usage Chart (Last 10 Days)
-
-Visualize your hourly energy consumption with ApexCharts, showing free and paid usage separately.
-
-**Requirements:**
-- Custom card: [apexcharts-card](https://github.com/RomRider/apexcharts-card)
-- Sensor: `sensor.contact_energy_usage_<contract_id>` with hourly data
-
-**Features:**
-- ✅ Displays last 10 days of hourly data
-- ✅ Separate series for free (blue) and paid (yellow) usage
-- ✅ Gradient fill for visual appeal
-- ✅ Responsive datetime axis with day labels
-- ✅ Single-point configuration via template variable
-
-**Setup:**
-
-1. Replace `address_icp` in the YAML with your ICP code (e.g., `0000000966tr348`):
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Hourly Usage (Last 10 Days)
-  show_states: false
-apex_config:
-  chart:
-    height: 300
-  legend:
-    position: top
-  xaxis:
-    type: datetime
-    labels:
-      format: ddd
-graph_span: 10d
-span:
-  entity_index: 0
-series:
-  - entity: sensor.contact_energy_usage_0000000966tr348
-    name: Free
-    color: '#008FFB'
-    type: column
-    data_generator: |
-      return Object.entries(entity.attributes.hourly_free_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
-  - entity: sensor.contact_energy_usage_0000000966tr348
-    name: Paid
-    color: '#FEB019'
-    type: column
-    data_generator: |
-      return Object.entries(entity.attributes.hourly_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
-card_mod:
-  style:
-    apexcharts$: |
-      .apexcharts-canvas {
-        filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.15));
-      }
-```
-
-Or use a template variable for easier management across multiple accounts:
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Hourly Usage (Last 10 Days)
-  show_states: false
-variables:
-  address_icp: '0000000966tr348'  # Change this to your ICP
-apex_config:
-  chart:
-    height: 300
-  legend:
-    position: top
-  xaxis:
-    type: datetime
-    labels:
-      format: ddd
-graph_span: 10d
-span:
-  entity_index: 0
-series:
-  - entity: sensor.contact_energy_usage_{{ variables.address_icp }}
-    name: Free
-    color: '#008FFB'
-    type: column
-    data_generator: |
-      return Object.entries(entity.attributes.hourly_free_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
-  - entity: sensor.contact_energy_usage_{{ variables.address_icp }}
-    name: Paid
-    color: '#FEB019'
-    type: column
-    data_generator: |
-      return Object.entries(entity.attributes.hourly_data || {})
-        .map(([time, value]) => [new Date(time).getTime(), value]);
-    fill:
-      type: gradient
-      gradient:
-        shadeIntensity: 0.3
-        opacityFrom: 1
-        opacityTo: 0.1
-card_mod:
-  style:
-    apexcharts$: |
-      .apexcharts-canvas {
-        filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.15));
-      }
-```
-
-**Sample Dashboard File:**
-
-A complete dashboard example with this chart is available in [`assets/chart_hourly_usage.yaml`](../assets/chart_hourly_usage.yaml).
+⚠️ **Usage sensors not yet implemented** - These examples are placeholders for future functionality.
 
 ### Daily Usage Chart
 
