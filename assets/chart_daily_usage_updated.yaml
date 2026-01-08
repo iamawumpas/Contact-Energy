@@ -72,7 +72,8 @@ series:
         }) : [];
     color: "#FEB019"
     group_by:
-      func: last
+      func: sum
+      fill: zero
       duration: 1d
   - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     attribute: daily_free_usage
@@ -85,7 +86,8 @@ series:
         }) : [];
     color: "#008FFB"
     group_by:
-      func: last
+      func: sum
+      fill: zero
       duration: 1d
 card_mod:
   style: |
