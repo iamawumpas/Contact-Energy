@@ -410,7 +410,15 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> float:
         """Return the cumulative paid/free energy in kWh."""
-        return float(self._latest_totals.get(self._energy_kind, 0.0))
+        value = float(self._latest_totals.get(self._energy_kind, 0.0))
+        _LOGGER.debug(
+            "Energy sensor %s native_value for %s: %.3f kWh (all totals: %s)",
+            self._attr_unique_id,
+            self._energy_kind,
+            value,
+            self._latest_totals,
+        )
+        return value
 
     @property
     def device_info(self):
