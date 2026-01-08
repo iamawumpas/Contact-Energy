@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.16 ]
+
+### Fixed
+- Added last_reset attribute to energy sensors to correctly attribute cumulative data to the actual consumption dates
+- Energy Dashboard now shows data on the correct dates (when consumed), not on the date the integration updated
+- Fixes issue where all energy appeared to be consumed on integration reload date
+
 ## [ 1.7.15 ]
 
 ### Fixed

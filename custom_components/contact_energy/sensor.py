@@ -8,7 +8,7 @@ Sensor naming follows the pattern: sensor.{entity_friendly_name}.{attribute_name
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.components.sensor import SensorDeviceClass
@@ -419,6 +419,35 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
             self._latest_totals,
         )
         return value
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Return the last reset datetime for the sensor.
+        
+        This tells Home Assistant when cumulative tracking began.
+        The statistics database uses this to correctly attribute energy
+        consumption to the correct dates in the Energy Dashboard.
+        """
+        try:
+            start_date = self._cache.get_energy_sensor_start_date()
+            if start_date:
+                # Convert date to datetime at start of day UTC
+                from datetime import datetime as dt
+                reset_dt = dt.combine(start_date, dt.min.time(), tzinfo=timezone.utc)
+                _LOGGER.debug(
+                    "Energy sensor %s last_reset: %s (start_date=%s)",
+                    self._attr_unique_id,
+                    reset_dt.isoformat(),
+                    start_date.isoformat(),
+                )
+                return reset_dt
+        except Exception as e:
+            _LOGGER.error(
+                "Error getting last_reset for energy sensor %s: %s",
+                self._attr_unique_id,
+                str(e),
+            )
+        return None
 
     @property
     def device_info(self):
