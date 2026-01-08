@@ -576,6 +576,7 @@ class UsageCache:
 
         paid_sum = 0.0
         free_sum = 0.0
+        record_count = 0
 
         # Only sum daily records on or after sensor start date
         for date_str, record in self.data.get("daily", {}).items():
@@ -584,8 +585,29 @@ class UsageCache:
                 if record_date < sensor_start_date:
                     continue
             # Sum paid_total (paid electricity) and free (off-peak free hours)
-            paid_sum += float(record.get("paid_total") or 0.0)
-            free_sum += float(record.get("free") or 0.0)
+            paid_val = float(record.get("paid_total") or 0.0)
+            free_val = float(record.get("free") or 0.0)
+            paid_sum += paid_val
+            free_sum += free_val
+            record_count += 1
+            if record_count <= 3:  # Log first 3 records for debugging
+                _LOGGER.debug(
+                    "Cumulative calc for %s: date=%s, paid_total=%.3f, free=%.3f",
+                    self.contract_id,
+                    date_str,
+                    paid_val,
+                    free_val,
+                )
+
+        _LOGGER.debug(
+            "Cumulative totals for %s: counted %d records, paid_sum=%.3f, free_sum=%.3f, baseline_paid=%.3f, baseline_free=%.3f",
+            self.contract_id,
+            record_count,
+            paid_sum,
+            free_sum,
+            baseline_paid,
+            baseline_free,
+        )
 
         return {
             "paid": round(baseline_paid + paid_sum, 3),

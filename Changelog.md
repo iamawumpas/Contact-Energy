@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.13 ]
+
+### Fixed
+- Added detailed debug logging to get_cumulative_totals() to diagnose zero paid total issue
+- Now logs first 3 records processed and total record counts, sums, and baselines
+
 ## [ 1.7.12 ]
 
 ### Fixed
