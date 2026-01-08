@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.5 ]
+
+### Fixed
+- Fixed race condition where energy sensor and usage coordinator attempted simultaneous cache file writes
+- Energy sensor now defers cache saves to coordinator, eliminating FileNotFoundError during initialization
+
 ## [ 1.7.4 ]
 
 ### Fixed
