@@ -584,15 +584,16 @@ class UsageCache:
                 record_date = date.fromisoformat(date_str)
                 if record_date < sensor_start_date:
                     continue
-            # Sum paid_total (paid electricity) and free (off-peak free hours)
-            paid_val = float(record.get("paid_total") or 0.0)
+            # Sum paid (paid electricity) and free (off-peak free hours)
+            # Note: Records are stored with field "paid" not "paid_total"
+            paid_val = float(record.get("paid") or 0.0)
             free_val = float(record.get("free") or 0.0)
             paid_sum += paid_val
             free_sum += free_val
             record_count += 1
             if record_count <= 3:  # Log first 3 records for debugging
                 _LOGGER.debug(
-                    "Cumulative calc for %s: date=%s, paid_total=%.3f, free=%.3f",
+                    "Cumulative calc for %s: date=%s, paid=%.3f, free=%.3f",
                     self.contract_id,
                     date_str,
                     paid_val,
