@@ -13,6 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.3 ]
+
+### Changed
+- Reduced usage sensor attribute size to fit under 16KB database limit
+- Removed alias attributes (hourly_usage, hourly_data, hourly_free_data)
+- Reduced decimal precision from 3 to 2 decimals (e.g., 1.23 kWh instead of 1.234 kWh)
+- Sensor state now shows total record count instead of last sync timestamp
+- Removed version and last_updated metadata from sensor attributes
+
 ## [ 1.7.2 ]
 
 ### Fixed

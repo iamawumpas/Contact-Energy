@@ -144,22 +144,21 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         }
 
     @property
-    def native_value(self) -> Optional[str]:
-        """Return the state of the sensor.
+    def native_value(self) -> int:
+        """Return the current state of the sensor.
 
-        State shows when usage data was last synchronized from the API.
+        State shows total number of usage records cached.
 
         Returns:
-            ISO timestamp of last sync, or "No Data" if never synced
+            Total count of hourly, daily, and monthly records
         """
-        # State = last sync timestamp from cache metadata
         if hasattr(self._cache, 'data') and self._cache.data:
-            metadata = self._cache.data.get("metadata", {})
-            last_synced = metadata.get("last_synced")
-            if last_synced:
-                return last_synced
+            hourly_count = len(self._cache.data.get("hourly", {}))
+            daily_count = len(self._cache.data.get("daily", {}))
+            monthly_count = len(self._cache.data.get("monthly", {}))
+            return hourly_count + daily_count + monthly_count
         
-        return "No Data"
+        return 0
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -170,24 +169,12 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         attribute payload compact.
         """
         attributes = {
-            "last_updated": None,
-            "version": "1.6.27",
             "hourly_paid_usage": {},  # paid kWh by ISO timestamp
             "hourly_free_usage": {},  # free kWh by ISO timestamp
-            "hourly_usage": {},  # alias for paid usage to match dashboards
-            # Legacy aliases kept for compatibility with 1.6.27 data naming
-            "hourly_data": {},  # deprecated alias for paid usage
-            "hourly_free_data": {},  # deprecated alias for free usage
             "daily_paid_usage": {},  # paid kWh by YYYY-MM-DD
             "daily_free_usage": {},  # free kWh by YYYY-MM-DD
             "monthly_paid_usage": {},  # paid kWh by YYYY-MM
             "monthly_free_usage": {},  # free kWh by YYYY-MM
-            "hourly_count": 0,
-            "daily_count": 0,
-            "monthly_count": 0,
-            "hourly_displayed_count": 0,
-            "daily_displayed_count": 0,
-            "monthly_displayed_count": 0,
         }
 
         # No cache loaded yet
@@ -205,45 +192,33 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             if numeric == 0:
                 return
 
-            target[key] = round(numeric, 3)
+            target[key] = round(numeric, 2)
 
         try:
-            metadata = self._cache.data.get("metadata", {})
-            attributes["last_updated"] = metadata.get("last_synced")
-
-            # Hourly: retain full cached window (10d target, 14d cache) but drop zeroes
+            # Hourly: retain full cached window (14 days) but drop zeroes
             hourly_records = self._cache.data.get("hourly", {})
             for timestamp, record in hourly_records.items():
                 _add_non_zero(attributes["hourly_paid_usage"], timestamp, record.get("paid"))
                 _add_non_zero(attributes["hourly_free_usage"], timestamp, record.get("free"))
-            attributes["hourly_usage"] = attributes["hourly_paid_usage"]
-            attributes["hourly_data"] = attributes["hourly_paid_usage"]
-            attributes["hourly_free_data"] = attributes["hourly_free_usage"]
-            attributes["hourly_count"] = len(hourly_records)
-            attributes["hourly_displayed_count"] = len(attributes["hourly_paid_usage"]) + len(attributes["hourly_free_usage"])
 
             # Daily: full 35-day window, keep paid/free only
             daily_records = self._cache.data.get("daily", {})
             for date_key, record in daily_records.items():
                 _add_non_zero(attributes["daily_paid_usage"], date_key, record.get("paid"))
                 _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
-            attributes["daily_count"] = len(daily_records)
-            attributes["daily_displayed_count"] = len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"])
 
             # Monthly: full 18-month window, keep paid/free only
             monthly_records = self._cache.data.get("monthly", {})
             for month_key, record in monthly_records.items():
                 _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
                 _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
-            attributes["monthly_count"] = len(monthly_records)
-            attributes["monthly_displayed_count"] = len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"])
 
             _LOGGER.debug(
-                "Loaded usage data for contract %s: hourly=%d (%d displayed), daily=%d (%d displayed), monthly=%d (%d displayed)",
+                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d",
                 self._contract_id,
-                attributes["hourly_count"], attributes["hourly_displayed_count"],
-                attributes["daily_count"], attributes["daily_displayed_count"],
-                attributes["monthly_count"], attributes["monthly_displayed_count"],
+                len(attributes["hourly_paid_usage"]) + len(attributes["hourly_free_usage"]),
+                len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"]),
+                len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"]),
             )
 
         except Exception as e:
