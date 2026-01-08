@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [ 1.7.6 ]
+
+### Fixed
+- Energy sensor start_date now persists correctly to cache file instead of remaining in memory only
+- Fixed timing issue where start_date was set after coordinator had already saved cache
+
 ## [ 1.7.5 ]
 
 ### Fixed

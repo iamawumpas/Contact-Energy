@@ -481,9 +481,10 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                 # Set to today so we only track NEW data going forward
                 sensor_start_date = date.today()
                 self._cache.set_energy_sensor_start_date(sensor_start_date)
-                # Don't save here - coordinator will save after sync completes
+                # Save immediately - this is one-time initialization after coordinator has already saved
+                await self._cache.save()
                 _LOGGER.info(
-                    "Energy sensor for contract %s initialized with start_date=%s (will be saved by coordinator)",
+                    "Energy sensor for contract %s initialized with start_date=%s and saved to cache",
                     self._contract_id,
                     sensor_start_date.isoformat(),
                 )
