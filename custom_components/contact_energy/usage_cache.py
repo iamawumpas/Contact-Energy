@@ -100,6 +100,10 @@ class UsageCache:
                 "version": "1.4.0",
                 "created": datetime.now(timezone.utc).isoformat(),
                 "last_synced": None,
+                "cumulative": {
+                    "paid_kwh": 0.0,
+                    "free_kwh": 0.0,
+                },
                 "hourly": {
                     "from": None,
                     "to": None,
@@ -163,6 +167,9 @@ class UsageCache:
 
             if "metadata" not in self.data:
                 raise ValueError("Cache file missing 'metadata' section")
+
+            # Ensure cumulative metadata exists for newer features
+            self._ensure_cumulative_metadata()
 
             # Log cache statistics
             metadata = self.data.get("metadata", {})
@@ -295,6 +302,7 @@ class UsageCache:
         - date ranges (from/to) for each interval
         """
         metadata = self.data["metadata"]
+        cumulative = self._ensure_cumulative_metadata()
 
         # Update sync timestamp
         metadata["last_synced"] = datetime.now(timezone.utc).isoformat()
@@ -337,11 +345,13 @@ class UsageCache:
 
         _LOGGER.debug(
             "Updated metadata for contract %s: hourly=(%s to %s, %d records), "
-            "daily=(%s to %s, %d records), monthly=(%s to %s, %d records)",
+            "daily=(%s to %s, %d records), monthly=(%s to %s, %d records), "
+            "cumulative_paid=%.3f, cumulative_free=%.3f",
             self.contract_id,
             metadata["hourly"]["from"], metadata["hourly"]["to"], metadata["hourly"]["record_count"],
             metadata["daily"]["from"], metadata["daily"]["to"], metadata["daily"]["record_count"],
-            metadata["monthly"]["from"], metadata["monthly"]["to"], metadata["monthly"]["record_count"]
+            metadata["monthly"]["from"], metadata["monthly"]["to"], metadata["monthly"]["record_count"],
+            cumulative.get("paid_kwh", 0.0), cumulative.get("free_kwh", 0.0)
         )
 
     def update_hourly(self, records: list[dict[str, Any]]) -> int:
@@ -498,11 +508,24 @@ class UsageCache:
 
         # Filter records: keep only those >= cutoff date
         # Date key format: "2025-12-31"
-        self.data["daily"] = {
-            date_key: record
-            for date_key, record in self.data.get("daily", {}).items()
-            if date_key >= cutoff_str
-        }
+        removed_paid = 0.0
+        removed_free = 0.0
+        filtered_daily: dict[str, Any] = {}
+
+        for date_key, record in self.data.get("daily", {}).items():
+            if date_key >= cutoff_str:
+                filtered_daily[date_key] = record
+            else:
+                removed_paid += float(record.get("paid") or 0.0)
+                removed_free += float(record.get("free") or 0.0)
+
+        # Persist cumulative totals so pruning does not break total_increasing sensors
+        if removed_paid or removed_free:
+            cumulative = self._ensure_cumulative_metadata()
+            cumulative["paid_kwh"] = round(cumulative.get("paid_kwh", 0.0) + removed_paid, 3)
+            cumulative["free_kwh"] = round(cumulative.get("free_kwh", 0.0) + removed_free, 3)
+
+        self.data["daily"] = filtered_daily
 
         after_count = len(self.data["daily"])
         removed_count = before_count - after_count
@@ -516,6 +539,36 @@ class UsageCache:
             _LOGGER.debug("No daily records to prune for contract %s", self.contract_id)
 
         return (before_count, after_count)
+
+    def get_cumulative_totals(self) -> dict[str, float]:
+        """Get cumulative paid/free totals including pruned history.
+
+        Returns a mapping with paid and free totals accumulated from the
+        persisted baseline plus current daily cache contents. This keeps
+        total_increasing energy sensors monotonic even when old daily data
+        is pruned.
+        """
+        cumulative = self._ensure_cumulative_metadata()
+
+        baseline_paid = float(cumulative.get("paid_kwh") or 0.0)
+        baseline_free = float(cumulative.get("free_kwh") or 0.0)
+
+        paid_sum = 0.0
+        free_sum = 0.0
+
+        for record in self.data.get("daily", {}).values():
+            paid_sum += float(record.get("paid") or 0.0)
+            free_sum += float(record.get("free") or 0.0)
+
+        return {
+            "paid": round(baseline_paid + paid_sum, 3),
+            "free": round(baseline_free + free_sum, 3),
+        }
+
+    def _ensure_cumulative_metadata(self) -> dict[str, float]:
+        """Ensure cumulative metadata exists and return it."""
+        metadata = self.data.setdefault("metadata", {})
+        return metadata.setdefault("cumulative", {"paid_kwh": 0.0, "free_kwh": 0.0})
 
     def prune_monthly(self, window_months: int = 18) -> tuple[int, int]:
         """Remove monthly records older than the specified window.
