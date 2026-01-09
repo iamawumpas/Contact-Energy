@@ -32,13 +32,14 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
     via the UsageCoordinator (Phase 1 / v1.4.0).
     """
 
-    def __init__(self, hass: HomeAssistant, api_client: ContactEnergyApi, contract_id: str):
+    def __init__(self, hass: HomeAssistant, api_client: ContactEnergyApi, contract_id: str, config_entry = None):
         """Initialize the coordinator.
 
         Args:
             hass: The Home Assistant instance.
             api_client: The Contact Energy API client for data retrieval.
             contract_id: Contract identifier for usage data sync.
+            config_entry: Config entry to access ICP and other configuration.
         """
         super().__init__(
             hass,
@@ -49,12 +50,14 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         )
         self.api_client = api_client
         self.contract_id = contract_id
+        self.config_entry = config_entry
         # When True, skip spawning the background usage sync on the next refresh
         self._skip_next_usage_sync = False
         
         # Initialize usage coordinator (Phase 1 / v1.4.0)
         # This handles background syncing of hourly/daily/monthly usage data
-        self.usage_coordinator = UsageCoordinator(hass, api_client, contract_id)
+        icp = config_entry.data.get("icp") if config_entry else None
+        self.usage_coordinator = UsageCoordinator(hass, api_client, contract_id, icp)
         
         _LOGGER.debug(
             "ContactEnergyCoordinator initialized with usage sync for contract %s",

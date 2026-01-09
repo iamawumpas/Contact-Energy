@@ -52,9 +52,9 @@ USAGE_CONFIG = {
         "max_lookback_days": 14,  # API limit (Contact Energy provides ~2 weeks)
     },
     "daily": {
-        "window_days": 35,  # Keep last 35 days of daily data
+        "window_days": 548,  # Keep last 18 months of daily data for statistics
         "sync_interval_hours": 1,  # Sync hourly for testing
-        "max_lookback_days": 60,  # API limit (Contact Energy provides ~2 months)
+        "max_lookback_days": 548,  # Request 18 months of historical data (API may limit)
     },
     "monthly": {
         "window_months": 18,  # Keep last 18 months of monthly data
@@ -94,6 +94,7 @@ class UsageCoordinator:
         hass: HomeAssistant,
         api: ContactEnergyApi,
         contract_id: str,
+        icp: str = None,
     ):
         """Initialize the usage coordinator.
 
@@ -101,16 +102,18 @@ class UsageCoordinator:
             hass: Home Assistant instance
             api: Authenticated Contact Energy API client
             contract_id: Contract identifier (e.g., "123456")
+            icp: Installation Control Point number (e.g., "0000012345ABC")
         """
         self.hass = hass
         self.api = api
         self.contract_id = contract_id
+        self.icp = icp or contract_id  # Fallback to contract_id if ICP not provided
         self.cache = UsageCache(contract_id)
         self._force_sync_mode = False  # Flag to bypass time threshold checks
 
         _LOGGER.debug(
-            "UsageCoordinator initialized for contract %s",
-            contract_id
+            "UsageCoordinator initialized for contract %s (ICP: %s)",
+            contract_id, self.icp
         )
 
     async def async_sync_usage(self) -> None:
@@ -500,14 +503,14 @@ class UsageCoordinator:
 
                 # Build metadata for this energy kind using external statistics format
                 # Home Assistant expects statistic_id in format: domain:identifier
-                # (e.g., contact_energy:paid_usage_123456789). This satisfies
+                # (e.g., contact_energy:paid_usage_0000012345ABC). This satisfies
                 # async_add_external_statistics validation requirements.
                 if energy_kind == "paid":
-                    stat_id = f"{DOMAIN}:paid_usage_{self.contract_id}"
-                    stat_name = f"Contact Energy Paid Usage {self.contract_id}"
+                    stat_id = f"{DOMAIN}:paid_usage_{self.icp}"
+                    stat_name = f"Contact Energy Paid Usage {self.icp}"
                 else:
-                    stat_id = f"{DOMAIN}:free_usage_{self.contract_id}"
-                    stat_name = f"Contact Energy Free Usage {self.contract_id}"
+                    stat_id = f"{DOMAIN}:free_usage_{self.icp}"
+                    stat_name = f"Contact Energy Free Usage {self.icp}"
 
                 metadata = StatisticMetaData(
                     has_mean=False,

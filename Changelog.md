@@ -5,6 +5,21 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.38 ]
+
+### Changed
+- Increased daily data cache window from 35 days to 548 days (18 months)
+- Statistics database now attempts to download and maintain up to 18 months of historical paid and free energy usage
+- This provides more extensive historical data for the Energy Dashboard and long-term trend analysis
+- Note: Actual historical data available depends on Contact Energy API limits and when the integration was first installed
+
+## [ 1.7.37 ]
+
+### Changed
+- Updated external statistics `statistic_id` to use ICP instead of contract_id
+- Statistic IDs now use format: `contact_energy:paid_usage_{ICP}` and `contact_energy:free_usage_{ICP}`
+- Improves identification and clarity when multiple contracts exist, as ICP is the unique installation identifier
+
 ## [ 1.7.36 ]
 
 ### Fixed

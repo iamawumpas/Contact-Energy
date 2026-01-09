@@ -167,7 +167,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Create data coordinator for fetching account information
     # Updates once per day - Home Assistant schedules at the closest possible time to 01:00
-    coordinator = ContactEnergyCoordinator(hass, api_client, contract_id)
+    coordinator = ContactEnergyCoordinator(hass, api_client, contract_id, entry)
     
     # Perform initial data fetch
     await coordinator.async_config_entry_first_refresh()
