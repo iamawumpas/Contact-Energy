@@ -2,8 +2,8 @@ type: custom:apexcharts-card
 header:
   show: true
   title: Monthly Usage
-# Changed from 548d (18 months) to 365d (12 months) to match available data
-graph_span: 365d
+# 548 days ≈ 18 months of historical data
+graph_span: 548d
 stacked: true
 all_series_config:
   stroke_width: 2
@@ -68,8 +68,8 @@ apex_config:
       format: MMM
       rotate: -90
       rotateAlways: true
-    # Changed from 18 to 12 to match 12 months of data
-    tickAmount: 12
+    # 18 ticks for 18 months of data
+    tickAmount: 18
   yaxis:
     title:
       text: kWh

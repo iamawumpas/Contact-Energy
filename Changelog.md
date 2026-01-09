@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.43 ]
+
+### Changed
+- Increased monthly usage data in sensor attributes from 12 months back to 18 months (full cache window)
+- Testing showed 18 months of monthly data fits comfortably within 16KB attribute limit
+- Daily data remains at 90 days to stay within limits
+- Updated ApexCharts example to display full 18 months (548 days)
+
 ## [ 1.7.42 ]
 
 ### Fixed

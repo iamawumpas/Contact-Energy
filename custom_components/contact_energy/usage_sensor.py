@@ -167,7 +167,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         We expose only recent data to stay under the 16KB attribute limit:
         - Hourly: Last 14 days (full cache window)
         - Daily: Last 90 days (reduced from 548 to fit limit)
-        - Monthly: Last 12 months (reduced from 18 to fit limit)
+        - Monthly: Last 18 months (full cache window)
         
         Empty/zero values are skipped to keep the payload compact.
         Full historical data remains available via statistics database.
@@ -220,12 +220,12 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 _add_non_zero(attributes["daily_paid_usage"], date_key, record.get("paid"))
                 _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
 
-            # Monthly: most recent 12 months only to stay under 16KB attribute limit
+            # Monthly: most recent 18 months (full cache window)
             monthly_records = self._cache.data.get("monthly", {})
-            # Sort by date and take the most recent 12 months
+            # Sort by date and take the most recent 18 months
             if monthly_records:
                 # Sort month keys by date (YYYY-MM format sorts correctly)
-                sorted_months = sorted(monthly_records.keys(), reverse=True)[:12]
+                sorted_months = sorted(monthly_records.keys(), reverse=True)[:18]
                 
                 for month_key in sorted_months:
                     record = monthly_records[month_key]
