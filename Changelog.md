@@ -12,6 +12,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.23 ]
+
+### Fixed
+- Fixed statistics import to correctly access daily usage records from cache dictionary
+- Statistics import now properly reads "paid" and "free" fields from cached records
+- Corrected record date extraction to use ISO date string parsing
+
 ## [ 1.7.22 ]
 
 ### Added

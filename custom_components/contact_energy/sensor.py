@@ -8,7 +8,7 @@ Sensor naming follows the pattern: sensor.{entity_friendly_name}.{attribute_name
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.components.sensor import SensorDeviceClass
@@ -568,20 +568,24 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                 )
                 return
 
-            # Get all daily records
-            daily_records = self._cache.get_daily()
-            if not daily_records:
+            # Get all daily records from cache (they're stored as a dict)
+            daily_records_dict = self._cache.data.get("daily", {})
+            if not daily_records_dict:
                 _LOGGER.debug(
                     "No daily records available for %s, skipping statistics import",
                     self._attr_unique_id,
                 )
                 return
 
-            # Filter records to only include data from sensor start date onward
-            filtered_records = [
-                rec for rec in daily_records
-                if rec.get("date") and rec["date"].date() >= sensor_start_date
-            ]
+            # Convert dict to list and filter records to only include data from sensor start date onward
+            filtered_records = []
+            for date_str, record in daily_records_dict.items():
+                record_date = date.fromisoformat(date_str)
+                if record_date >= sensor_start_date:
+                    # Add the date to the record for sorting
+                    record_with_date = record.copy()
+                    record_with_date["_date"] = record_date
+                    filtered_records.append(record_with_date)
 
             if not filtered_records:
                 _LOGGER.debug(
@@ -592,7 +596,7 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                 return
 
             # Sort by date to ensure proper cumulative calculation
-            filtered_records.sort(key=lambda x: x["date"])
+            filtered_records.sort(key=lambda x: x["_date"])
 
             # Build cumulative statistics from daily data
             statistics = []
@@ -608,11 +612,12 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
 
             for record in filtered_records:
                 # Extract the energy value for this type (paid or free)
-                daily_value = float(record.get(f"{self._energy_kind}_total", 0.0))
+                # Records use "paid" and "free" fields, not "paid_total"
+                daily_value = float(record.get(self._energy_kind, 0.0))
                 cumulative_sum += daily_value
 
                 # Create timestamp at end of day (23:59:59) in UTC
-                record_date = record["date"].date()
+                record_date = record["_date"]
                 timestamp = datetime.combine(
                     record_date,
                     datetime.max.time(),
