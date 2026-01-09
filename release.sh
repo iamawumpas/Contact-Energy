@@ -54,14 +54,15 @@ echo -e "${YELLOW}║  ACTION REQUIRED: Ask the agent to write the changelog  �
 echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "Please ask the agent to:"
-echo "  1) Write the changelog entry for version ${VERSION} in Changelog.md"
-echo "  2) Use the format: ## [ ${VERSION} ]"
-echo "  3) Include sections: ### Added, ### Fixed, ### Changed (as needed)"
-echo "  4) When finished, create the file: .agent_changelog_complete"
+echo "  1) Reread .Agent_Instructions.md and .API_Instructions_v2.md"
+echo "  2) Write the changelog entry for version ${VERSION} in Changelog.md"
+echo "  3) Use the format: ## [ ${VERSION} ]"
+echo "  4) Include sections: ### Added, ### Fixed, ### Changed (as needed)"
+echo "  5) When finished, create the file: .agent_changelog_complete"
 echo ""
 echo "After the agent completes these steps, this script will continue automatically."
 echo ""
-echo -e "${BLUE}Polling for completion (checking every 3 seconds)...${NC}"
+echo -e "${BLUE}Polling for completion (checking every 3 seconds, 45s timeout)...${NC}"
 echo ""
 
 # Wait loop: poll for sentinel file and changelog entry
@@ -79,10 +80,10 @@ while true; do
     WAIT_COUNT=$((WAIT_COUNT + 1))
     echo -n "."
     
-    # Safety timeout after 5 minutes
-    if [ $WAIT_COUNT -ge 100 ]; then
+    # Safety timeout after 45 seconds
+    if [ $WAIT_COUNT -ge 15 ]; then
         echo ""
-        echo -e "${RED}Error: Timed out waiting for changelog (5 minutes)${NC}"
+        echo -e "${RED}Error: Timed out waiting for changelog (45 seconds)${NC}"
         echo "The agent may not have completed the changelog entry."
         exit 1
     fi

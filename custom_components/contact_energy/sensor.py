@@ -383,7 +383,7 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
     """
 
     _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_state_class = SensorStateClass.TOTAL
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
 
     def __init__(
@@ -421,30 +421,21 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
         return value
 
     @property
-    def last_reset(self) -> datetime | None:
-        """Return the sensor reset time for statistics alignment."""
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes for the energy sensor."""
+        attrs = {}
         try:
             start_date = self._cache.get_energy_sensor_start_date()
             if start_date:
-                reset_dt = datetime.combine(
-                    start_date,
-                    datetime.min.time(),
-                    tzinfo=timezone.utc,
-                )
-                _LOGGER.debug(
-                    "Energy sensor %s last_reset: %s (start_date=%s)",
-                    self._attr_unique_id,
-                    reset_dt.isoformat(),
-                    start_date.isoformat(),
-                )
-                return reset_dt
+                attrs["data_start_date"] = start_date.isoformat()
+                attrs["data_source"] = "Contact Energy API"
         except Exception as e:  # pragma: no cover - defensive
-            _LOGGER.error(
-                "Error getting last_reset for energy sensor %s: %s",
+            _LOGGER.debug(
+                "Error getting attributes for energy sensor %s: %s",
                 self._attr_unique_id,
                 str(e),
             )
-        return None
+        return attrs
 
     @property
     def device_info(self):
