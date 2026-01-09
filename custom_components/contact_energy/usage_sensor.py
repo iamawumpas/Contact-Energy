@@ -222,23 +222,15 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
             # Monthly: most recent 12 months only to stay under 16KB attribute limit
             monthly_records = self._cache.data.get("monthly", {})
-            # Calculate cutoff as 12 months ago
-            cutoff_date = datetime.now(timezone.utc).date().replace(day=1)
-            for _ in range(12):
-                cutoff_date = (cutoff_date.replace(day=1) - timedelta(days=1)).replace(day=1)
-            
-            for month_key, record in monthly_records.items():
-                # Filter to recent 12 months only
-                try:
-                    year, month = month_key.split("-")
-                    record_date = date(int(year), int(month), 1)
-                    if record_date < cutoff_date:
-                        continue
-                except (ValueError, TypeError):
-                    continue
-                    
-                _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
-                _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
+            # Sort by date and take the most recent 12 months
+            if monthly_records:
+                # Sort month keys by date (YYYY-MM format sorts correctly)
+                sorted_months = sorted(monthly_records.keys(), reverse=True)[:12]
+                
+                for month_key in sorted_months:
+                    record = monthly_records[month_key]
+                    _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
+                    _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
 
             _LOGGER.debug(
                 "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d",

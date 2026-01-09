@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.42 ]
+
+### Fixed
+- Fixed monthly usage data not appearing in sensor attributes (caused ApexCharts to show "Loading...")
+- Changed monthly data filtering from date-based cutoff to "most recent 12 months" approach
+- Previous version filtered based on absolute date (12 months before today), which excluded older cached data
+- Now takes the 12 most recent months from cache regardless of current date
+- Resolves issue where historical data older than 12 months from today was being dropped
+
 ## [ 1.7.41 ]
 
 ### Fixed
