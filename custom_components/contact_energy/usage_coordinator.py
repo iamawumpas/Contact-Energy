@@ -28,7 +28,11 @@ from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData, StatisticMetaData
+from homeassistant.components.recorder.statistics import (
+    async_add_external_statistics,
+    StatisticData,
+    StatisticMetaData,
+)
 
 from .usage_cache import UsageCache
 from .const import DOMAIN
@@ -496,7 +500,7 @@ class UsageCoordinator:
                 # Build metadata for this energy kind using sensor-like statistic_id
                 # Home Assistant expects statistic_id to follow the entity_id pattern
                 # (e.g., sensor.contact_energy_paid_usage_123456789). This avoids
-                # validation errors raised by async_import_statistics.
+                # validation errors raised during statistics validation.
                 if energy_kind == "paid":
                     stat_id = f"sensor.{DOMAIN}_paid_usage_{self.contract_id}"
                     stat_name = f"Contact Energy Paid Usage {self.contract_id}"
@@ -522,7 +526,7 @@ class UsageCoordinator:
                     cumulative_sum,
                 )
 
-                async_import_statistics(self.hass, metadata, statistics)
+                async_add_external_statistics(self.hass, metadata, statistics)
 
         except Exception as e:
             _LOGGER.error(

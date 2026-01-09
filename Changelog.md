@@ -5,6 +5,19 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.31 ]
+
+### Fixed
+- Resolved "Invalid source" errors during statistics import by using Home Assistant's external statistics API (`async_add_external_statistics`) for imported history
+- Keeps sensor-style statistic IDs and unit "kWh" for compatibility with Home Assistant validation
+
+## [ 1.7.30 ]
+
+### Fixed
+- Fixed remaining "Invalid statistic_id" validation errors in statistics import
+  - Switched statistic IDs to sensor-style format: `sensor.contact_energy_paid_usage_<contract_id>` and `sensor.contact_energy_free_usage_<contract_id>` to satisfy Home Assistant validation
+  - Keeps unit_of_measurement as string "kWh" to align with HA statistics requirements
+
 ## [ 1.7.29 ]
 
 ### Fixed
@@ -12,13 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Simplified statistic_id format: `domain:energy_paid_contract_id` and `domain:energy_free_contract_id`
   - Changed unit_of_measurement to string "kWh" instead of enum
   - Removed unused UnitOfEnergy import
-
-## [ 1.7.30 ]
-
-### Fixed
-- Fixed remaining "Invalid statistic_id" validation errors
-  - Switched statistics IDs to sensor-style format: `sensor.contact_energy_paid_usage_<contract_id>` and `sensor.contact_energy_free_usage_<contract_id>`
-  - Keeps unit_of_measurement as string "kWh"
 
 ## [ 1.7.28 ]
 
