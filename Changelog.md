@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.39 ]
+
+### Fixed
+- Fixed 502 errors when downloading large amounts of daily data (18 months)
+- Daily data sync now uses chunking (90-day chunks) to prevent API timeouts
+- Previously failed when trying to download 549 days of data in a single request
+- Improves reliability of initial statistics database population
+
 ## [ 1.7.38 ]
 
 ### Changed

@@ -3,7 +3,7 @@
   "homeassistant": "2024.1.0",
   "iot_class": "cloud_polling",
   "persistent_directory": "contact_energy",
-  "version": "1.7.38",
+  "version": "1.7.39",
   "ignore": [
     ".*",
     "release.sh",
