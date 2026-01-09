@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [ 1.7.31 ]
 
 ### Fixed
-- Resolved "Invalid source" errors during statistics import by using Home Assistant's external statistics API (`async_add_external_statistics`) for imported history
-- Keeps sensor-style statistic IDs and unit "kWh" for compatibility with Home Assistant validation
+- Resolved "Invalid statistic_id" errors by using correct external statistics format: `domain:identifier` (e.g., `contact_energy:paid_usage_<contract_id>`) instead of sensor entity IDs
+- Switched to Home Assistant's external statistics API (`async_add_external_statistics`) with proper metadata for imported historical data
+- Maintains unit "kWh" and cumulative sum-based statistics for energy dashboard compatibility
 
 ## [ 1.7.30 ]
 

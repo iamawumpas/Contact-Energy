@@ -497,15 +497,15 @@ class UsageCoordinator:
                 if not statistics:
                     continue
 
-                # Build metadata for this energy kind using sensor-like statistic_id
-                # Home Assistant expects statistic_id to follow the entity_id pattern
-                # (e.g., sensor.contact_energy_paid_usage_123456789). This avoids
-                # validation errors raised during statistics validation.
+                # Build metadata for this energy kind using external statistics format
+                # Home Assistant expects statistic_id in format: domain:identifier
+                # (e.g., contact_energy:paid_usage_123456789). This satisfies
+                # async_add_external_statistics validation requirements.
                 if energy_kind == "paid":
-                    stat_id = f"sensor.{DOMAIN}_paid_usage_{self.contract_id}"
+                    stat_id = f"{DOMAIN}:paid_usage_{self.contract_id}"
                     stat_name = f"Contact Energy Paid Usage {self.contract_id}"
                 else:
-                    stat_id = f"sensor.{DOMAIN}_free_usage_{self.contract_id}"
+                    stat_id = f"{DOMAIN}:free_usage_{self.contract_id}"
                     stat_name = f"Contact Energy Free Usage {self.contract_id}"
 
                 metadata = StatisticMetaData(
