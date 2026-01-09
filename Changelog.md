@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Changed unit_of_measurement to string "kWh" instead of enum
   - Removed unused UnitOfEnergy import
 
+## [ 1.7.30 ]
+
+### Fixed
+- Fixed remaining "Invalid statistic_id" validation errors
+  - Switched statistics IDs to sensor-style format: `sensor.contact_energy_paid_usage_<contract_id>` and `sensor.contact_energy_free_usage_<contract_id>`
+  - Keeps unit_of_measurement as string "kWh"
+
 ## [ 1.7.28 ]
 
 ### Fixed
