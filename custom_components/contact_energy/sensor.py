@@ -546,8 +546,6 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                 exc_info=True,
             )
 
-    async def _async_import_statistics(self) -> None:
-
 
 class ContactEnergyAccountDetailSensor(CoordinatorEntity, SensorEntity):
     """Represents a Contact Energy account detail sensor.
