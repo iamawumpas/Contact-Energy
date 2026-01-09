@@ -5,6 +5,12 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.44 ]
+
+### Fixed
+- **Critical**: Fixed database integrity error by removing `mean_type=None` from StatisticMetaData (now omitted when `has_mean=False` as per Home Assistant requirements)
+- Added required `unit_class="energy"` parameter to StatisticMetaData to satisfy Home Assistant 2026.11 validation
+
 ## [ 1.7.43 ]
 
 ### Changed

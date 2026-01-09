@@ -521,7 +521,7 @@ class UsageCoordinator:
                     source=DOMAIN,
                     statistic_id=stat_id,
                     unit_of_measurement="kWh",
-                    mean_type=None,
+                    unit_class="energy",
                 )
 
                 # Import statistics into Home Assistant database
