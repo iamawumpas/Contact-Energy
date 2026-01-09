@@ -8,7 +8,7 @@ Sensor naming follows the pattern: sensor.{entity_friendly_name}.{attribute_name
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.components.sensor import SensorDeviceClass
@@ -18,6 +18,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import UnitOfEnergy
+from homeassistant.components.recorder import get_instance
+from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData
 
 from .const import DOMAIN
 from .coordinator import ContactEnergyCoordinator
@@ -461,6 +463,9 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
         await self._async_reload_cache()
         self.async_write_ha_state()
 
+        # Import historical statistics on first initialization
+        await self._async_import_statistics()
+
     async def async_will_remove_from_hass(self) -> None:
         if hasattr(self, "_unsub_dispatcher") and self._unsub_dispatcher:
             self._unsub_dispatcher()
@@ -542,6 +547,114 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
             _LOGGER.error(
                 "Error updating energy sensor for contract %s: %s",
                 self._contract_id,
+                str(e),
+                exc_info=True,
+            )
+
+    async def _async_import_statistics(self) -> None:
+        """Import historical usage data as statistics for the Energy Dashboard.
+        
+        This converts cached daily usage data into Home Assistant statistics format
+        and imports it into the long-term statistics database. This enables the
+        Energy Dashboard to display historical data.
+        """
+        try:
+            # Get the sensor start date and daily data
+            sensor_start_date = self._cache.get_energy_sensor_start_date()
+            if not sensor_start_date:
+                _LOGGER.debug(
+                    "No sensor start date set for %s, skipping statistics import",
+                    self._attr_unique_id,
+                )
+                return
+
+            # Get all daily records
+            daily_records = self._cache.get_daily()
+            if not daily_records:
+                _LOGGER.debug(
+                    "No daily records available for %s, skipping statistics import",
+                    self._attr_unique_id,
+                )
+                return
+
+            # Filter records to only include data from sensor start date onward
+            filtered_records = [
+                rec for rec in daily_records
+                if rec.get("date") and rec["date"].date() >= sensor_start_date
+            ]
+
+            if not filtered_records:
+                _LOGGER.debug(
+                    "No daily records after start date %s for %s",
+                    sensor_start_date.isoformat(),
+                    self._attr_unique_id,
+                )
+                return
+
+            # Sort by date to ensure proper cumulative calculation
+            filtered_records.sort(key=lambda x: x["date"])
+
+            # Build cumulative statistics from daily data
+            statistics = []
+            cumulative_sum = 0.0
+            metadata = {
+                "has_mean": False,
+                "has_sum": True,
+                "name": self._attr_name,
+                "source": DOMAIN,
+                "statistic_id": f"{DOMAIN}:{self._attr_unique_id}",
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+            }
+
+            for record in filtered_records:
+                # Extract the energy value for this type (paid or free)
+                daily_value = float(record.get(f"{self._energy_kind}_total", 0.0))
+                cumulative_sum += daily_value
+
+                # Create timestamp at end of day (23:59:59) in UTC
+                record_date = record["date"].date()
+                timestamp = datetime.combine(
+                    record_date,
+                    datetime.max.time(),
+                    tzinfo=timezone.utc
+                )
+
+                # Add statistic data point
+                statistics.append(
+                    StatisticData(
+                        start=timestamp,
+                        state=cumulative_sum,
+                        sum=cumulative_sum,
+                    )
+                )
+
+            if not statistics:
+                _LOGGER.debug(
+                    "No statistics generated for %s",
+                    self._attr_unique_id,
+                )
+                return
+
+            # Import statistics into Home Assistant database
+            _LOGGER.info(
+                "Importing %d historical statistics records for %s (start_date=%s, cumulative_sum=%.3f kWh)",
+                len(statistics),
+                self._attr_unique_id,
+                sensor_start_date.isoformat(),
+                cumulative_sum,
+            )
+
+            async_import_statistics(self.hass, metadata, statistics)
+
+            _LOGGER.info(
+                "Successfully imported statistics for %s",
+                self._attr_unique_id,
+            )
+
+        except Exception as e:
+            _LOGGER.error(
+                "Failed to import statistics for %s: %s",
+                self._attr_unique_id,
                 str(e),
                 exc_info=True,
             )

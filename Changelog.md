@@ -12,6 +12,17 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.22 ]
+
+### Added
+- Statistics import functionality to populate Home Assistant Energy Dashboard with historical usage data
+- Energy sensors now automatically import cached daily data into the long-term statistics database on initialization
+- Historical statistics are generated from sensor start_date forward, enabling Energy Dashboard to display past data
+
+### Fixed
+- Energy Dashboard now shows historical usage data instead of starting from zero
+- Statistics database is properly populated with cumulative energy values for paid and free usage
+
 ## [ 1.7.21 ]
 
 ### Fixed
