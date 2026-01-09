@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.40 ]
+
+### Fixed
+- Fixed "Invalid statistic_id" error when importing statistics with ICP values
+- Statistic IDs now properly sanitize ICP values to lowercase alphanumeric + underscore format
+- Home Assistant requires statistic_ids to contain only lowercase letters, numbers, and underscores
+- ICP values containing uppercase letters or special characters are now converted to valid format
+- Example: ICP "0000012345ABC" becomes statistic_id "contact_energy:paid_usage_0000012345abc"
+
 ## [ 1.7.39 ]
 
 ### Fixed

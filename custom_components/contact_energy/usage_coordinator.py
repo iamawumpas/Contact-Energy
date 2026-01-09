@@ -108,12 +108,14 @@ class UsageCoordinator:
         self.api = api
         self.contract_id = contract_id
         self.icp = icp or contract_id  # Fallback to contract_id if ICP not provided
+        # Sanitize ICP for use in statistic_id (lowercase alphanumeric + underscore only)
+        self.icp_sanitized = self._sanitize_statistic_id(self.icp)
         self.cache = UsageCache(contract_id)
         self._force_sync_mode = False  # Flag to bypass time threshold checks
 
         _LOGGER.debug(
-            "UsageCoordinator initialized for contract %s (ICP: %s)",
-            contract_id, self.icp
+            "UsageCoordinator initialized for contract %s (ICP: %s, sanitized: %s)",
+            contract_id, self.icp, self.icp_sanitized
         )
 
     async def async_sync_usage(self) -> None:
@@ -503,13 +505,13 @@ class UsageCoordinator:
 
                 # Build metadata for this energy kind using external statistics format
                 # Home Assistant expects statistic_id in format: domain:identifier
-                # (e.g., contact_energy:paid_usage_0000012345ABC). This satisfies
-                # async_add_external_statistics validation requirements.
+                # (e.g., contact_energy:paid_usage_0000012345abc). Statistic IDs must be
+                # lowercase alphanumeric + underscore only for validation.
                 if energy_kind == "paid":
-                    stat_id = f"{DOMAIN}:paid_usage_{self.icp}"
+                    stat_id = f"{DOMAIN}:paid_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Paid Usage {self.icp}"
                 else:
-                    stat_id = f"{DOMAIN}:free_usage_{self.icp}"
+                    stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Free Usage {self.icp}"
 
                 metadata = StatisticMetaData(
@@ -929,3 +931,24 @@ class UsageCoordinator:
         )
 
         return (from_date, to_date)
+
+    def _sanitize_statistic_id(self, value: str) -> str:
+        """Sanitize a value for use in Home Assistant statistic_id.
+        
+        Statistic IDs must contain only lowercase letters, numbers, and underscores.
+        This converts the ICP or contract_id to a valid format.
+        
+        Args:
+            value: The ICP or contract_id to sanitize
+            
+        Returns:
+            Sanitized string suitable for statistic_id
+        """
+        import re
+        # Convert to lowercase and replace any non-alphanumeric characters with underscores
+        sanitized = re.sub(r'[^a-z0-9_]', '_', value.lower())
+        # Remove duplicate underscores
+        sanitized = re.sub(r'_+', '_', sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip('_')
+        return sanitized
