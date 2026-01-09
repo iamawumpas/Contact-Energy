@@ -12,6 +12,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.21 ]
+
+### Fixed
+- Fixed monthly data sync to only request complete months from the API
+- Monthly sync now correctly skips incomplete current month to avoid 404 errors
+- Monthly date calculations now use proper month boundaries (1st of month)
+- Incremental monthly sync properly handles month-to-month transitions
+
 ## [ 1.7.20 ]
 
 ### Fixed
