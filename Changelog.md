@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.32 ]
+
+### Fixed
+- Resolved "Invalid statistic_id" errors by using correct external statistics format: `domain:identifier` (e.g., `contact_energy:paid_usage_<contract_id>`) instead of sensor entity IDs
+- Switched to Home Assistant's external statistics API (`async_add_external_statistics`) with proper metadata for imported historical data
+- Maintains unit "kWh" and cumulative sum-based statistics for energy dashboard compatibility
+
 ## [ 1.7.31 ]
 
 ### Fixed
