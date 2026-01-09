@@ -28,7 +28,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData
+from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData, StatisticMetaData
 from homeassistant.const import UnitOfEnergy
 
 from .usage_cache import UsageCache
@@ -502,14 +502,14 @@ class UsageCoordinator:
                     stat_id = f"{DOMAIN}:energy_sensor_free_{self.contract_id}"
                     stat_name = f"Contact Energy Free Usage {self.contract_id}"
 
-                metadata = {
-                    "has_mean": False,
-                    "has_sum": True,
-                    "name": stat_name,
-                    "source": DOMAIN,
-                    "statistic_id": stat_id,
-                    "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                }
+                metadata = StatisticMetaData(
+                    has_mean=False,
+                    has_sum=True,
+                    name=stat_name,
+                    source=DOMAIN,
+                    statistic_id=stat_id,
+                    unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                )
 
                 # Import statistics into Home Assistant database
                 _LOGGER.debug(
