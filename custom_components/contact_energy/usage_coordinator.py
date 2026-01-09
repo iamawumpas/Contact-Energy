@@ -28,6 +28,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData
+from homeassistant.const import UnitOfEnergy
 
 from .usage_cache import UsageCache
 from .const import DOMAIN
@@ -372,6 +374,9 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
+            # Import statistics to Home Assistant database for Energy Dashboard
+            await self._async_import_statistics_for_daily_data()
+
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
             _LOGGER.error(
@@ -392,6 +397,124 @@ class UsageCoordinator:
             _LOGGER.error(
                 "Unexpected error during daily sync for contract %s: %s. Skipping daily sync.",
                 self.contract_id, str(e), exc_info=True
+            )
+
+    async def _async_import_statistics_for_daily_data(self) -> None:
+        """Import daily usage data as statistics for the Energy Dashboard.
+
+        This converts cached daily usage data into Home Assistant statistics format
+        and imports it into the long-term statistics database. This enables the
+        Energy Dashboard to display historical data.
+
+        Called after daily data is synced and saved, so we import fresh data directly
+        from the API without timing issues or async method call delays.
+        """
+        try:
+            # Get sensor start date (when the sensor first started recording)
+            sensor_start_date = self.cache.get_energy_sensor_start_date()
+            if not sensor_start_date:
+                # Initialize to the earliest date in daily data
+                from_date, _ = self.cache.get_daily_range()
+                sensor_start_date = from_date if from_date else date.today()
+                self.cache.set_energy_sensor_start_date(sensor_start_date)
+                _LOGGER.debug(
+                    "Initialized sensor start date for contract %s: %s",
+                    self.contract_id,
+                    sensor_start_date.isoformat(),
+                )
+
+            # Get daily records from cache
+            daily_records_dict = self.cache.data.get("daily", {})
+            if not daily_records_dict:
+                _LOGGER.debug(
+                    "No daily records available for contract %s, skipping statistics import",
+                    self.contract_id,
+                )
+                return
+
+            # Filter records to only include data from sensor start date onward
+            filtered_records = []
+            for date_str, record in daily_records_dict.items():
+                record_date = date.fromisoformat(date_str)
+                if record_date >= sensor_start_date:
+                    record_with_date = record.copy()
+                    record_with_date["_date"] = record_date
+                    filtered_records.append(record_with_date)
+
+            if not filtered_records:
+                _LOGGER.debug(
+                    "No daily records after start date %s for contract %s",
+                    sensor_start_date.isoformat(),
+                    self.contract_id,
+                )
+                return
+
+            # Sort by date to ensure proper cumulative calculation
+            filtered_records.sort(key=lambda x: x["_date"])
+
+            # Import paid and free energy separately
+            for energy_kind in ["paid", "free"]:
+                # Build cumulative statistics from daily data
+                statistics = []
+                cumulative_sum = 0.0
+
+                for record in filtered_records:
+                    daily_value = float(record.get(energy_kind, 0.0))
+                    cumulative_sum += daily_value
+
+                    # Create timestamp at end of day (23:59:59) in UTC
+                    record_date = record["_date"]
+                    timestamp = datetime.combine(
+                        record_date,
+                        datetime.max.time(),
+                        tzinfo=timezone.utc
+                    )
+
+                    statistics.append(
+                        StatisticData(
+                            start=timestamp,
+                            state=cumulative_sum,
+                            sum=cumulative_sum,
+                        )
+                    )
+
+                if not statistics:
+                    continue
+
+                # Build metadata for this energy kind
+                if energy_kind == "paid":
+                    stat_id = f"{DOMAIN}:energy_sensor_paid_{self.contract_id}"
+                    stat_name = f"Contact Energy Paid Usage {self.contract_id}"
+                else:
+                    stat_id = f"{DOMAIN}:energy_sensor_free_{self.contract_id}"
+                    stat_name = f"Contact Energy Free Usage {self.contract_id}"
+
+                metadata = {
+                    "has_mean": False,
+                    "has_sum": True,
+                    "name": stat_name,
+                    "source": DOMAIN,
+                    "statistic_id": stat_id,
+                    "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                }
+
+                # Import statistics into Home Assistant database
+                _LOGGER.debug(
+                    "Importing %d historical statistics for %s energy (contract %s, cumulative=%.3f kWh)",
+                    len(statistics),
+                    energy_kind,
+                    self.contract_id,
+                    cumulative_sum,
+                )
+
+                async_import_statistics(self.hass, metadata, statistics)
+
+        except Exception as e:
+            _LOGGER.error(
+                "Failed to import statistics for contract %s: %s",
+                self.contract_id,
+                str(e),
+                exc_info=True,
             )
 
     async def _sync_monthly(self) -> None:

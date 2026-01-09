@@ -12,6 +12,18 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.25 ]
+
+### Changed
+- **Architecture refactor**: Statistics import now happens directly in the usage_coordinator when daily data is synced from the API
+- Removed statistics import from sensor initialization, eliminating timing issues and async method call delays
+- Statistics are now imported immediately after daily data is saved to cache, ensuring fresh data with no race conditions
+
+### Benefits
+- Eliminates async timing issues that prevented statistics from being imported
+- Cleaner separation of concerns: coordinator handles API sync and statistics import, sensor handles display only
+- More reliable statistics import that happens as soon as data is available from the API
+
 ## [ 1.7.24 ]
 
 ### Changed
