@@ -109,17 +109,20 @@ This guide will walk you through installing and configuring the Contact Energy i
 3. You should see:
    - Integration name
    - Number of devices (1 per account)
-   - Number of entities (24 per account)
+   - Number of entities (26 per account)
 
 ### Check Sensors
 
 1. Go to **Developer Tools** → **States**
 2. Search for your account name or ICP number
-3. You should see 24 sensors with names like:
+3. You should see 26 sensors with names like:
    ```
    sensor.my_address_icp123_current_balance
    sensor.my_address_icp123_next_bill_date
    sensor.my_address_icp123_payment_method
+   sensor.my_address_icp123_usage
+   sensor.my_address_icp123_paid_energy
+   sensor.my_address_icp123_free_energy
    ```
 
 ## Common Setup Issues

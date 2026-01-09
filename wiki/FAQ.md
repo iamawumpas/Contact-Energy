@@ -72,8 +72,6 @@ You can also reload the integration:
 
 ### Why is there a delay in usage data?
 
-⚠️ **Usage sensors not yet implemented**
-
 Contact Energy provides usage data with a 24-72 hour delay. This is normal and applies to:
 - Their website
 - Their mobile app
@@ -95,7 +93,7 @@ All dates and times are in **New Zealand Standard Time (NZST) / New Zealand Dayl
 
 ### What data is available?
 
-Currently available (24 sensors):
+Currently available (26 sensors):
 - ✅ Account balance and refund information
 - ✅ Billing and invoice details
 - ✅ Payment due dates and countdowns
@@ -103,31 +101,25 @@ Currently available (24 sensors):
 - ✅ Contract and product information
 - ✅ Account settings and preferences
 - ✅ Payment plan indicators
+- ✅ Usage sensor attributes (hourly/daily/monthly paid & free kWh) for charts
+- ✅ Paid/Free cumulative energy sensors for the Home Assistant Energy dashboard
 
 Not yet implemented:
-- ❌ Detailed usage data (daily/hourly/monthly kWh)
-- ❌ Cost breakdown
-- ❌ Rate information (peak/off-peak)
-- ❌ Free hours tracking
-- ❌ Historical usage trends
+- ❌ Cost breakdown and tariff-based pricing
+- ❌ Rate information (peak/off-peak prices)
 - ❌ Real-time usage monitoring
 
 ### Will usage sensors be added?
 
-Usage sensors are planned for future releases but require additional API endpoint implementation. The Contact Energy API supports usage data, but it requires:
-- Separate API calls per time period
-- Historical data processing
-- Rate calculation logic
-
-These features are on the roadmap but not yet implemented.
+Usage attributes and Energy Dashboard sensors are already available. Remaining roadmap items are cost/rate calculations and real-time usage, which require additional API and pricing logic.
 
 ### Can I see hourly usage?
 
-⚠️ Not yet implemented. Hourly usage sensors are planned for a future release.
+Yes. Hourly paid/free usage is exposed as attributes on `sensor.{address}_{icp}_usage` (last 14 days). Use ApexCharts examples in the Dashboards page.
 
 ### Can I track free hours?
 
-⚠️ Not yet implemented. Free hours data is available in the API but not yet exposed as sensors.
+Yes. Both the usage sensor attributes (`*_free_usage`) and the `sensor.{address}_{icp}_free_energy` cumulative sensor expose free/off-peak energy.
 
 ### Does it work with solar panels?
 

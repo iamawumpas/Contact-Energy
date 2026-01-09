@@ -328,25 +328,44 @@ period:
 
 ---
 
+## Energy Dashboard Sensors
+
+Use these sensors in Home Assistant's Energy configuration:
+- **Grid consumption**: `sensor.{address}_{icp}_paid_energy`
+- **Free/off-peak tracking**: `sensor.{address}_{icp}_free_energy`
+
+Both are `total_increasing` kWh sensors backed by imported statistics. Configure them under **Settings → Dashboards → Energy**.
+
+---
+
 ## ApexCharts Examples
 
-⚠️ **Usage sensors not yet implemented** - These examples are placeholders for future functionality.
+Use the `sensor.{address}_{icp}_usage` attributes for charting. Attribute maps:
+- `hourly_paid_usage` / `hourly_free_usage` (ISO timestamps)
+- `daily_paid_usage` / `daily_free_usage` (YYYY-MM-DD)
+- `monthly_paid_usage` / `monthly_free_usage` (YYYY-MM)
 
-### Daily Usage Chart
+Reference templates live in the repo under `assets/apexcharts_card_-_*.yaml` (placeholders to copy/paste and customize your entity IDs).
+
+### Daily Usage (paid vs free)
 
 ```yaml
 type: custom:apexcharts-card
 header:
   show: true
-  title: Daily Energy Usage
-graph_span: 7d
+  title: Daily Energy Usage (Last 90 days)
+graph_span: 90d
 series:
-  - entity: sensor.my_address_icp123_daily_usage
-    name: Usage
+  - name: Paid kWh
     type: column
-    group_by:
-      func: max
-      duration: 1d
+    data_generator: |
+      const attr = states['sensor.my_address_icp123_usage']?.attributes?.daily_paid_usage || {};
+      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
+  - name: Free kWh
+    type: column
+    data_generator: |
+      const attr = states['sensor.my_address_icp123_usage']?.attributes?.daily_free_usage || {};
+      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
 yaxis:
   - decimals: 2
     apex_config:
@@ -354,39 +373,43 @@ yaxis:
         text: kWh
 ```
 
-### Cost vs Usage Chart
+### Hourly Usage (last 14 days)
 
 ```yaml
 type: custom:apexcharts-card
 header:
   show: true
-  title: Energy Cost & Usage
-graph_span: 30d
+  title: Hourly Usage (Paid)
+graph_span: 14d
 series:
-  - entity: sensor.my_address_icp123_daily_usage
-    name: Usage (kWh)
+  - name: Paid kWh
     type: column
-    group_by:
-      func: sum
-      duration: 1d
-  - entity: sensor.my_address_icp123_daily_cost
-    name: Cost (NZD)
-    type: line
-    group_by:
-      func: sum
-      duration: 1d
-    yaxis_id: cost
+    data_generator: |
+      const attr = states['sensor.my_address_icp123_usage']?.attributes?.hourly_paid_usage || {};
+      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
 yaxis:
-  - id: usage
-    apex_config:
-      title:
-        text: kWh
-  - id: cost
-    opposite: true
-    apex_config:
-      title:
-        text: NZD
+  - decimals: 2
 ```
+
+### Monthly Usage (18 months)
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Monthly Usage (Paid)
+graph_span: 18mon
+series:
+  - name: Paid kWh
+    type: column
+    data_generator: |
+      const attr = states['sensor.my_address_icp123_usage']?.attributes?.monthly_paid_usage || {};
+      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
+yaxis:
+  - decimals: 2
+```
+
+> Tip: Copy these into your own `apexcharts_card_-_*.yaml` files (see `assets/`) and replace `sensor.my_address_icp123_usage` with your entity.
 
 ---
 

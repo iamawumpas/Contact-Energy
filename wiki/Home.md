@@ -4,7 +4,7 @@ Welcome to the Contact Energy integration documentation for Home Assistant!
 
 ## Overview
 
-This integration allows you to monitor your Contact Energy (New Zealand) account directly in Home Assistant. Track account balance, billing information, contract details, and more with 24 comprehensive sensors that update daily.
+This integration allows you to monitor your Contact Energy (New Zealand) account directly in Home Assistant. Track account balance, billing information, contract details, usage summaries, and Energy Dashboard totals with 26 sensors that update daily.
 
 ## Quick Navigation
 
@@ -22,15 +22,17 @@ This integration allows you to monitor your Contact Energy (New Zealand) account
 
 ## Features
 
-✅ **24 Sensors** covering:
+✅ **26 Sensors** covering:
 - Account balance and refund information
 - Billing and invoice details with payment tracking
 - Next bill predictions
 - Contract and product information
 - Account settings and preferences
 - Payment plan indicators (Direct Debit, Smooth Pay, Prepay)
+- Usage sensor attributes (hourly/daily/monthly paid/free kWh) for charting
+- Energy Dashboard-ready paid/free cumulative sensors
 
-✅ **Daily Updates** - Automatic data refresh at 01:00 AM
+✅ **Daily Updates** - Automatic data refresh at 01:00 AM (usage cache + Energy Dashboard totals)
 
 ✅ **Multi-Account Support** - Monitor multiple properties/accounts
 

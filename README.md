@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.7.44-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>
@@ -22,7 +22,7 @@
 
 A Home Assistant integration for Contact Energy (New Zealand electricity supplier) that fetches your account and billing information from your Contact Energy account, making it available in Home Assistant for monitoring and automation.
 
-This custom implementation provides comprehensive account monitoring with 24 sensors covering balance, billing, contracts, and payment information.
+This custom implementation provides comprehensive account monitoring with 26 sensors covering balance, billing, contracts, payment information, usage attributes for charting, and Energy Dashboard-ready totals.
 
 ## What Does It Do?
 
@@ -34,6 +34,9 @@ The integration connects to your Contact Energy account and creates sensors for:
 - **Account Settings** - Correspondence preference, payment method, billing frequency
 - **Contract Details** - ICP, address, product name, contract type and status
 - **Payment Plans** - Direct debit, smooth pay, and prepay status indicators
+- **Usage & Energy**
+  - Usage sensor attributes with hourly/daily/monthly paid/free kWh for charts
+  - Paid/Free energy sensors (total_increasing) ready for Home Assistant Energy Dashboard
 
 All data updates automatically once per day at 01:00 AM and can be viewed in custom dashboard cards or used in automations.
 
@@ -77,7 +80,7 @@ All data updates automatically once per day at 01:00 AM and can be viewed in cus
 For comprehensive documentation on all features, configuration options, and troubleshooting, visit the **[Wiki](https://github.com/iamawumpas/Contact-Energy/wiki)**.
 
 **Key topics:**
-- [Sensor Reference](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 24 sensors
+- [Sensor Reference](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 26 sensors
 - [Dashboard Examples](https://github.com/iamawumpas/Contact-Energy/wiki/Dashboards) - Markdown card examples and [sample dashboard YAML](assets/dashboard.yaml)
 - [Multiple Properties/Accounts](https://github.com/iamawumpas/Contact-Energy/wiki/Multiple-Accounts) - Managing multiple accounts
 - [How It Works & Limitations](https://github.com/iamawumpas/Contact-Energy/wiki/FAQ) - Technical details and constraints
