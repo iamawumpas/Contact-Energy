@@ -12,6 +12,18 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.20 ]
+
+### Fixed
+- Critical fix: Energy sensors now use TOTAL_INCREASING state class without last_reset for proper statistics recording
+- Home Assistant Energy Dashboard will now correctly store and display usage data in the statistics database
+- Removed incompatible last_reset property that was preventing statistics from being recorded
+- Added extra_state_attributes to show data_start_date and data_source instead of using last_reset
+
+### Changed
+- Release script timeout reduced from 5 minutes to 45 seconds for faster feedback
+- Release script now prompts agent to reread instruction files before writing changelog
+
 ## [ 1.7.19 ]
 
 ### Fixed
