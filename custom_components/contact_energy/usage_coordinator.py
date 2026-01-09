@@ -412,18 +412,8 @@ class UsageCoordinator:
         try:
             # Get sensor start date (when the sensor first started recording)
             sensor_start_date = self.cache.get_energy_sensor_start_date()
-            if not sensor_start_date:
-                # Initialize to the earliest date in daily data
-                from_date, _ = self.cache.get_daily_range()
-                sensor_start_date = from_date if from_date else date.today()
-                self.cache.set_energy_sensor_start_date(sensor_start_date)
-                _LOGGER.debug(
-                    "Initialized sensor start date for contract %s: %s",
-                    self.contract_id,
-                    sensor_start_date.isoformat(),
-                )
-
-            # Get daily records from cache
+            
+            # Get daily records from cache first (we'll need them anyway)
             daily_records_dict = self.cache.data.get("daily", {})
             if not daily_records_dict:
                 _LOGGER.debug(
@@ -431,6 +421,23 @@ class UsageCoordinator:
                     self.contract_id,
                 )
                 return
+            
+            # Initialize sensor start date if not set (use earliest date in data)
+            if not sensor_start_date:
+                # Find the earliest date from the daily records
+                date_strings = [d for d in daily_records_dict.keys() if isinstance(d, str)]
+                if date_strings:
+                    from_date = min(date.fromisoformat(d) for d in date_strings)
+                    sensor_start_date = from_date
+                else:
+                    sensor_start_date = date.today()
+                
+                self.cache.set_energy_sensor_start_date(sensor_start_date)
+                _LOGGER.debug(
+                    "Initialized sensor start date for contract %s: %s",
+                    self.contract_id,
+                    sensor_start_date.isoformat(),
+                )
 
             # Filter records to only include data from sensor start date onward
             filtered_records = []
