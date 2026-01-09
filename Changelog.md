@@ -5,6 +5,17 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.41 ]
+
+### Fixed
+- Fixed Home Assistant 2026.11 warning by adding explicit `mean_type=None` to statistics metadata
+- Fixed "State attributes exceed maximum size of 16384 bytes" error for usage sensors
+- Reduced sensor attributes from full 548-day/18-month cache to recent data only:
+  - Daily usage: Limited to most recent 90 days (down from 548 days)
+  - Monthly usage: Limited to most recent 12 months (down from 18 months)
+  - Hourly usage: Unchanged at 14 days (already within limits)
+- Full historical data (18 months) remains available in Home Assistant statistics database for Energy Dashboard
+
 ## [ 1.7.40 ]
 
 ### Fixed

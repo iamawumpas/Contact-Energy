@@ -164,9 +164,13 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return lean usage attributes sized for Home Assistant limits.
 
-        We expose only the fields ApexCharts needs while keeping the full
-        10d/35d/18m history intact. Empty/zero values are skipped to keep the
-        attribute payload compact.
+        We expose only recent data to stay under the 16KB attribute limit:
+        - Hourly: Last 14 days (full cache window)
+        - Daily: Last 90 days (reduced from 548 to fit limit)
+        - Monthly: Last 12 months (reduced from 18 to fit limit)
+        
+        Empty/zero values are skipped to keep the payload compact.
+        Full historical data remains available via statistics database.
         """
         attributes = {
             "hourly_paid_usage": {},  # paid kWh by ISO timestamp
@@ -201,15 +205,38 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 _add_non_zero(attributes["hourly_paid_usage"], timestamp, record.get("paid"))
                 _add_non_zero(attributes["hourly_free_usage"], timestamp, record.get("free"))
 
-            # Daily: full 35-day window, keep paid/free only
+            # Daily: most recent 90 days only to stay under 16KB attribute limit
             daily_records = self._cache.data.get("daily", {})
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=90)).date()
             for date_key, record in daily_records.items():
+                # Filter to recent 90 days only
+                try:
+                    record_date = datetime.strptime(date_key, "%Y-%m-%d").date()
+                    if record_date < cutoff_date:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                    
                 _add_non_zero(attributes["daily_paid_usage"], date_key, record.get("paid"))
                 _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
 
-            # Monthly: full 18-month window, keep paid/free only
+            # Monthly: most recent 12 months only to stay under 16KB attribute limit
             monthly_records = self._cache.data.get("monthly", {})
+            # Calculate cutoff as 12 months ago
+            cutoff_date = datetime.now(timezone.utc).date().replace(day=1)
+            for _ in range(12):
+                cutoff_date = (cutoff_date.replace(day=1) - timedelta(days=1)).replace(day=1)
+            
             for month_key, record in monthly_records.items():
+                # Filter to recent 12 months only
+                try:
+                    year, month = month_key.split("-")
+                    record_date = date(int(year), int(month), 1)
+                    if record_date < cutoff_date:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                    
                 _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
                 _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
 
