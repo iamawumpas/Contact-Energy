@@ -655,10 +655,84 @@ class UsageCoordinator:
             max_lookback = config["max_lookback_days"]
         else:  # monthly
             cached_from, cached_to = self.cache.get_monthly_range()
-            window_days = config["window_months"] * 30  # Approximate
-            max_lookback = config["max_lookback_months"] * 30  # Approximate
+            window_months = config["window_months"]
+            max_lookback = config["max_lookback_months"]
+            
+            # For monthly data, we need to calculate based on complete months only
+            # The API expects requests for full months (from 1st to end of month)
+            # Don't request the current incomplete month
+            
+            # Calculate the last complete month (previous month)
+            last_complete_month_date = date(today.year, today.month, 1) - timedelta(days=1)
+            last_complete_month = date(last_complete_month_date.year, last_complete_month_date.month, 1)
+            
+            if cached_to is None:
+                # First sync: download full window of complete months
+                from_month_date = last_complete_month
+                for _ in range(window_months - 1):
+                    if from_month_date.month == 1:
+                        from_month_date = date(from_month_date.year - 1, 12, 1)
+                    else:
+                        from_month_date = date(from_month_date.year, from_month_date.month - 1, 1)
+                from_date = from_month_date
+                _LOGGER.debug(
+                    "First sync for %s (contract %s): downloading full window from %s",
+                    interval, self.contract_id, from_date
+                )
+            else:
+                # Incremental sync: download from month after last cached month
+                # Only if there's a new complete month available
+                if cached_to >= last_complete_month:
+                    # No new complete month to download
+                    _LOGGER.debug(
+                        "No new complete month to sync for %s (contract %s): last cached month %s is current or future",
+                        interval, self.contract_id, cached_to
+                    )
+                    # Return invalid range to skip sync
+                    return (today, today - timedelta(days=1))
+                
+                # Download from the month after the last cached month
+                if cached_to.month == 12:
+                    from_date = date(cached_to.year + 1, 1, 1)
+                else:
+                    from_date = date(cached_to.year, cached_to.month + 1, 1)
+                    
+                _LOGGER.debug(
+                    "Incremental sync for %s (contract %s): downloading from %s (last cached: %s)",
+                    interval, self.contract_id, from_date, cached_to
+                )
+            
+            # For monthly, to_date is the last day of the last complete month
+            to_date = last_complete_month
+            
+            # Ensure we don't exceed API's max lookback limit (in months)
+            months_back = ((to_date.year - from_date.year) * 12 + (to_date.month - from_date.month))
+            if months_back > max_lookback:
+                _LOGGER.warning(
+                    "Requested range spans %d months, exceeding API limit (%d months) for %s.",
+                    months_back, max_lookback, interval
+                )
+                # Adjust from_date to stay within limit
+                from_month = to_date.month - max_lookback
+                from_year = to_date.year
+                while from_month <= 0:
+                    from_month += 12
+                    from_year -= 1
+                from_date = date(from_year, from_month, 1)
+                _LOGGER.warning(
+                    "Adjusted from_date to %s (max lookback: %d months)",
+                    from_date, max_lookback
+                )
+            
+            _LOGGER.debug(
+                "Calculated sync range for %s (contract %s): from=%s, to=%s (%d months)",
+                interval, self.contract_id, from_date, to_date,
+                ((to_date.year - from_date.year) * 12 + (to_date.month - from_date.month) + 1)
+            )
+            
+            return (from_date, to_date)
 
-        # Determine from_date
+        # Determine from_date (for hourly and daily)
         if cached_to is None:
             # First sync: download full window
             from_date = today - timedelta(days=window_days)
