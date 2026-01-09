@@ -478,11 +478,12 @@ class UsageCoordinator:
                     daily_value = float(record.get(energy_kind, 0.0))
                     cumulative_sum += daily_value
 
-                    # Create timestamp at end of day (23:59:59) in UTC
+                    # Create timestamp at start of day (00:00:00) in UTC
+                    # Home Assistant external statistics requires timestamps at top of hour
                     record_date = record["_date"]
                     timestamp = datetime.combine(
                         record_date,
-                        datetime.max.time(),
+                        datetime.min.time(),
                         tzinfo=timezone.utc
                     )
 
