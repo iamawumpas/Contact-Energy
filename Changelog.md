@@ -12,6 +12,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.19 ]
+
+### Fixed
+- Critical fix: Changed account_id extraction to use accountDetail.id instead of accountsSummary.id, resolving persistent 404 errors on usage API calls
+- Added validation to prevent empty ba parameter which caused "contract not found" errors
+- Improved error logging with full exception details (exc_info=True) for better diagnostics
+- Added account_id validation during setup to prevent integration installation without required data
+- Usage data downloads now work correctly with proper account ID in API requests
+
 ## [ 1.7.18 ]
 
 ### Fixed

@@ -28,7 +28,8 @@
       "unknown": "Unknown Error - An unexpected error occurred. Please try again or contact support if the problem persists."
     },
     "abort": {
-      "already_configured": "Contact Energy is already configured in Home Assistant"
+      "already_configured": "Contact Energy is already configured in Home Assistant",
+      "no_account_id": "Account ID Not Found - Unable to retrieve your Contact Energy account ID from the API. This is required for downloading usage data. Please try reconfiguring the integration or contact support if the problem persists."
     }
   },
   "options": {

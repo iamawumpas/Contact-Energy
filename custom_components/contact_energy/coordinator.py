@@ -152,7 +152,8 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                     # Log the error but continue with usage sync using known contract ID
                     _LOGGER.warning(
                         f"Account fetch failed after re-authentication: {str(retry_error)}. "
-                        "Proceeding with usage sync only using contract ID {self.contract_id}"
+                        f"Proceeding with usage sync only using contract ID {self.contract_id}",
+                        exc_info=True
                     )
                     
                     # Still trigger usage sync as it doesn't need account data

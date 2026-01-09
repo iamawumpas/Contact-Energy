@@ -28,7 +28,8 @@
       "unknown": "Unknown Error"
     },
     "abort": {
-      "already_configured": "Contact Energy is already configured"
+      "already_configured": "Contact Energy is already configured",
+      "no_account_id": "Account ID Not Found - Unable to retrieve account ID from Contact Energy. Please try again or contact support if the problem persists."
     }
   },
   "options": {

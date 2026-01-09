@@ -172,6 +172,15 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Use address if available, otherwise use account nickname
                 display_name = selected_contract.get("address") or account_summary.get("nickname") or "Unknown"
                 
+                # Extract account_id from accountDetail.id (required for ba parameter in usage API)
+                # This is the Contact Energy account ID, not the Business Partner (bp) ID
+                account_id = account_detail.get("id")
+                
+                # Validate that we have account_id - critical for usage API calls
+                if not account_id:
+                    _LOGGER.error("No account ID found in accountDetail. Cannot create config entry.")
+                    return self.async_abort(reason="no_account_id")
+                
                 # Prepare the config entry data with all required information
                 # Note: Password is stored encrypted by Home Assistant's internal encryption
                 config_data = {
@@ -180,7 +189,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "token": self.api_client.token,
                     "segment": self.api_client.segment,
                     "bp": self.api_client.bp,
-                    "account_id": account_summary.get("id"),
+                    "account_id": account_id,
                     "account_nickname": account_summary.get("nickname"),
                     "icp": selected_contract.get("icp"),
                     "address": selected_contract.get("address"),

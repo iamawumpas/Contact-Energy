@@ -197,7 +197,8 @@ class ContactEnergyApi:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            _LOGGER.error(f"Unexpected error while retrieving accounts: {e}")
+            # Log full exception details for debugging
+            _LOGGER.error(f"Unexpected error while retrieving accounts: {e}", exc_info=True)
             raise ContactEnergyConnectionError(f"An unexpected error occurred: {str(e)}")
 
     async def get_usage(
@@ -284,11 +285,18 @@ class ContactEnergyApi:
             _LOGGER.error(error_msg)
             raise ContactEnergyAuthError(error_msg)
 
+        # Validate that we have account_id for the ba parameter
+        # Without this, the API returns 404 errors
+        if not self.account_id:
+            error_msg = "account_id is required for usage API calls but is not set. Please reconfigure the integration."
+            _LOGGER.error(error_msg)
+            raise ContactEnergyApiError(error_msg)
+        
         # Build query parameters for API request
         # Format dates as YYYY-MM-DD strings required by API
         params = {
             # Use the Contact account_id for the required ba parameter (not the BP id)
-            "ba": self.account_id or "",
+            "ba": self.account_id,
             "interval": interval,  # hourly, daily, or monthly
             "from": from_date.strftime("%Y-%m-%d"),  # Start date
             "to": to_date.strftime("%Y-%m-%d"),  # End date
