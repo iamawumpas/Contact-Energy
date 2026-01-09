@@ -3,10 +3,11 @@
 # Release automation script for Contact Energy integration
 # Usage: ./release.sh x.y.z
 # This script automates the release process by:
+# - Pausing to let agent write changelog entry
 # - Updating version numbers in all relevant files
 # - Creating a git commit with staged changes
-# - Creating a git tag and GitHub release
-# - Pushing changes to the repository
+# - Creating a git tag and GitHub release with changelog
+# - Pushing everything to the repository
 
 set -e
 
@@ -14,6 +15,7 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Validate version number argument
@@ -24,8 +26,6 @@ if [ $# -ne 1 ]; then
 fi
 
 VERSION=$1
-BOOKMARK="release-${VERSION}-resume"
-AGENT_INSTRUCTION_FILE=".agent_bookmark"
 
 # Validate version format (x.y.z)
 if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -33,102 +33,112 @@ if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-echo -e "${YELLOW}Release script started for version ${VERSION}${NC}"
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║       Contact Energy Integration Release Script           ║${NC}"
+echo -e "${GREEN}║                   Version ${VERSION}                          ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
 
-# Step 1: Instruct the agent to write the changelog and wait for completion
-# Human-friendly note: we pause here until the agent finishes the changelog and signals readiness.
-echo -e "${YELLOW}Step 1: Changelog generation${NC}"
-echo "Automatically instructing the agent (see ${AGENT_INSTRUCTION_FILE})..."
-echo "Waiting for the agent to finish (polling for up to 60 seconds)..."
-
-# Remove any stale ready marker before we start waiting
+# Step 1: Clean up any stale sentinel files from previous runs
+echo -e "${BLUE}[Step 1/8]${NC} ${YELLOW}Cleaning up stale sentinel files...${NC}"
 rm -f .changelog_ready
-rm -f .bookmark_ack
-rm -f "${AGENT_INSTRUCTION_FILE}"
+rm -f .agent_changelog_complete
+echo -e "${GREEN}✓ Cleanup complete${NC}"
+echo ""
 
-# Write instruction for the agent including the bookmark name
-cat > "${AGENT_INSTRUCTION_FILE}" <<EOF
-Agent instructions for release ${VERSION}:
-- Bookmark: ${BOOKMARK}
-- Tasks:
-    1) Add the changelog entry for version ${VERSION} to Changelog.md using the required format.
-    2) Create .changelog_ready in the repo root when done.
-    3) Create .bookmark_ack containing the bookmark name (${BOOKMARK}).
-- After the script resumes, forget the bookmark name.
-EOF
+# Step 2: Instruct the agent to write the changelog
+echo -e "${BLUE}[Step 2/8]${NC} ${YELLOW}Waiting for changelog entry...${NC}"
+echo ""
+echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}║  ACTION REQUIRED: Ask the agent to write the changelog  ║${NC}"
+echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+echo ""
+echo "Please ask the agent to:"
+echo "  1) Write the changelog entry for version ${VERSION} in Changelog.md"
+echo "  2) Use the format: ## [ ${VERSION} ]"
+echo "  3) Include sections: ### Added, ### Fixed, ### Changed (as needed)"
+echo "  4) When finished, create the file: .agent_changelog_complete"
+echo ""
+echo "After the agent completes these steps, this script will continue automatically."
+echo ""
+echo -e "${BLUE}Polling for completion (checking every 3 seconds)...${NC}"
+echo ""
 
-# Wait loop: proceed only when the sentinels exist, the changelog contains the header,
-# and the bookmark acknowledgement matches.
-SECONDS=0
-MAX_WAIT=60  # 60s safety cutoff to avoid hanging indefinitely
+# Wait loop: poll for sentinel file and changelog entry
+WAIT_COUNT=0
 while true; do
-    BOOKMARK_OK=false
-    if [ -f .bookmark_ack ] && grep -q "${BOOKMARK}" .bookmark_ack; then
-        BOOKMARK_OK=true
-    fi
-
-    if [ -f .changelog_ready ] && [ "${BOOKMARK_OK}" = true ] && grep -q "^## \[ ${VERSION} \]" Changelog.md; then
-        echo -e "${GREEN}✓ Changelog for ${VERSION} detected, bookmark ${BOOKMARK} acknowledged${NC}"
-        echo "Please instruct the agent to forget the bookmark name now."
+    # Check if sentinel exists and changelog has the version header
+    if [ -f .agent_changelog_complete ] && grep -q "^## \[ ${VERSION} \]" Changelog.md; then
+        echo ""
+        echo -e "${GREEN}✓ Changelog entry detected for version ${VERSION}${NC}"
+        rm -f .agent_changelog_complete
         break
     fi
 
-    if [ $SECONDS -ge $MAX_WAIT ]; then
-        echo -e "${RED}Error: Timed out waiting for changelog for version ${VERSION}${NC}"
+    # Show a progress indicator every 3 seconds
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+    echo -n "."
+    
+    # Safety timeout after 5 minutes
+    if [ $WAIT_COUNT -ge 100 ]; then
+        echo ""
+        echo -e "${RED}Error: Timed out waiting for changelog (5 minutes)${NC}"
+        echo "The agent may not have completed the changelog entry."
         exit 1
     fi
 
-    sleep 5
+    sleep 3
 done
+echo ""
 
-# Clean up agent ready signals before proceeding
-rm -f .changelog_ready
-rm -f .bookmark_ack
-rm -f "${AGENT_INSTRUCTION_FILE}"
+# Step 3: Update version numbers in all files
+echo -e "${BLUE}[Step 3/8]${NC} ${YELLOW}Updating version numbers...${NC}"
 
-# Step 2: Update README.md with version badge
-echo -e "${YELLOW}Step 2: Updating README.md${NC}"
+# Update README.md with version badge
+echo -n "  - README.md badge... "
 if grep -q "img.shields.io/badge/version" README.md; then
     # Find and replace version in badge (format: ![Version](https://img.shields.io/badge/version-x.y.z-blue.svg))
     sed -i "s/img.shields.io\/badge\/version-[0-9]*\.[0-9]*\.[0-9]*-blue/img.shields.io\/badge\/version-${VERSION}-blue/" README.md
-    echo -e "${GREEN}✓ README.md version badge updated${NC}"
+    echo -e "${GREEN}✓${NC}"
 else
-    echo -e "${YELLOW}⚠ README.md version badge not found in expected format${NC}"
+    echo -e "${YELLOW}⚠ (badge not found)${NC}"
 fi
 
-# Step 3: Update manifest.json version
-echo -e "${YELLOW}Step 3: Updating manifest.json${NC}"
+# Update manifest.json version
+echo -n "  - manifest.json... "
 sed -i "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"${VERSION}\"/" custom_components/contact_energy/manifest.json
-echo -e "${GREEN}✓ manifest.json updated${NC}"
+echo -e "${GREEN}✓${NC}"
 
-# Step 4: Update HACS.json version
-echo -e "${YELLOW}Step 4: Updating HACS.json${NC}"
+# Update HACS.json version
+echo -n "  - HACS.json... "
 sed -i "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"${VERSION}\"/" HACS.json
-echo -e "${GREEN}✓ HACS.json updated${NC}"
+echo -e "${GREEN}✓${NC}"
 
-# Stage all modified files before commit (ensure sentinel is gone)
-rm -f .changelog_ready
+echo -e "${GREEN}✓ All version numbers updated${NC}"
+echo ""
+
+# Step 4: Stage all modified files
+echo -e "${BLUE}[Step 4/8]${NC} ${YELLOW}Staging changes...${NC}"
 git add -A
+echo -e "${GREEN}✓ All changes staged${NC}"
+echo ""
 
-# Step 5: Commit all files
-echo -e "${YELLOW}Step 5: Creating git commit${NC}"
+# Step 5: Create git commit
+echo -e "${BLUE}[Step 5/8]${NC} ${YELLOW}Creating git commit...${NC}"
 git commit -m "Release v${VERSION}"
-echo -e "${GREEN}✓ Commit created${NC}"
+echo -e "${GREEN}✓ Commit created: Release v${VERSION}${NC}"
+echo ""
 
-# Step 6: Create and push git tag
-echo -e "${YELLOW}Step 6: Creating git tag${NC}"
+# Step 6: Create git tag
+echo -e "${BLUE}[Step 6/8]${NC} ${YELLOW}Creating git tag...${NC}"
 git tag -a "v${VERSION}" -m "Release version ${VERSION}"
-echo -e "${GREEN}✓ Tag created${NC}"
+echo -e "${GREEN}✓ Tag created: v${VERSION}${NC}"
+echo ""
 
-# Step 7: Push commit and tag to repository
-echo -e "${YELLOW}Step 7: Pushing to repository${NC}"
-git push origin main
-git push origin "v${VERSION}"
-echo -e "${GREEN}✓ Pushed to repository${NC}"
+# Step 7: Extract changelog and create GitHub release
+echo -e "${BLUE}[Step 7/8]${NC} ${YELLOW}Creating GitHub release...${NC}"
 
-# Step 8: Create GitHub release with changelog
-echo -e "${YELLOW}Step 8: Creating GitHub release${NC}"
-# Extract changelog entry for this version using sed (more reliable than awk)
+# Extract changelog entry for this version
 # Finds content between version header and next header, excluding the headers themselves
 CHANGELOG_ENTRY=$(sed -n "/^## \[ ${VERSION} \]/,/^## \[/p" Changelog.md | sed '1d;$d')
 
@@ -136,12 +146,30 @@ CHANGELOG_ENTRY=$(sed -n "/^## \[ ${VERSION} \]/,/^## \[/p" Changelog.md | sed '
 CHANGELOG_ENTRY=$(echo "$CHANGELOG_ENTRY" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 
 if [ -z "$CHANGELOG_ENTRY" ]; then
-    echo -e "${YELLOW}⚠ Could not extract changelog entry, using default${NC}"
+    echo -e "${YELLOW}⚠ Could not extract changelog entry, using default message${NC}"
     CHANGELOG_ENTRY="Release v${VERSION}"
+else
+    echo -e "${GREEN}✓ Changelog entry extracted (${#CHANGELOG_ENTRY} characters)${NC}"
 fi
 
 # Create GitHub release using gh CLI with changelog content as release notes
 gh release create "v${VERSION}" --title "Release v${VERSION}" --notes "$CHANGELOG_ENTRY"
 echo -e "${GREEN}✓ GitHub release created${NC}"
+echo ""
 
-echo -e "${GREEN}Release v${VERSION} completed successfully!${NC}"
+# Step 8: Push to repository
+echo -e "${BLUE}[Step 8/8]${NC} ${YELLOW}Pushing to repository...${NC}"
+git push origin main
+git push origin "v${VERSION}"
+echo -e "${GREEN}✓ Pushed commit and tag to origin/main${NC}"
+echo ""
+
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║           Release v${VERSION} completed successfully!          ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo "Summary:"
+echo "  • Version ${VERSION} committed and tagged"
+echo "  • GitHub release created with changelog"
+echo "  • All changes pushed to main branch"
+echo ""
