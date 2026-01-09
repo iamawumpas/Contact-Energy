@@ -558,6 +558,12 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
         and imports it into the long-term statistics database. This enables the
         Energy Dashboard to display historical data.
         """
+        _LOGGER.info(
+            "Starting statistics import for %s (%s)",
+            self._attr_unique_id,
+            self._energy_kind,
+        )
+        
         try:
             # Get the sensor start date and daily data
             sensor_start_date = self._cache.get_energy_sensor_start_date()
@@ -568,6 +574,12 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                 )
                 return
 
+            _LOGGER.debug(
+                "Sensor start date for %s: %s",
+                self._attr_unique_id,
+                sensor_start_date.isoformat(),
+            )
+
             # Get all daily records from cache (they're stored as a dict)
             daily_records_dict = self._cache.data.get("daily", {})
             if not daily_records_dict:
@@ -576,6 +588,12 @@ class ContactEnergyEnergySensor(CoordinatorEntity, SensorEntity):
                     self._attr_unique_id,
                 )
                 return
+
+            _LOGGER.debug(
+                "Found %d daily records in cache for %s",
+                len(daily_records_dict),
+                self._attr_unique_id,
+            )
 
             # Convert dict to list and filter records to only include data from sensor start date onward
             filtered_records = []
