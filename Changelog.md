@@ -12,6 +12,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.26 ]
+
+### Fixed
+- Fixed syntax error in sensor.py (orphaned method definition)
+- Fixed sensor start date initialization in statistics import
+  - Now correctly finds earliest date from daily records instead of relying on metadata
+  - Prevents start date from being set to today when metadata is not yet updated
+  - Ensures all historical data is included in statistics import
+
 ## [ 1.7.25 ]
 
 ### Changed
