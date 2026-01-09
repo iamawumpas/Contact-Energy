@@ -410,9 +410,6 @@ class UsageCoordinator:
         from the API without timing issues or async method call delays.
         """
         try:
-            # Get sensor start date (when the sensor first started recording)
-            sensor_start_date = self.cache.get_energy_sensor_start_date()
-            
             # Get daily records from cache first (we'll need them anyway)
             daily_records_dict = self.cache.data.get("daily", {})
             if not daily_records_dict:
@@ -421,22 +418,31 @@ class UsageCoordinator:
                     self.contract_id,
                 )
                 return
+
+            # Get sensor start date (when the sensor first started recording)
+            sensor_start_date = self.cache.get_energy_sensor_start_date()
             
             # Initialize sensor start date if not set (use earliest date in data)
             if not sensor_start_date:
-                # Find the earliest date from the daily records
-                date_strings = [d for d in daily_records_dict.keys() if isinstance(d, str)]
-                if date_strings:
-                    from_date = min(date.fromisoformat(d) for d in date_strings)
-                    sensor_start_date = from_date
-                else:
+                # Find the earliest date from the daily records dictionary keys
+                # Keys are ISO date strings like "2025-12-05"
+                try:
+                    earliest_date_str = min(daily_records_dict.keys())
+                    sensor_start_date = date.fromisoformat(earliest_date_str)
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning(
+                        "Failed to determine earliest date from daily records for contract %s: %s",
+                        self.contract_id,
+                        str(e),
+                    )
                     sensor_start_date = date.today()
                 
                 self.cache.set_energy_sensor_start_date(sensor_start_date)
-                _LOGGER.debug(
-                    "Initialized sensor start date for contract %s: %s",
+                _LOGGER.info(
+                    "Initialized sensor start date for contract %s from earliest daily record: %s (%d records available)",
                     self.contract_id,
                     sensor_start_date.isoformat(),
+                    len(daily_records_dict),
                 )
 
             # Filter records to only include data from sensor start date onward
