@@ -46,21 +46,37 @@ rm -f .agent_changelog_complete
 echo -e "${GREEN}✓ Cleanup complete${NC}"
 echo ""
 
-# Step 2: Instruct the agent to write the changelog
-echo -e "${BLUE}[Step 2/8]${NC} ${YELLOW}Waiting for changelog entry...${NC}"
+# Step 2: Instruct the agent to reread instructions
+echo -e "${BLUE}[Step 2/9]${NC} ${YELLOW}Agent instruction review...${NC}"
 echo ""
 echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}║  ACTION REQUIRED: Ask the agent to write the changelog  ║${NC}"
+echo -e "${YELLOW}║  AGENT DIRECTIVE: Review instructions immediately      ║${NC}"
 echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo "Please ask the agent to:"
-echo "  1) Reread .Agent_Instructions.md and .API_Instructions_v2.md"
-echo "  2) Write the changelog entry for version ${VERSION} in Changelog.md"
-echo "  3) Use the format: ## [ ${VERSION} ]"
-echo "  4) Include sections: ### Added, ### Fixed, ### Changed (as needed)"
-echo "  5) When finished, create the file: .agent_changelog_complete"
+echo "REREAD these files NOW:"
+echo "  • .Agent_Instructions.md"
+echo "  • .API_Instructions_v2.md"
 echo ""
-echo "After the agent completes these steps, this script will continue automatically."
+echo "You MUST verify:"
+echo "  - Changelog entries ONLY when release.sh instructs (this moment)"
+echo "  - No autonomous changelog entries for minor edits"
+echo "  - Current authorization levels and workflow expectations"
+echo ""
+
+# Step 3: Instruct the agent to write the changelog
+echo -e "${BLUE}[Step 3/9]${NC} ${YELLOW}Waiting for changelog entry...${NC}"
+echo ""
+echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}║  AGENT DIRECTIVE: Write changelog entry NOW            ║${NC}"
+echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+echo ""
+echo "WRITE changelog entry:"
+echo "  1) Edit Changelog.md with entry for version ${VERSION}"
+echo "  2) Use format: ## [ ${VERSION} ]"
+echo "  3) Include sections: ### Added, ### Fixed, ### Changed (as needed)"
+echo "  4) Create sentinel file: touch .agent_changelog_complete"
+echo ""
+echo "The script will continue automatically after completion."
 echo ""
 echo -e "${BLUE}Polling for completion (checking every 3 seconds, 45s timeout)...${NC}"
 echo ""
@@ -92,8 +108,8 @@ while true; do
 done
 echo ""
 
-# Step 3: Update version numbers in all files
-echo -e "${BLUE}[Step 3/8]${NC} ${YELLOW}Updating version numbers...${NC}"
+# Step 4: Update version numbers in all files
+echo -e "${BLUE}[Step 4/9]${NC} ${YELLOW}Updating version numbers...${NC}"
 
 # Update README.md with version badge
 echo -n "  - README.md badge... "
@@ -118,26 +134,26 @@ echo -e "${GREEN}✓${NC}"
 echo -e "${GREEN}✓ All version numbers updated${NC}"
 echo ""
 
-# Step 4: Stage all modified files
-echo -e "${BLUE}[Step 4/8]${NC} ${YELLOW}Staging changes...${NC}"
+# Step 5: Stage all modified files
+echo -e "${BLUE}[Step 5/9]${NC} ${YELLOW}Staging changes...${NC}"
 git add -A
 echo -e "${GREEN}✓ All changes staged${NC}"
 echo ""
 
-# Step 5: Create git commit
-echo -e "${BLUE}[Step 5/8]${NC} ${YELLOW}Creating git commit...${NC}"
+# Step 6: Create git commit
+echo -e "${BLUE}[Step 6/9]${NC} ${YELLOW}Creating git commit...${NC}"
 git commit -m "Release v${VERSION}"
 echo -e "${GREEN}✓ Commit created: Release v${VERSION}${NC}"
 echo ""
 
-# Step 6: Create git tag
-echo -e "${BLUE}[Step 6/8]${NC} ${YELLOW}Creating git tag...${NC}"
+# Step 7: Create git tag
+echo -e "${BLUE}[Step 7/9]${NC} ${YELLOW}Creating git tag...${NC}"
 git tag -a "v${VERSION}" -m "Release version ${VERSION}"
 echo -e "${GREEN}✓ Tag created: v${VERSION}${NC}"
 echo ""
 
-# Step 7: Extract changelog and create GitHub release
-echo -e "${BLUE}[Step 7/8]${NC} ${YELLOW}Creating GitHub release...${NC}"
+# Step 8: Extract changelog and create GitHub release
+echo -e "${BLUE}[Step 8/9]${NC} ${YELLOW}Creating GitHub release...${NC}"
 
 # Extract changelog entry for this version
 # Finds content between version header and next header, excluding the headers themselves
@@ -158,8 +174,8 @@ gh release create "v${VERSION}" --title "Release v${VERSION}" --notes "$CHANGELO
 echo -e "${GREEN}✓ GitHub release created${NC}"
 echo ""
 
-# Step 8: Push to repository
-echo -e "${BLUE}[Step 8/8]${NC} ${YELLOW}Pushing to repository...${NC}"
+# Step 9: Push to repository
+echo -e "${BLUE}[Step 9/9]${NC} ${YELLOW}Pushing to repository...${NC}"
 git push origin main
 git push origin "v${VERSION}"
 echo -e "${GREEN}✓ Pushed commit and tag to origin/main${NC}"

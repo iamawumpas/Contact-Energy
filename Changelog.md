@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.7.29 ]
+
+### Fixed
+- Fixed statistic_id validation error in Home Assistant
+  - Simplified statistic_id format: `domain:energy_paid_contract_id` and `domain:energy_free_contract_id`
+  - Changed unit_of_measurement to string "kWh" instead of enum
+  - Removed unused UnitOfEnergy import
+
 ## [ 1.7.28 ]
 
 ### Fixed

@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.recorder.statistics import async_import_statistics, StatisticData, StatisticMetaData
-from homeassistant.const import UnitOfEnergy
 
 from .usage_cache import UsageCache
 from .const import DOMAIN
@@ -496,11 +495,11 @@ class UsageCoordinator:
 
                 # Build metadata for this energy kind
                 if energy_kind == "paid":
-                    stat_id = f"{DOMAIN}:energy_sensor_paid_{self.contract_id}"
-                    stat_name = f"Contact Energy Paid Usage {self.contract_id}"
+                    stat_id = f"{DOMAIN}:energy_paid_{self.contract_id}"
+                    stat_name = f"Contact Energy Paid {self.contract_id}"
                 else:
-                    stat_id = f"{DOMAIN}:energy_sensor_free_{self.contract_id}"
-                    stat_name = f"Contact Energy Free Usage {self.contract_id}"
+                    stat_id = f"{DOMAIN}:energy_free_{self.contract_id}"
+                    stat_name = f"Contact Energy Free {self.contract_id}"
 
                 metadata = StatisticMetaData(
                     has_mean=False,
@@ -508,7 +507,7 @@ class UsageCoordinator:
                     name=stat_name,
                     source=DOMAIN,
                     statistic_id=stat_id,
-                    unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                    unit_of_measurement="kWh",
                 )
 
                 # Import statistics into Home Assistant database
