@@ -201,8 +201,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Returns:
         True if unload was successful, False otherwise.
     """
+    from homeassistant.helpers import entity_registry as er
+    
     # Unload all platforms associated with this config entry
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        # Get the entity registry and remove all entities for this config entry
+        entity_reg = er.async_get(hass)
+        entities_to_remove = [
+            entity_id for entity_id, entry_obj in entity_reg.entities.items()
+            if entry_obj.config_entry_id == entry.entry_id
+        ]
+        for entity_id in entities_to_remove:
+            entity_reg.async_remove(entity_id)
+        
         # If unloading was successful, remove the entry's data from the domain
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok

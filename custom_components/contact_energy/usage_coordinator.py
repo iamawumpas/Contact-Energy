@@ -514,15 +514,25 @@ class UsageCoordinator:
                     stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Free Usage {self.icp}"
 
-                metadata = StatisticMetaData(
-                    has_mean=False,
-                    has_sum=True,
-                    name=stat_name,
-                    source=DOMAIN,
-                    statistic_id=stat_id,
-                    unit_of_measurement="kWh",
-                    unit_class="energy",
-                )
+                # Create metadata without mean_type field (must be completely omitted when has_mean=False)
+                # Build as dict first to ensure we control exactly which fields are present
+                metadata_dict = {
+                    "has_mean": False,
+                    "has_sum": True,
+                    "name": stat_name,
+                    "source": DOMAIN,
+                    "statistic_id": stat_id,
+                    "unit_of_measurement": "kWh",
+                }
+                
+                # Only add unit_class if it exists (for compatibility with older HA versions)
+                try:
+                    metadata_dict["unit_class"] = "energy"
+                    metadata = StatisticMetaData(**metadata_dict)
+                except TypeError:
+                    # Fallback for older Home Assistant versions without unit_class
+                    del metadata_dict["unit_class"]
+                    metadata = StatisticMetaData(**metadata_dict)
 
                 # Import statistics into Home Assistant database
                 _LOGGER.debug(
