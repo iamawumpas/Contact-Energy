@@ -5,6 +5,13 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.0 ]
+
+### Changed
+- Version bump to 1.8.0 to start the security hardening phase
+- No functional code changes from 1.7.x; this release locks 1.7.x line
+- Subsequent improvements will target 1.8.x only (1.7.x frozen)
+
 ## [ 1.7.47 ]
 
 ### Fixed

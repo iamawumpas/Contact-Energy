@@ -1,1 +1,122 @@
+type: custom:apexcharts-card
+header:
+	show: true
+	title: Monthly Usage
+graph_span: 548d
+stacked: true
+all_series_config:
+	stroke_width: 2
+	type: column
+	show:
+		legend_value: false
+series:
+	- entity: sensor.71_oroua_st_0000000966tr348_usage_2
+		attribute: monthly_paid_usage
+		name: Paid
+		color: "#FEB019"
+		data_generator: |
+			const monthly = entity.attributes.monthly_paid_usage || {};
+			const daily = entity.attributes.daily_paid_usage || {};
+			const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+			// Sum current-month daily data (always include the month, even if zero)
+			const currentMonthSum = Object.entries(daily)
+				.filter(([date]) => date.startsWith(monthKey))
+				.reduce((acc, [, value]) => acc + Number(value || 0), 0);
+
+			// Merge and overwrite current month
+			const merged = {
+				...monthly,
+				[monthKey]: currentMonthSum,
+			};
+
+			return Object.entries(merged)
+				.map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
+				.sort((a, b) => a[0] - b[0]);
+	- entity: sensor.71_oroua_st_0000000966tr348_usage_2
+		attribute: monthly_free_usage
+		name: Free
+		color: "#008FFB"
+		data_generator: |
+			const monthly = entity.attributes.monthly_free_usage || {};
+			const daily = entity.attributes.daily_free_usage || {};
+			const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+			const currentMonthSum = Object.entries(daily)
+				.filter(([date]) => date.startsWith(monthKey))
+				.reduce((acc, [, value]) => acc + Number(value || 0), 0);
+
+			const merged = {
+				...monthly,
+				[monthKey]: currentMonthSum,
+			};
+
+			return Object.entries(merged)
+				.map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
+				.sort((a, b) => a[0] - b[0]);
+apex_config:
+	chart:
+		height: 220px
+		type: bar
+		stacked: true
+	plotOptions:
+		bar:
+			columnWidth: 100%
+	legend:
+		show: true
+		position: top
+		horizontalAlign: center
+		offsetY: 20
+	fill:
+		type: gradient
+		gradient:
+			type: vertical
+			shadeIntensity: 0.6
+			opacityFrom: 0.25
+			opacityTo: 1
+			inverseColors: true
+			stops:
+				- 0
+				- 90
+				- 100
+	xaxis:
+		type: datetime
+		labels:
+			format: MMM
+			rotate: -90
+			rotateAlways: true
+		tickAmount: 18
+	yaxis:
+		title:
+			text: kWh
+		min: 0
+		max: 1700
+		labels:
+			formatter: |
+				EVAL:function(value) { return value.toFixed(0); }
+card_mod:
+	style: |
+		div#header__title {
+			text-align: center !important;
+			width: 100%;
+		}
+		.apexcharts-legend {
+			margin-top: -10px !important;  
+			padding-top: 0px !important;
+		}
+		.apexcharts-canvas {
+			margin-top: -15px !important;  
+		}
+
+
+		ha-card {
+			/*
+				Creates a linear gradient background from top (#383e4a) to bottom (#1e212b).
+				!important is used to ensure it overrides the default background variable.
+			*/
+			background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      
+			/* Optional: remove the default shadow */
+			box-shadow: none;
+		}
 
