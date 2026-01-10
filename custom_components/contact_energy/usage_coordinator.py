@@ -514,12 +514,11 @@ class UsageCoordinator:
                     stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Free Usage {self.icp}"
 
-                # Create metadata with explicit mean_type=None (required in HA 2026.x+)
+                # Create metadata with has_mean=False and omit mean_type entirely
                 # Build as dict first to ensure we control exactly which fields are present
                 metadata_dict = {
                     "has_mean": False,
                     "has_sum": True,
-                    "mean_type": None,
                     "name": stat_name,
                     "source": DOMAIN,
                     "statistic_id": stat_id,

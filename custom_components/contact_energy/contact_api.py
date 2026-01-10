@@ -12,6 +12,7 @@ import aiohttp
 import logging
 import time
 from datetime import date
+import asyncio
 from typing import Any
 from urllib.parse import urlencode
 
@@ -20,6 +21,21 @@ _LOGGER = logging.getLogger(__name__)
 # Contact Energy API configuration
 BASE_URL = "https://api.contact-digital-prod.net"
 API_KEY = "kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij"
+
+
+def _redact_sensitive(value: str, prefix_length: int = 3) -> str:
+    """Redact sensitive data in logs while keeping prefix for debugging.
+    
+    Args:
+        value: The sensitive value to redact
+        prefix_length: How many characters to keep at the start
+        
+    Returns:
+        Redacted string like "abc***redacted***" for "abcdefgh"
+    """
+    if not value or len(value) <= prefix_length:
+        return "***redacted***"
+    return value[:prefix_length] + "***redacted***"
 
 
 class ContactEnergyApiError(Exception):
@@ -61,6 +77,25 @@ class ContactEnergyApi:
         self.bp: str | None = None
         # Human-friendly note: account_id is the BA value required by usage/accounts calls.
         self.account_id: str | None = None
+        # Simple client-side rate limiting to avoid rapid consecutive requests
+        self._min_interval_seconds: float = 0.5
+        self._last_request_monotonic: float = 0.0
+        # Timeout configurations for different endpoints
+        self._auth_timeout: float = 10.0  # Quick timeout for auth (expected to be fast)
+        self._accounts_timeout: float = 10.0  # Quick timeout for accounts (expected to be fast)
+        self._usage_timeout: float = 30.0  # Longer timeout for usage (may download large date ranges)
+
+    async def _throttle(self) -> None:
+        """Enforce a minimal interval between outbound API calls.
+
+        Keeps traffic polite and reduces transient 4xx/5xx due to bursts
+        without altering integration behavior.
+        """
+        now = time.monotonic()
+        elapsed = now - self._last_request_monotonic
+        if elapsed < self._min_interval_seconds:
+            await asyncio.sleep(self._min_interval_seconds - elapsed)
+        self._last_request_monotonic = time.monotonic()
 
     async def authenticate(self) -> dict[str, Any]:
         """Authenticate with Contact Energy API.
@@ -87,21 +122,23 @@ class ContactEnergyApi:
             
             # Attempt to connect to the authentication endpoint
             async with aiohttp.ClientSession() as session:
+                # Throttle slightly to avoid request bursts
+                await self._throttle()
                 async with session.post(
-                    f"{BASE_URL}/login/v2", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                    f"{BASE_URL}/login/v2", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=self._auth_timeout)
                 ) as resp:
                     # Handle authentication response
                     if resp.status == 401:
-                        _LOGGER.warning(f"Authentication failed for {self.email}: Invalid credentials (401)")
+                        _LOGGER.warning(f"Authentication failed for {_redact_sensitive(self.email)}: Invalid credentials (401)")
                         raise ContactEnergyAuthError("Invalid email or password. Please check your credentials and try again.")
                     if resp.status == 403:
-                        _LOGGER.warning(f"Authentication forbidden for {self.email} (403)")
+                        _LOGGER.warning(f"Authentication forbidden for {_redact_sensitive(self.email)} (403)")
                         raise ContactEnergyAuthError("Access denied. Please contact Contact Energy support.")
                     if resp.status == 400:
-                        _LOGGER.warning(f"Authentication request malformed for {self.email} (400)")
+                        _LOGGER.warning(f"Authentication request malformed for {_redact_sensitive(self.email)} (400)")
                         raise ContactEnergyAuthError("Invalid authentication request. Please reconfigure the integration.")
                     if resp.status != 200:
-                        _LOGGER.error(f"Authentication failed with status {resp.status} for {self.email}")
+                        _LOGGER.error(f"Authentication failed with status {resp.status} for {_redact_sensitive(self.email)}")
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please check your internet connection and try again."
                         )
@@ -115,7 +152,7 @@ class ContactEnergyApi:
                     if not self.token:
                         raise ContactEnergyAuthError("No authentication token received. Please try again.")
 
-                    _LOGGER.debug(f"Successfully authenticated as {self.email}")
+                    _LOGGER.debug(f"Successfully authenticated as {_redact_sensitive(self.email)}")
                     return {"token": self.token, "segment": self.segment, "bp": self.bp}
 
         except aiohttp.ClientError as e:
@@ -162,8 +199,10 @@ class ContactEnergyApi:
             
             # Request account information from the API
             async with aiohttp.ClientSession() as session:
+                # Throttle slightly to avoid request bursts
+                await self._throttle()
                 async with session.get(
-                    full_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                    full_url, headers=headers, timeout=aiohttp.ClientTimeout(total=self._accounts_timeout)
                 ) as resp:
                     _LOGGER.debug(f"Accounts API response: status={resp.status}, content_type={resp.content_type}")
                     
@@ -186,7 +225,7 @@ class ContactEnergyApi:
 
                     # Extract account data from successful response
                     data = await resp.json()
-                    _LOGGER.debug(f"Successfully retrieved account data for {self.email}")
+                    _LOGGER.debug(f"Successfully retrieved account data")
                     return data
 
         except aiohttp.ClientError as e:
@@ -260,7 +299,7 @@ class ContactEnergyApi:
         # Log entry with parameters for debugging
         _LOGGER.debug(
             "get_usage() called: contract_id=%s, interval=%s, from=%s, to=%s",
-            contract_id, interval, from_date, to_date
+            _redact_sensitive(contract_id, 2), interval, from_date, to_date
         )
 
         # Start performance timer
@@ -324,11 +363,13 @@ class ContactEnergyApi:
 
         try:
             # Make POST request to usage endpoint
+            # Throttle slightly to avoid request bursts
+            await self._throttle()
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     full_url,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)  # Longer timeout for potentially large data
+                    timeout=aiohttp.ClientTimeout(total=self._usage_timeout)  # Longer timeout for potentially large data
                 ) as resp:
                     # Log response status for debugging
                     _LOGGER.debug(
@@ -375,6 +416,7 @@ class ContactEnergyApi:
                         )
 
                     # Handle bad request errors (invalid parameters)
+                    if resp.status == 400:
                         error_text = await resp.text()
                         _LOGGER.warning(
                             "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
@@ -413,8 +455,8 @@ class ContactEnergyApi:
 
                     # Log success with metrics
                     _LOGGER.info(
-                        "Retrieved %d usage records for contract %s (%s interval) in %.2f seconds",
-                        len(usage_records), contract_id, interval, elapsed
+                        "Retrieved %d usage records (%s interval) in %.2f seconds",
+                        len(usage_records), interval, elapsed
                     )
 
                     return usage_records
@@ -423,8 +465,8 @@ class ContactEnergyApi:
             # Log network-related errors with full context
             elapsed = time.time() - start_time
             _LOGGER.error(
-                "Network error while fetching usage for contract %s after %.2f seconds: %s",
-                contract_id, elapsed, str(e)
+                "Network error while fetching usage after %.2f seconds: %s",
+                elapsed, str(e)
             )
             raise ContactEnergyConnectionError(
                 f"Unable to connect to Contact Energy API: {str(e)}. Please check your internet connection."
@@ -439,8 +481,8 @@ class ContactEnergyApi:
             # Log unexpected errors with full context for debugging
             elapsed = time.time() - start_time
             _LOGGER.error(
-                "Unexpected error while fetching usage for contract %s after %.2f seconds: %s",
-                contract_id, elapsed, str(e), exc_info=True
+                "Unexpected error while fetching usage after %.2f seconds: %s",
+                elapsed, str(e), exc_info=True
             )
             raise ContactEnergyConnectionError(
                 f"An unexpected error occurred while fetching usage data: {str(e)}"
@@ -477,7 +519,7 @@ class ContactEnergyApi:
         Note: Paid usage = total - (off-peak free hours) - (promotional/uncharged).
               We ensure paid never goes negative due to data inconsistencies.
         """
-        _LOGGER.debug("Parsing usage response for contract %s (%s interval)", contract_id, interval)
+        _LOGGER.debug("Parsing usage response for %s interval", interval)
 
         # Extract usage array from response
         # API can return either:

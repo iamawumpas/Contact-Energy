@@ -5,6 +5,27 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.1 ]
+
+### Added
+- Added comprehensive log redaction to prevent sensitive data (emails, contract IDs) from appearing in logs
+- Improved logging with redacted credential prefixes for debugging while protecting privacy
+
+### Fixed
+- Fixed potential log information disclosure by redacting email addresses (show only first 3 chars)
+- Fixed potential log information disclosure by redacting contract IDs (show only first 2 chars)
+- Removed email address from account data success logging
+
+### Changed
+- Improved API client with configurable, endpoint-specific timeouts (10s auth/accounts, 30s usage)
+- Added client-side request throttling (0.5s minimum interval) across all API endpoints to reduce burst-related transient errors
+- Enhanced API error logging with better context while maintaining security
+
+### Security
+- All API endpoints now enforce minimal request throttling to avoid burst-induced 4xx/5xx errors
+- Log redaction ensures no credentials, emails, or sensitive IDs leak into log files
+- Timeout configuration prevents infinite waits and improves reliability
+
 ## [ 1.8.0 ]
 
 ### Changed
