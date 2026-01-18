@@ -24,6 +24,9 @@ A Home Assistant integration for Contact Energy (New Zealand electricity supplie
 
 This custom implementation provides comprehensive account monitoring with 26 sensors covering balance, billing, contracts, payment information, usage attributes for charting, and Energy Dashboard-ready totals.
 
+## Why did I create this version?
+I have used [codyc1515's](https://github.com/codyc1515) original Homa Asistant Contact Energy integration and [notf0und's](https://github.com/notf0und) recent fork for a couple of years, when suddenly I started having issues downloading my usage statistics. Wondering if the API had chnaged I thought I would "experiment" to see if I could get it to work again. I'm not much of a coder but I am a problem solver, so I took advantage of the AI revolution at the mooment and explored what can be done with various AI Agent - I make no apologies for using AI as a tool to, and it has been an interesting journey, if frustrating time banging my head against AI "stupidity". Longsory-short: this is what has come about. 
+
 ## What Does It Do?
 
 The integration connects to your Contact Energy account and creates sensors for:
