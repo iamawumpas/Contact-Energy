@@ -1,1 +1,176 @@
 
+type: custom:apexcharts-card
+span:
+  offset: "-2d"
+all_series_config:
+  stroke_width: 2
+  show:
+    legend_value: false
+header:
+  show: true
+  title: Hourly Usage (Last 10 Days)
+section_mode: true
+apex_config:
+  chart:
+    height: 200px
+    type: area
+    padding:
+      left: 0
+      right: 0
+      top: 10
+      bottom: 0
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.01
+      opacityFrom: 0.1
+      opacityTo: 1
+      inverseColors: false
+      stops:
+        - 40
+        - 90
+        - 100
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+    markers:
+      shape: square
+  xaxis:
+    type: datetime
+    labels:
+      format: dd MMM
+      datetimeUTC: false
+      show: true
+      rotate: 0
+      rotateAlways: true
+      hideOverlappingLabels: true
+      showDuplicates: false
+  yaxis:
+    min: 0
+    max: 5
+    title:
+      text: kWh
+graph_span: 10d
+series:
+  - entity: sensor.{ account nickname }_{ ICP }_usage
+    attribute: hourly_usage
+    name: Paid
+    color: "#FEB019"
+    type: area
+    extend_to: false
+    data_generator: |
+      if (!entity.attributes.hourly_paid_usage) return [];
+
+      const entries = Object.entries(entity.attributes.hourly_paid_usage);
+      if (entries.length === 0) return [];
+
+      // Get all timestamps and sort them
+      const data = entries.map(([time, value]) => ({
+        time: new Date(time).getTime(),
+        value: parseFloat(value)
+      })).sort((a, b) => a.time - b.time);
+
+      // Fill in missing hours with 0.0
+      const result = [];
+      const hourMs = 60 * 60 * 1000;
+
+      for (let i = 0; i < data.length; i++) {
+        result.push([data[i].time, data[i].value]);
+        
+        // Check if there's a gap to the next point
+        if (i < data.length - 1) {
+          const gap = data[i + 1].time - data[i].time;
+          if (gap > hourMs * 1.5) {
+            // Fill gap with zeros
+            let currentTime = data[i].time + hourMs;
+            while (currentTime < data[i + 1].time) {
+              result.push([currentTime, 0.0]);
+              currentTime += hourMs;
+            }
+          }
+        }
+      }
+
+      return result;
+  - entity: sensor.{ account nickname }_{ ICP }_usage
+    attribute: hourly_free_usage
+    name: Free
+    color: "#008FFB"
+    type: area
+    extend_to: false
+    data_generator: |
+      if (!entity.attributes.hourly_free_usage) return [];
+
+      const entries = Object.entries(entity.attributes.hourly_free_usage);
+      if (entries.length === 0) return [];
+
+      // Get all timestamps and sort them
+      const data = entries.map(([time, value]) => ({
+        time: new Date(time).getTime(),
+        value: parseFloat(value)
+      })).sort((a, b) => a.time - b.time);
+
+      // Fill in missing hours with 0.0
+      const result = [];
+      const hourMs = 60 * 60 * 1000;
+
+      for (let i = 0; i < data.length; i++) {
+        result.push([data[i].time, data[i].value]);
+        
+        // Check if there's a gap to the next point
+        if (i < data.length - 1) {
+          const gap = data[i + 1].time - data[i].time;
+          if (gap > hourMs * 1.5) {
+            // Fill gap with zeros
+            let currentTime = data[i].time + hourMs;
+            while (currentTime < data[i + 1].time) {
+              result.push([currentTime, 0.0]);
+              currentTime += hourMs;
+            }
+          }
+        }
+      }
+
+      return result;
+card_mod:
+  style: >
+    /* FIX 1: Center the Title */
+
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+
+    /* FIX 2: Reduce space between legend and chart (Targeting the internal
+    components) */
+
+    .apexcharts-legend {
+      margin-top: -10px !important; 
+      padding-top: 0px !important;
+    }
+
+    .apexcharts-canvas {
+      margin-top: -15px !important; 
+    } 
+
+    /* FIX 3: Center X-Axis Day Labels */  .apexcharts-xaxis-texts-g text {
+      text-anchor: middle!important; 
+      transform: translateX(5%)!important;
+      
+      /* NEW FIX: Override the default bolding for month boundaries */
+      font-weight: normal!important;
+    }
+
+    ha-card {
+      /*
+        Creates a linear gradient background from top (#383e4a) to bottom (#1e212b).
+        !important is used to ensure it overrides the default background variable.
+      */
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      
+      /* Optional: remove the default shadow */
+      box-shadow: none;
+    }

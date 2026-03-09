@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.2 ]
+
+### Fixed
+- Fixed `Days Until Overdue` calculation so it now returns `0` when current balance is settled/paid (or in credit), preventing overdue day count from continuing to increase after payment.
+
+### Changed
+- Updated sensor documentation to clarify `Days Until Overdue` behavior when account balance is paid.
+- Corrected README quick-link sensor count text to 26 sensors.
+
 ## [ 1.8.1 ]
 
 ### Added

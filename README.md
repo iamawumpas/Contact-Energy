@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.8.2-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>
@@ -12,7 +12,7 @@
 ## Quick Links
 - 📚 [**Full Documentation**](https://github.com/iamawumpas/Contact-Energy/wiki/Home) - Complete guides and setup instructions
 - 🚀 [**Getting Started**](https://github.com/iamawumpas/Contact-Energy/wiki/Getting-Started) - Installation and configuration
-- 📊 [**Sensor Reference**](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 24 sensors
+- 📊 [**Sensor Reference**](https://github.com/iamawumpas/Contact-Energy/wiki/Sensors) - Complete list of all 26 sensors
 - 📈 [**Charts & Dashboards**](https://github.com/iamawumpas/Contact-Energy/wiki/Dashboards) - Dashboard examples and card configurations
 - ⚙️ [**Multiple Instances**](https://github.com/iamawumpas/Contact-Energy/wiki/Multiple-Accounts) - Monitor multiple properties or accounts
 - ❓ [**FAQ & Limitations**](https://github.com/iamawumpas/Contact-Energy/wiki/FAQ) - Common questions and constraints
@@ -32,7 +32,7 @@ I have used [codyc1515's](https://github.com/codyc1515) original Homa Asistant C
 The integration connects to your Contact Energy account and creates sensors for:
 
 - **Account Balance** - Current balance, prepay debt, refund eligibility
-- **Billing Information** - Amount due, payment dates, discounts, days until overdue
+- **Billing Information** - Amount due, payment dates, discounts, days until overdue (resets to 0 once balance is paid)
 - **Next Bill** - Next bill date and countdown
 - **Account Settings** - Correspondence preference, payment method, billing frequency
 - **Contract Details** - ICP, address, product name, contract type and status

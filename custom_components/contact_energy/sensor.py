@@ -312,7 +312,15 @@ class ContactEnergyInvoiceSensor(CoordinatorEntity, SensorEntity):
         elif self.attribute == "payment_due_date":
             return invoice.get("paymentDueDate")
         elif self.attribute == "days_til_overdue":
-            return invoice.get("daysTilOverdue")
+            raw_days = invoice.get("daysTilOverdue")
+
+            # If the account is settled (or in credit), don't keep counting overdue days.
+            account_balance = account_detail.get("accountBalance", {})
+            current_balance = float(account_balance.get("currentBalance", 0) or 0)
+            if current_balance >= -0.01:
+                return 0
+
+            return raw_days
 
         return None
 

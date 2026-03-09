@@ -102,7 +102,7 @@ sensor.123_main_st_0000012345abc_next_bill_date
 - **Sensor ID**: `sensor.{address}_{icp}_days_until_overdue`
 - **Unit**: days
 - **State Class**: Measurement
-- **Description**: Number of days until your payment becomes overdue. Negative values indicate the payment is already overdue.
+- **Description**: Number of days until your payment becomes overdue. Negative values indicate the payment is already overdue while there is still an outstanding balance. Once current balance is settled (paid/credit), this sensor returns `0`.
 - **Example Value**: `5` (5 days remaining) or `-2` (2 days overdue)
 
 ---
