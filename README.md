@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.8.3-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.8.4-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>
@@ -41,7 +41,11 @@ The integration connects to your Contact Energy account and creates sensors for:
   - Usage sensor attributes with hourly/daily/monthly paid/free kWh for charts
   - Paid/Free energy sensors (total_increasing) ready for Home Assistant Energy Dashboard
 
-All data updates automatically once per day at 01:00 AM and can be viewed in custom dashboard cards or used in automations.
+All data updates automatically with optimized polling schedules and can be viewed in custom dashboard cards or used in automations:
+
+- **Account data** (balance, billing): Updates twice daily at 01:00 and 13:00 UTC
+- **Hourly usage data**: Updates hourly at a random time between 8-42 minutes past each hour  
+- **Daily/monthly usage data**: Updates daily at 03:00 UTC
 
 **Note:** This integration provides account and billing information only. For detailed sensor descriptions, see the [Sensor Reference](../../wiki/Sensors) in the wiki.
 

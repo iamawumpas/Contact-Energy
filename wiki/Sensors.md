@@ -262,7 +262,12 @@ These sensors are ready to plug into the Home Assistant Energy Dashboard.
 
 ## Update Schedule
 
-All sensors update **once per day**, scheduled closest to **01:00 AM** (usage cache, statistics import, and account data).
+All sensors use **optimized polling schedules** based on data type:
+
+- **Account sensors** (balance, billing): Update twice daily at 01:00 and 13:00 UTC
+- **Hourly usage data**: Updates hourly at random time (8-42 minutes past each hour)  
+- **Daily/monthly usage data**: Updates daily at 03:00 UTC
+- **Statistics import**: Runs during usage data updates
 
 **Note:** Contact Energy provides usage with a delay. Historical usage data may be 24-72 hours behind real-time.
 

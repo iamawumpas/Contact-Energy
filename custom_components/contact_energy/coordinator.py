@@ -1,15 +1,17 @@
 """Data coordinator for Contact Energy integration.
 
 This module provides the data coordinator that periodically fetches account
-information from the Contact Energy API. Updates occur once per day at 01:00 AM
-to minimize API calls while keeping account data current.
+information from the Contact Energy API. Updates occur twice per day at 01:00
+and 13:00 to keep account balance and billing data current while minimizing
+API calls.
 
-Version: 1.4.0
-Changes: Added usage data synchronization via UsageCoordinator
+Version: 1.8.3
+Changes: Custom scheduling for account data (twice daily) and usage coordination
 """
 
 import logging
-from datetime import timedelta
+import random
+from datetime import timedelta, datetime, timezone
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -25,11 +27,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
     """Coordinator to manage Contact Energy API data fetching.
 
     This coordinator handles periodic fetching of account information from the
-    Contact Energy API. It's configured to update once per day at 01:00 AM to
-    minimize API requests while keeping account data reasonably current.
+    Contact Energy API. It's configured to update twice per day at 01:00 and
+    13:00 to keep account balance and billing data current while minimizing
+    API requests.
     
     Additionally, it triggers usage data synchronization as a background task
-    via the UsageCoordinator (Phase 1 / v1.4.0).
+    via the UsageCoordinator which handles hourly usage data updates and daily
+    usage/monthly data updates.
     """
 
     def __init__(self, hass: HomeAssistant, api_client: ContactEnergyApi, contract_id: str, config_entry = None):
@@ -45,7 +49,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            # Update hourly during testing so account/usage data refresh quickly
+            # Check hourly for usage updates, but account data only updates twice daily
             update_interval=timedelta(hours=1),
         )
         self.api_client = api_client
@@ -87,27 +91,46 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         Raises:
             UpdateFailed: If unable to authenticate or get token.
         """
+        # Check if we should fetch account data or just run usage sync
+        should_fetch_accounts = self._should_fetch_account_data_now()
+        
+        _LOGGER.debug(
+            "Coordinator update: should_fetch_accounts=%s, contract_id=%s", 
+            should_fetch_accounts, self.contract_id
+        )
+        
+        # Always trigger usage sync (usage coordinator handles its own scheduling)
+        if not self._skip_next_usage_sync:
+            _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
+            self.hass.async_create_task(
+                self._async_sync_usage(),
+                name=f"usage_sync_{self.contract_id}"
+            )
+        else:
+            _LOGGER.debug(
+                "Skipping background usage sync for contract %s (skip requested)",
+                self.contract_id,
+            )
+        
+        # Only fetch account data if it's scheduled time
+        if not should_fetch_accounts:
+            _LOGGER.debug("Not scheduled time for account data, returning cached data")
+            # Return minimal data to keep coordinator happy
+            return self.data or {
+                "accountsSummary": [{
+                    "id": "",
+                    "nickname": "Contact Energy Account",
+                    "contracts": [{"contractId": self.contract_id}]
+                }]
+            }
+        
         try:
-            _LOGGER.debug("Fetching account information from Contact Energy API")
+            _LOGGER.info("Fetching account information from Contact Energy API (scheduled update)")
             
             # Try to get accounts with current token
             try:
                 account_data = await self.api_client.get_accounts()
                 _LOGGER.debug("Successfully fetched account data")
-
-                # Trigger usage sync unless the caller requested to skip once
-                if not self._skip_next_usage_sync:
-                    _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
-                    self.hass.async_create_task(
-                        self._async_sync_usage(),
-                        name=f"usage_sync_{self.contract_id}"
-                    )
-                else:
-                    _LOGGER.debug(
-                        "Skipping background usage sync for contract %s (skip requested)",
-                        self.contract_id,
-                    )
-                
                 return account_data
             
             except Exception as auth_error:
@@ -206,3 +229,55 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 "Background usage sync failed for contract %s: %s",
                 self.contract_id, str(e), exc_info=True
             )
+    
+    def _calculate_next_account_update_interval(self) -> timedelta:
+        """Calculate time until next scheduled account update.
+        
+        Account data updates occur twice daily at 01:00 and 13:00.
+        This method calculates how long to wait until the next scheduled time.
+        
+        Returns:
+            timedelta: Time to wait until next update
+        """
+        now = datetime.now(timezone.utc)
+        next_times = []
+        
+        # Schedule today's updates at 01:00 and 13:00 UTC  
+        for hour in [1, 13]:
+            next_time = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+            if next_time <= now:
+                # If past this time today, schedule for tomorrow
+                next_time = next_time + timedelta(days=1)
+            next_times.append(next_time)
+            
+        # Choose the earliest next time
+        next_update = min(next_times)
+        interval = next_update - now
+        
+        _LOGGER.debug(
+            "Next account update scheduled for %s (in %s)",
+            next_update.isoformat(), interval
+        )
+        
+        return interval
+
+    def _should_fetch_account_data_now(self) -> bool:  
+        """Check if it's time to fetch account data.
+        
+        Account data is fetched twice daily at 01:00 and 13:00 UTC.
+        
+        Returns:
+            bool: True if it's time to fetch account data
+        """
+        now = datetime.now(timezone.utc)
+        
+        # Check if we're within 30 minutes of 01:00 or 13:00
+        for target_hour in [1, 13]:
+            target_time = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
+            time_diff = abs((now - target_time).total_seconds())
+            
+            # If we're within 30 minutes of target time
+            if time_diff <= 30 * 60:
+                return True
+                
+        return False

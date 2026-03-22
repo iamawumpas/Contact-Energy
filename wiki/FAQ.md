@@ -37,9 +37,13 @@ The integration is completely free and open-source. There are no subscription fe
 
 ### How often does data update?
 
-**Once every 24 hours**, scheduled closest to 01:00 AM.
+The integration uses optimized polling schedules for different data types:
 
-This is intentional to minimize API load and respect Contact Energy's systems. The data doesn't change frequently enough to warrant more frequent updates.
+- **Account data** (balance, billing): **Twice daily** at 01:00 and 13:00 UTC  
+- **Hourly usage data**: **Hourly** at a random time between 8-42 minutes past each hour
+- **Daily/monthly usage data**: **Once daily** at 03:00 UTC  
+
+This scheduling minimizes API load while providing fresh data based on how frequently each data type actually changes.
 
 ### Can I force a manual update?
 
@@ -65,7 +69,7 @@ tap_action:
 icon: mdi:refresh
 ```
 
-This service bypasses the normal 24-hour sync interval and forces immediate download of both account data and usage data.
+This service bypasses the normal polling schedules and forces immediate download of both account data and usage data.
 
 You can also reload the integration:
 - Settings → Integrations → Contact Energy → three dots → Reload

@@ -5,6 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.4 ]
+
+### Changed
+- Implemented optimized polling schedules for improved API efficiency and data freshness
+- Account data (balance, billing) now updates twice daily at 01:00 and 13:00 UTC instead of hourly
+- Hourly usage data now updates every hour at randomized time (8-42 minutes past each hour) to spread API load
+- Daily and monthly usage data now updates daily at 03:00 UTC instead of hourly
+- Updated documentation to reflect new polling schedules across README and wiki pages
+- Polling intervals follow Contact Energy API best practices with proper rate limiting
+
 ## [ 1.8.3 ]
 
 ### Fixed

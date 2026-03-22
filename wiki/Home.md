@@ -32,7 +32,7 @@ This integration allows you to monitor your Contact Energy (New Zealand) account
 - Usage sensor attributes (hourly/daily/monthly paid/free kWh) for charting
 - Energy Dashboard-ready paid/free cumulative sensors
 
-✅ **Daily Updates** - Automatic data refresh at 01:00 AM (usage cache + Energy Dashboard totals)
+✅ **Optimized Updates** - Smart polling schedules for different data types (hourly usage updates, twice-daily account updates)
 
 ✅ **Multi-Account Support** - Monitor multiple properties/accounts
 
@@ -45,7 +45,7 @@ The integration connects to the Contact Energy REST API using your account crede
 1. Authenticates with your email and password
 2. Retrieves account information for your property/properties
 3. Creates sensors in Home Assistant for each configured account
-4. Updates sensor data once per day (scheduled closest to 01:00 AM)
+4. Updates data on optimized schedules based on data type and change frequency
 5. Automatically refreshes authentication tokens as needed
 
 **Note:** Contact Energy provides data with some delay. This integration cannot provide real-time monitoring.

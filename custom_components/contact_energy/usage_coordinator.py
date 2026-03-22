@@ -6,17 +6,19 @@ and synchronization of usage data from the Contact Energy API. It implements:
 - Metadata-driven sync decisions (checks if sync is needed)
 - Automatic pruning to maintain fixed time windows
 - Error handling and retry logic for transient failures
-- Integration with existing coordinator architecture
+- Custom scheduling for different data types:
+  * Hourly usage: Every hour at 25±17 minutes past the hour
+  * Daily/Monthly usage: Daily at 03:00 UTC
 
 The coordinator runs as a background task and is triggered by the main
-ContactEnergyCoordinator on a schedule (typically daily at 2 AM).
+ContactEnergyCoordinator based on data-specific schedules.
 
 Sync Windows (Hard-coded for Phase 1 / v1.4.0):
 - Hourly: Last 9 days
 - Daily: Last 35 days  
 - Monthly: Last 18 months
 
-Version: 1.4.0
+Version: 1.8.3
 Author: Contact Energy Integration
 """
 from __future__ import annotations
@@ -24,6 +26,7 @@ from __future__ import annotations
 import logging
 import asyncio
 import time
+import random
 from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
@@ -43,22 +46,19 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Usage sync configuration (hard-coded for v1.4.0)
+# Usage sync configuration (hard-coded for v1.8.3)
 # These windows define how much historical data to keep in cache
 USAGE_CONFIG = {
     "hourly": {
         "window_days": 14,  # Keep last 14 days of hourly data
-        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_days": 14,  # API limit (Contact Energy provides ~2 weeks)
     },
     "daily": {
         "window_days": 548,  # Keep last 18 months of daily data for statistics
-        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_days": 548,  # Request 18 months of historical data (API may limit)
     },
     "monthly": {
         "window_months": 18,  # Keep last 18 months of monthly data
-        "sync_interval_hours": 1,  # Sync hourly for testing
         "max_lookback_months": 24,  # API limit (Contact Energy provides ~2 years)
     },
 }
@@ -122,17 +122,14 @@ class UsageCoordinator:
         """Synchronize usage data with intelligent incremental downloads.
 
         This is the main entry point for usage sync. It:
-        1. Loads existing cache
-        2. Checks metadata to determine if sync is needed
-        3. Downloads only missing/new data for each interval
-        4. Updates cache and prunes old data
-        5. Saves cache back to disk
+        1. Checks if it's time to sync each data type based on schedules
+        2. Downloads only missing/new data for intervals that need syncing
+        3. Updates cache and prunes old data
+        4. Saves cache back to disk
 
-        This method is designed to be called on a schedule (e.g., daily).
-        It makes intelligent decisions about what to sync based on:
-        - Time since last sync (per interval)
-        - Existing date ranges in cache
-        - Current date
+        Scheduling:
+        - Hourly data: Every hour at 25±17 minutes past the hour
+        - Daily/Monthly data: Daily at 03:00 UTC
 
         Raises:
             ContactEnergyApiError: If API requests fail (logged but not raised)
@@ -151,11 +148,29 @@ class UsageCoordinator:
             # Load existing cache from disk
             await self.cache.load()
 
-            # Sync each interval type (hourly, daily, monthly)
-            # Each sync is independent and failures don't block others
-            await self._sync_hourly()
-            await self._sync_daily()
-            await self._sync_monthly()
+            # Check which data types need syncing based on schedule
+            should_sync_hourly = self.should_sync_hourly_now() or self._force_sync_mode
+            should_sync_daily_monthly = self.should_sync_daily_monthly_now() or self._force_sync_mode
+
+            if not should_sync_hourly and not should_sync_daily_monthly:
+                _LOGGER.debug(
+                    "No sync needed for contract %s at this time (hourly: %s, daily/monthly: %s)",
+                    self.contract_id, should_sync_hourly, should_sync_daily_monthly
+                )
+                return
+
+            _LOGGER.info(
+                "Contract %s sync schedule: hourly=%s, daily/monthly=%s",
+                self.contract_id, should_sync_hourly, should_sync_daily_monthly
+            )
+
+            # Sync each interval that needs updating
+            if should_sync_hourly:
+                await self._sync_hourly()
+
+            if should_sync_daily_monthly:
+                await self._sync_daily()
+                await self._sync_monthly()
 
             # Save updated cache to disk
             await self.cache.save()
@@ -942,6 +957,89 @@ class UsageCoordinator:
         )
 
         return (from_date, to_date)
+
+    def should_sync_hourly_now(self) -> bool:
+        """Check if it's time to sync hourly usage data.
+        
+        Hourly data syncs every hour at 25±17 minutes past the hour.
+        
+        Returns:
+            bool: True if it's time to sync hourly data
+        """
+        now = datetime.now(timezone.utc)
+        
+        # Get last sync time from cache metadata
+        metadata = self.cache.get_metadata()
+        last_hourly_sync_str = metadata.get("hourly", {}).get("last_sync")
+        
+        if not last_hourly_sync_str:
+            # Never synced before, do it now
+            return True
+            
+        try:
+            last_sync = datetime.fromisoformat(last_hourly_sync_str.replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            # Invalid timestamp, sync now
+            return True
+            
+        # Check if it's been at least 50 minutes since last sync (to avoid double-syncing)
+        if (now - last_sync).total_seconds() < 50 * 60:
+            return False
+            
+        # Check if we're in the target window (8-42 minutes past the hour)
+        # Generate deterministic random offset based on contract ID and current hour
+        # This ensures the same offset is used for the entire hour
+        import hashlib
+        seed_str = f"{self.contract_id}_{now.year}_{now.month}_{now.day}_{now.hour}"
+        hash_val = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
+        random_offset = (hash_val % 35) - 17  # Range: -17 to +17
+        target_min = 25 + random_offset  # Range: 8 to 42 minutes past the hour
+        
+        current_min = now.minute
+        
+        # If we're at or past the target time this hour
+        return current_min >= target_min
+
+    def should_sync_daily_monthly_now(self) -> bool:
+        """Check if it's time to sync daily and monthly usage data.
+        
+        Daily/monthly data syncs once daily at 03:00 UTC.
+        
+        Returns:
+            bool: True if it's time to sync daily/monthly data  
+        """
+        now = datetime.now(timezone.utc)
+        
+        # Get last sync times from cache metadata
+        metadata = self.cache.get_metadata()
+        daily_meta = metadata.get("daily", {})
+        monthly_meta = metadata.get("monthly", {}) 
+        
+        last_daily_sync_str = daily_meta.get("last_sync")
+        last_monthly_sync_str = monthly_meta.get("last_sync")
+        
+        # Check if either has never been synced
+        if not last_daily_sync_str or not last_monthly_sync_str:
+            return True
+            
+        try:
+            last_daily = datetime.fromisoformat(last_daily_sync_str.replace('Z', '+00:00'))
+            last_monthly = datetime.fromisoformat(last_monthly_sync_str.replace('Z', '+00:00'))
+            last_sync = max(last_daily, last_monthly)
+        except (ValueError, AttributeError):
+            # Invalid timestamp, sync now
+            return True
+            
+        # Check if it's been at least 20 hours since last sync (avoid double-syncing)
+        if (now - last_sync).total_seconds() < 20 * 3600:
+            return False
+            
+        # Check if we're at or past 03:00 UTC today and haven't synced today
+        today_3am = now.replace(hour=3, minute=0, second=0, microsecond=0)
+        if now >= today_3am and last_sync < today_3am:
+            return True
+            
+        return False
 
     def _sanitize_statistic_id(self, value: str) -> str:
         """Sanitize a value for use in Home Assistant statistic_id.
