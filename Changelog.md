@@ -5,6 +5,12 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.3 ]
+
+### Fixed
+- Fixed `Days Until Overdue` calculation logic that was incorrectly showing `0` when money was owed instead of the actual countdown days from the API
+- Changed condition from `current_balance >= -0.01` to `current_balance <= 0.01` to properly detect when account is paid in full
+
 ## [ 1.8.2 ]
 
 ### Fixed
