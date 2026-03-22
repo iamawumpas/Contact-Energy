@@ -91,25 +91,68 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         Raises:
             UpdateFailed: If unable to authenticate or get token.
         """
-        # Check if we should fetch account data or just run usage sync
+        # On first run or outside scheduled hours, check if cache exists first  
+        is_first_run = self.data is None
         should_fetch_accounts = self._should_fetch_account_data_now()
+        cache_available = False
         
-        _LOGGER.debug(
-            "Coordinator update: should_fetch_accounts=%s, contract_id=%s", 
-            should_fetch_accounts, self.contract_id
-        )
+        # Try to load usage cache to check if data is available
+        if not should_fetch_accounts or is_first_run:
+            try:
+                _LOGGER.debug("Checking for existing usage cache for contract %s", self.contract_id)
+                cache_loaded = await self.usage_coordinator.cache.load()
+                if cache_loaded:
+                    # Check if cache has meaningful data
+                    cache_data = self.usage_coordinator.cache.data
+                    total_records = (
+                        len(cache_data.get("hourly", {})) + 
+                        len(cache_data.get("daily", {})) + 
+                        len(cache_data.get("monthly", {}))
+                    )
+                    if total_records > 0:
+                        cache_available = True
+                        _LOGGER.info(
+                            "Found existing usage cache for contract %s with %d records, using cached data",
+                            self.contract_id, total_records
+                        )
+                    else:
+                        _LOGGER.debug("Usage cache exists but is empty for contract %s", self.contract_id)
+                else:
+                    _LOGGER.debug("No existing usage cache found for contract %s", self.contract_id)
+            except Exception as cache_error:
+                _LOGGER.warning(
+                    "Cache load failed for contract %s, will force sync: %s", 
+                    self.contract_id, cache_error
+                )
+                cache_available = False
         
-        # Always trigger usage sync (usage coordinator handles its own scheduling)
-        if not self._skip_next_usage_sync:
-            _LOGGER.debug("Triggering background usage sync for contract %s", self.contract_id)
+        # Determine if we need to trigger usage sync
+        # Force sync if: first run + no cache, or corruption detected  
+        # Normal sync if: scheduled time (01:00 or 13:00 UTC windows)
+        force_usage_sync = (is_first_run and not cache_available) 
+        normal_usage_sync = should_fetch_accounts and not self._skip_next_usage_sync
+        
+        if force_usage_sync:
+            _LOGGER.info(
+                "Forcing initial usage sync for contract %s (first run, cache=%s)", 
+                self.contract_id, "available" if cache_available else "missing/corrupted"
+            )
             self.hass.async_create_task(
                 self._async_sync_usage(),
-                name=f"usage_sync_{self.contract_id}"
+                name=f"usage_sync_{self.contract_id}_initial"
             )
+        elif normal_usage_sync:
+            _LOGGER.info("Triggering scheduled usage sync for contract %s (updating cache with fresh data)", self.contract_id)
+            self.hass.async_create_task(
+                self._async_sync_usage(),
+                name=f"usage_sync_{self.contract_id}_scheduled"
+            )
+        elif self._skip_next_usage_sync:
+            _LOGGER.debug("Skipping usage sync for contract %s (skip requested)", self.contract_id)
         else:
             _LOGGER.debug(
-                "Skipping background usage sync for contract %s (skip requested)",
-                self.contract_id,
+                "No usage sync needed for contract %s at this time (outside scheduled hours: 01:00-01:30, 13:00-13:30 UTC)", 
+                self.contract_id
             )
         
         # Only fetch account data if it's scheduled time
@@ -119,7 +162,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             return self.data or {
                 "accountsSummary": [{
                     "id": "",
-                    "nickname": "Contact Energy Account",
+                    "nickname": "Contact Energy Account", 
                     "contracts": [{"contractId": self.contract_id}]
                 }]
             }

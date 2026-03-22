@@ -48,6 +48,9 @@ htmlcov/
 configuration.yaml
 secrets.yaml
 known_devices.yaml
+
+# Release documentation
+RELEASE.md
 home-assistant.log
 
 # Node (if using frontend tools)

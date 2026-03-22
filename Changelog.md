@@ -5,6 +5,19 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.5 ]
+
+### Fixed
+- Fixed cache loading issue introduced in v1.8.4 where usage data graphs showed "Loading..." instead of displaying cached data immediately
+- Implemented intelligent cache-first loading logic to prioritize showing existing cached data on startup
+- Added automatic fallback to fresh data sync when cache is missing, corrupted, or empty
+- Restored instant display of usage graphs while maintaining optimized polling schedules from v1.8.4
+
+### Changed
+- Enhanced coordinator logic to check cache availability before deciding whether to sync usage data
+- Improved cache validation to detect empty or corrupted cache files
+- Added better logging to distinguish between initial sync, scheduled sync, and cache-based loading
+
 ## [ 1.8.4 ]
 
 ### Changed
