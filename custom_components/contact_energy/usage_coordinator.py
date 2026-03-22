@@ -969,7 +969,11 @@ class UsageCoordinator:
         now = datetime.now(timezone.utc)
         
         # Get last sync time from cache metadata
-        metadata = self.cache.get_metadata()
+        if not hasattr(self.cache, 'data') or not self.cache.data:
+            # Cache not loaded or empty, sync now
+            return True
+            
+        metadata = self.cache.data.get("metadata", {})
         last_hourly_sync_str = metadata.get("hourly", {}).get("last_sync")
         
         if not last_hourly_sync_str:
@@ -1011,7 +1015,11 @@ class UsageCoordinator:
         now = datetime.now(timezone.utc)
         
         # Get last sync times from cache metadata
-        metadata = self.cache.get_metadata()
+        if not hasattr(self.cache, 'data') or not self.cache.data:
+            # Cache not loaded or empty, sync now
+            return True
+            
+        metadata = self.cache.data.get("metadata", {})
         daily_meta = metadata.get("daily", {})
         monthly_meta = metadata.get("monthly", {}) 
         

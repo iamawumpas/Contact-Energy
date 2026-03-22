@@ -5,6 +5,18 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.6 ]
+
+### Fixed
+- Fixed critical AttributeError in usage_coordinator.py that prevented cache loading functionality from working
+- Corrected invalid get_metadata() method calls to use proper self.cache.data.get("metadata", {}) syntax
+- Added defensive cache validation to prevent coordinator crashes when cache is not yet loaded
+- Resolved issue where cache-first loading logic introduced in v1.8.5 was not functional due to method call errors
+
+### Changed
+- Enhanced error handling in usage data coordination for better reliability
+- Improved cache access patterns to prevent crashes during initialization
+
 ## [ 1.8.5 ]
 
 ### Fixed
