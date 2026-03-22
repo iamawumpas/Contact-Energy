@@ -52,14 +52,17 @@ USAGE_CONFIG = {
     "hourly": {
         "window_days": 14,  # Keep last 14 days of hourly data
         "max_lookback_days": 14,  # API limit (Contact Energy provides ~2 weeks)
+        "sync_interval_hours": 1,  # Sync every hour
     },
     "daily": {
         "window_days": 548,  # Keep last 18 months of daily data for statistics
         "max_lookback_days": 548,  # Request 18 months of historical data (API may limit)
+        "sync_interval_hours": 24,  # Sync daily
     },
     "monthly": {
         "window_months": 18,  # Keep last 18 months of monthly data
         "max_lookback_months": 24,  # API limit (Contact Energy provides ~2 years)
+        "sync_interval_hours": 24,  # Sync daily
     },
 }
 
