@@ -11,7 +11,7 @@ from __future__ import annotations
 import aiohttp
 import logging
 import time
-from datetime import date
+from datetime import date, datetime
 import asyncio
 from typing import Any
 from urllib.parse import urlencode
@@ -585,6 +585,32 @@ class ContactEnergyApi:
                 # Extract energy components
                 offpeak_kwh = float(record.get("offpeakValue") or 0.0)
                 unpaid_kwh = float(record.get("unchargedValue") or 0.0)
+
+                # Validate free usage should only occur on weekends
+                # Contact Energy's free hours are typically Saturday/Sunday only
+                if unpaid_kwh > 0 and interval in ["hourly", "daily"]:
+                    try:
+                        # Parse timestamp to check day of week
+                        # For daily data: "2026-03-20" -> add midnight time
+                        # For hourly data: "2026-03-20T16:37:51.000+13:00" -> use as-is
+                        if interval == "daily":
+                            check_date = datetime.fromisoformat(f"{timestamp[:10]}T00:00:00+13:00")
+                        else:
+                            check_date = datetime.fromisoformat(timestamp)
+                        
+                        day_of_week = check_date.weekday()  # Monday=0, Sunday=6
+                        is_weekend = day_of_week >= 5  # Saturday=5, Sunday=6
+                        
+                        if not is_weekend:
+                            _LOGGER.warning(
+                                "Unexpected free usage on %s (weekday) for contract %s: %.3f kWh. "
+                                "Free hours usually only occur on weekends. Keeping data as-is.",
+                                check_date.strftime("%Y-%m-%d %A"), contract_id, unpaid_kwh
+                            )
+                            # Note: We log the warning but don't filter the data
+                            # This preserves API data integrity while alerting to anomalies
+                    except (ValueError, TypeError) as e:
+                        _LOGGER.debug("Could not validate weekend for timestamp %s: %s", timestamp, e)
 
                 # For hourly data: paid and free are mutually exclusive within a single hour
                 # When unpaid > 0, it's a free power hour - all usage is free, nothing is paid

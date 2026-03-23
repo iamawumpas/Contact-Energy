@@ -349,29 +349,97 @@ Reference templates live in the repo under `assets/apexcharts_card_-_*.yaml` (pl
 
 ### Daily Usage (paid vs free)
 
+**⚠️ Important:** This configuration includes timezone fixes to prevent date shifting issues in charts where free usage might appear on incorrect days (e.g., showing on Friday instead of Saturday).
+
 ```yaml
 type: custom:apexcharts-card
+all_series_config:
+  stroke_width: 2
+  show:
+    legend_value: false
+update_interval: 6h
 header:
   show: true
-  title: Daily Energy Usage (Last 90 days)
-graph_span: 90d
+  title: Daily Usage
+graph_span: 35d
+now:
+  show: false
+  label: Now
+apex_config:
+  chart:
+    height: 200px
+    type: bar
+    stacked: true
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+  xaxis:
+    type: datetime
+    tickPlacement: "on"
+    tickAmount: 10
+    labels:
+      format: dd MMM
+      datetimeUTC: false
+      show: true
+      rotate: -90
+      rotateAlways: true
+      hideOverlappingLabels: true
+      showDuplicates: false
+  yaxis:
+    min: 0
+    title:
+      text: kWh
 series:
-  - name: Paid kWh
+  - entity: sensor.my_address_icp123_usage_2  # Replace with your usage sensor
+    attribute: daily_paid_usage
+    name: Paid
     type: column
     data_generator: |
-      const attr = states['sensor.my_address_icp123_usage']?.attributes?.daily_paid_usage || {};
-      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
-  - name: Free kWh
+      return entity.attributes.daily_paid_usage ? 
+        Object.entries(entity.attributes.daily_paid_usage).map(([date, value]) => {
+          // Parse date manually to avoid timezone issues
+          const [year, month, day] = date.split('-').map(Number);
+          const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+          return [utcDate.getTime(), value];
+        }) : [];
+    color: "#FEB019"
+    group_by:
+      func: sum
+      fill: zero
+      duration: 1d
+  - entity: sensor.my_address_icp123_usage_2  # Replace with your usage sensor
+    attribute: daily_free_usage
+    name: Free
     type: column
     data_generator: |
-      const attr = states['sensor.my_address_icp123_usage']?.attributes?.daily_free_usage || {};
-      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
-yaxis:
-  - decimals: 2
-    apex_config:
-      title:
-        text: kWh
+      return entity.attributes.daily_free_usage ? 
+        Object.entries(entity.attributes.daily_free_usage)
+          .filter(([date, value]) => {
+            // Only show free usage on weekends (Saturday=6, Sunday=0)
+            const [year, month, day] = date.split('-').map(Number);
+            const checkDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+            const dayOfWeek = checkDate.getUTCDay();
+            return dayOfWeek === 0 || dayOfWeek === 6; // Sunday=0, Saturday=6
+          })
+          .map(([date, value]) => {
+            // Parse date manually to avoid timezone issues  
+            const [year, month, day] = date.split('-').map(Number);
+            const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+            return [utcDate.getTime(), value];
+          }) : [];
+    color: "#008FFB"
+    group_by:
+      func: sum
+      fill: zero
+      duration: 1d
 ```
+
+**Key Features:**
+- **Timezone-safe date parsing**: Uses `Date.UTC()` to avoid browser timezone interpretation issues
+- **Weekend filtering**: Free usage only displays on weekends (Saturday/Sunday) as intended by Contact Energy's free hours program
+- **Stacked bars**: Shows both paid and free usage in a single chart
+- **Centered bars**: Uses noon time (12:00:00) to properly center daily bars on the chart
 
 ### Hourly Usage (last 14 days)
 
