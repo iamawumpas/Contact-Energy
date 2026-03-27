@@ -121,16 +121,19 @@ class UsageCache:
                 "hourly": {
                     "from": None,
                     "to": None,
+                    "last_sync": None,
                     "record_count": 0
                 },
                 "daily": {
                     "from": None,
                     "to": None,
+                    "last_sync": None,
                     "record_count": 0
                 },
                 "monthly": {
                     "from": None,
                     "to": None,
+                    "last_sync": None,
                     "record_count": 0
                 }
             },
@@ -369,6 +372,45 @@ class UsageCache:
             metadata["monthly"]["from"], metadata["monthly"]["to"], metadata["monthly"]["record_count"],
             cumulative.get("paid_kwh", 0.0), cumulative.get("free_kwh", 0.0)
         )
+
+    def set_interval_last_sync(self, interval: str, sync_time: Optional[datetime] = None) -> None:
+        """Record the last successful sync time for an interval.
+
+        Args:
+            interval: One of 'hourly', 'daily', 'monthly'.
+            sync_time: UTC datetime to store (defaults to current UTC time).
+        """
+        if interval not in ("hourly", "daily", "monthly"):
+            raise ValueError(f"Invalid interval '{interval}'")
+
+        if sync_time is None:
+            sync_time = datetime.now(timezone.utc)
+
+        metadata = self.data.setdefault("metadata", {})
+        interval_meta = metadata.setdefault(interval, {})
+        interval_meta["last_sync"] = sync_time.isoformat()
+
+    def get_interval_last_sync(self, interval: str) -> Optional[datetime]:
+        """Get the last successful sync time for an interval.
+
+        Args:
+            interval: One of 'hourly', 'daily', 'monthly'.
+
+        Returns:
+            datetime: Last sync time in UTC, or None if never synced.
+        """
+        if interval not in ("hourly", "daily", "monthly"):
+            return None
+
+        interval_meta = self.data.get("metadata", {}).get(interval, {})
+        last_sync_str = interval_meta.get("last_sync")
+        if not last_sync_str:
+            return None
+
+        try:
+            return datetime.fromisoformat(last_sync_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return None
 
     def update_hourly(self, records: list[dict[str, Any]]) -> int:
         """Add or update hourly usage records in cache.

@@ -62,26 +62,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Ensure the coordinator does not start a background usage sync; we'll run one explicitly
                 coordinator._skip_next_usage_sync = True
 
-                # Always re-authenticate with username/password before a manual refresh
-                # to avoid relying on short-lived/expired tokens.
-                if api_client:
-                    try:
-                        _LOGGER.debug(
-                            "Manual refresh re-authenticating as %s for entry %s",
-                            api_client.email,
-                            entry_id,
-                        )
-                        await api_client.authenticate()
-                    except Exception as err:
-                        _LOGGER.error(
-                            "Manual refresh re-authentication failed for entry %s: %s",
-                            entry_id,
-                            err,
-                        )
-                        # Skip the refresh for this entry if we cannot log in
-                        continue
-
                 try:
+                    # Always re-authenticate with username/password before a manual refresh
+                    # to avoid relying on short-lived/expired tokens.
+                    if api_client:
+                        try:
+                            _LOGGER.debug(
+                                "Manual refresh re-authenticating as %s for entry %s",
+                                api_client.email,
+                                entry_id,
+                            )
+                            await api_client.authenticate()
+                        except Exception as err:
+                            _LOGGER.error(
+                                "Manual refresh re-authentication failed for entry %s: %s",
+                                entry_id,
+                                err,
+                            )
+                            # Skip the refresh for this entry if we cannot log in
+                            continue
+
                     # Force account data refresh
                     await coordinator.async_request_refresh()
                     # Force usage sync (bypass time thresholds) - single run

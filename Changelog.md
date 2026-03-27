@@ -5,6 +5,17 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.10 ]
+
+### Fixed
+- Fixed daily/monthly usage refresh starvation caused by shared sync timing state with hourly syncs
+- Added interval-specific `last_sync` tracking for hourly, daily, and monthly usage intervals
+- Fixed manual refresh flow to always clear the usage-sync skip flag and lock state, even when re-authentication fails
+
+### Changed
+- Usage sync scheduling now runs independently from account polling windows, with interval decisions delegated to the usage coordinator
+- Added debug logging for usage sync timing state (hourly/daily/monthly last sync plus global cache sync timestamp)
+
 ## [ 1.8.9 ]
 
 ### Fixed

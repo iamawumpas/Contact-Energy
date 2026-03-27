@@ -151,6 +151,15 @@ class UsageCoordinator:
             # Load existing cache from disk
             await self.cache.load()
 
+            _LOGGER.debug(
+                "Usage sync timing state for %s: hourly_last_sync=%s, daily_last_sync=%s, monthly_last_sync=%s, global_last_synced=%s",
+                self.contract_id,
+                self.cache.get_interval_last_sync("hourly"),
+                self.cache.get_interval_last_sync("daily"),
+                self.cache.get_interval_last_sync("monthly"),
+                self.cache.get_last_synced(),
+            )
+
             # Check which data types need syncing based on schedule
             should_sync_hourly = self.should_sync_hourly_now() or self._force_sync_mode
             should_sync_daily_monthly = self.should_sync_daily_monthly_now() or self._force_sync_mode
@@ -311,6 +320,9 @@ class UsageCoordinator:
                 added_count, self.contract_id
             )
 
+            # Mark hourly interval as synced even if no new rows were returned.
+            self.cache.set_interval_last_sync(interval)
+
             # Prune old data outside window
             before, after = self.cache.prune_hourly(window_days=config["window_days"])
             if before != after:
@@ -391,6 +403,9 @@ class UsageCoordinator:
                 "Added/updated %d daily records for contract %s",
                 added_count, self.contract_id
             )
+
+            # Mark daily interval as synced even if no new rows were returned.
+            self.cache.set_interval_last_sync(interval)
 
             # Prune old data outside window
             before, after = self.cache.prune_daily(window_days=config["window_days"])
@@ -623,6 +638,9 @@ class UsageCoordinator:
                 added_count, self.contract_id
             )
 
+            # Mark monthly interval as synced even if no new rows were returned.
+            self.cache.set_interval_last_sync(interval)
+
             # Prune old data outside window
             before, after = self.cache.prune_monthly(window_months=config["window_months"])
             if before != after:
@@ -777,8 +795,8 @@ class UsageCoordinator:
         config = USAGE_CONFIG[interval]
         sync_interval = timedelta(hours=config["sync_interval_hours"])
 
-        # Get last sync timestamp from cache metadata
-        last_synced = self.cache.get_last_synced()
+        # Get per-interval sync timestamp from cache metadata.
+        last_synced = self.cache.get_interval_last_sync(interval)
 
         if last_synced is None:
             # Never synced before - need to sync
@@ -976,17 +994,10 @@ class UsageCoordinator:
             # Cache not loaded or empty, sync now
             return True
             
-        metadata = self.cache.data.get("metadata", {})
-        last_hourly_sync_str = metadata.get("hourly", {}).get("last_sync")
-        
-        if not last_hourly_sync_str:
+        last_sync = self.cache.get_interval_last_sync("hourly")
+
+        if not last_sync:
             # Never synced before, do it now
-            return True
-            
-        try:
-            last_sync = datetime.fromisoformat(last_hourly_sync_str.replace('Z', '+00:00'))
-        except (ValueError, AttributeError):
-            # Invalid timestamp, sync now
             return True
             
         # Check if it's been at least 50 minutes since last sync (to avoid double-syncing)
@@ -1022,24 +1033,14 @@ class UsageCoordinator:
             # Cache not loaded or empty, sync now
             return True
             
-        metadata = self.cache.data.get("metadata", {})
-        daily_meta = metadata.get("daily", {})
-        monthly_meta = metadata.get("monthly", {}) 
-        
-        last_daily_sync_str = daily_meta.get("last_sync")
-        last_monthly_sync_str = monthly_meta.get("last_sync")
+        last_daily = self.cache.get_interval_last_sync("daily")
+        last_monthly = self.cache.get_interval_last_sync("monthly")
         
         # Check if either has never been synced
-        if not last_daily_sync_str or not last_monthly_sync_str:
+        if not last_daily or not last_monthly:
             return True
-            
-        try:
-            last_daily = datetime.fromisoformat(last_daily_sync_str.replace('Z', '+00:00'))
-            last_monthly = datetime.fromisoformat(last_monthly_sync_str.replace('Z', '+00:00'))
-            last_sync = max(last_daily, last_monthly)
-        except (ValueError, AttributeError):
-            # Invalid timestamp, sync now
-            return True
+
+        last_sync = max(last_daily, last_monthly)
             
         # Check if it's been at least 20 hours since last sync (avoid double-syncing)
         if (now - last_sync).total_seconds() < 20 * 3600:

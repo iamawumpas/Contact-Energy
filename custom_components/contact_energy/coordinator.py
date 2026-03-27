@@ -126,11 +126,12 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 )
                 cache_available = False
         
-        # Determine if we need to trigger usage sync
-        # Force sync if: first run + no cache, or corruption detected  
-        # Normal sync if: scheduled time (01:00 or 13:00 UTC windows)
+        # Determine if we need to trigger usage sync.
+        # Force sync if: first run + no cache.
+        # Normal sync otherwise (hourly coordinator tick), letting UsageCoordinator
+        # decide which intervals should run.
         force_usage_sync = (is_first_run and not cache_available) 
-        normal_usage_sync = should_fetch_accounts and not self._skip_next_usage_sync
+        normal_usage_sync = not force_usage_sync and not self._skip_next_usage_sync
         
         if force_usage_sync:
             _LOGGER.info(
@@ -150,10 +151,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         elif self._skip_next_usage_sync:
             _LOGGER.debug("Skipping usage sync for contract %s (skip requested)", self.contract_id)
         else:
-            _LOGGER.debug(
-                "No usage sync needed for contract %s at this time (outside scheduled hours: 01:00-01:30, 13:00-13:30 UTC)", 
-                self.contract_id
-            )
+            _LOGGER.debug("Usage sync not scheduled for contract %s", self.contract_id)
         
         # Only fetch account data if it's scheduled time
         if not should_fetch_accounts:
