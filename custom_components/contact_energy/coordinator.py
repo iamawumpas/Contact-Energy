@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import DOMAIN
 from .contact_api import ContactEnergyApi, ContactEnergyApiError
 from .usage_coordinator import UsageCoordinator
+from .account_snapshot_cache import AccountSnapshotCache
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,11 +58,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         self.config_entry = config_entry
         # When True, skip spawning the background usage sync on the next refresh
         self._skip_next_usage_sync = False
+        self._has_loaded_account_snapshot = False
         
         # Initialize usage coordinator (Phase 1 / v1.4.0)
         # This handles background syncing of hourly/daily/monthly usage data
         icp = config_entry.data.get("icp") if config_entry else None
         self.usage_coordinator = UsageCoordinator(hass, api_client, contract_id, icp)
+        self.account_snapshot_cache = AccountSnapshotCache(contract_id)
         
         _LOGGER.debug(
             "ContactEnergyCoordinator initialized with usage sync for contract %s",
@@ -91,7 +94,19 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         Raises:
             UpdateFailed: If unable to authenticate or get token.
         """
-        # On first run or outside scheduled hours, check if cache exists first  
+        # On first run, preload a persisted account snapshot if available so
+        # account/billing sensors remain populated after restart.
+        if self.data is None and not self._has_loaded_account_snapshot:
+            snapshot = await self.account_snapshot_cache.load()
+            self._has_loaded_account_snapshot = True
+            if snapshot:
+                self.data = snapshot
+                _LOGGER.info(
+                    "Loaded persisted account snapshot for contract %s",
+                    self.contract_id,
+                )
+
+        # On first run or outside scheduled hours, check if usage cache exists first
         is_first_run = self.data is None
         should_fetch_accounts = self._should_fetch_account_data_now()
         cache_available = False
@@ -171,6 +186,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             # Try to get accounts with current token
             try:
                 account_data = await self.api_client.get_accounts()
+                await self.account_snapshot_cache.save(account_data)
                 _LOGGER.debug("Successfully fetched account data")
                 return account_data
             
@@ -197,6 +213,7 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 # Retry fetching account data with the new token
                 try:
                     account_data = await self.api_client.get_accounts()
+                    await self.account_snapshot_cache.save(account_data)
                     _LOGGER.debug("Successfully fetched account data after re-authentication")
 
                     # Trigger usage sync after successful re-auth unless skipped
@@ -231,7 +248,15 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                     )
                     
                     # Return minimal account data structure to keep coordinator happy
-                    # The sensor will still work with usage data even if account info is unavailable
+                    # Prefer returning last-known snapshot if available.
+                    if self.data:
+                        _LOGGER.warning(
+                            "Returning persisted account snapshot for contract %s after API failure",
+                            self.contract_id,
+                        )
+                        return self.data
+
+                    # If there is no snapshot, return minimal data to keep coordinator alive.
                     return {
                         "accountsSummary": [{
                             "id": "",

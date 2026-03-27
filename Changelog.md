@@ -5,6 +5,18 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.8.11 ]
+
+### Added
+- Added persistent account snapshot cache to store the last successful account API payload on disk per contract
+
+### Fixed
+- Account and billing sensors now keep last-known values across Home Assistant restarts by loading persisted snapshots on coordinator startup
+- Coordinator now falls back to persisted account snapshot when account API requests fail, reducing `unknown` account/billing states
+
+### Changed
+- Account snapshot is now refreshed on every successful account API response (normal fetch and post re-auth retry)
+
 ## [ 1.8.10 ]
 
 ### Fixed

@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.8.10-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.8.11-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>
@@ -17,6 +17,12 @@
 - ⚙️ [**Multiple Instances**](https://github.com/iamawumpas/Contact-Energy/wiki/Multiple-Accounts) - Monitor multiple properties or accounts
 - ❓ [**FAQ & Limitations**](https://github.com/iamawumpas/Contact-Energy/wiki/FAQ) - Common questions and constraints
 - 📝 [**Changelog**](Changelog.md) - Version history and changes
+
+## Release Notes Policy
+
+Before the final release commit, delete any temporary files named in the pattern `release_notes_x.y.z.md`.
+
+Release notes must be maintained in `Changelog.md` only, and the changelog entry is the single source of truth for the GitHub release notes.
 
 ## About This Integration
 
