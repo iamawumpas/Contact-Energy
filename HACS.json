@@ -6,10 +6,7 @@
   "version": "1.8.12",
   "ignore": [
     ".*",
-    "release.sh",
-    "release.ps1",
-    "feature.sh",
     "assets",
-    "RELEASE.md"
+    "release.md"
   ]
 }
