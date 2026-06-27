@@ -2,7 +2,7 @@
   <h1>Contact Energy Integration for Home Assistant</h1>
   <p><i>Let's do the 'monitor your Contact Energy account' thing</i></p>
 
-  ![Version](https://img.shields.io/badge/version-1.8.11-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.8.12-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
   ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.12.5+-blue.svg)
 </div>
@@ -44,7 +44,7 @@ The integration connects to your Contact Energy account and creates sensors for:
 - **Contract Details** - ICP, address, product name, contract type and status
 - **Payment Plans** - Direct debit, smooth pay, and prepay status indicators
 - **Usage & Energy**
-  - Usage sensor attributes with hourly/daily/monthly paid/free kWh for charts
+  - Usage sensor attributes with hourly/daily/monthly paid/free kWh plus monthly cost for charts
   - Paid/Free energy sensors (total_increasing) ready for Home Assistant Energy Dashboard
 
 All data updates automatically with optimized polling schedules and can be viewed in custom dashboard cards or used in automations:

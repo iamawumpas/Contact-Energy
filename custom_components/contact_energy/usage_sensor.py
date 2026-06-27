@@ -177,8 +177,10 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             "hourly_free_usage": {},  # free kWh by ISO timestamp
             "daily_paid_usage": {},  # paid kWh by YYYY-MM-DD
             "daily_free_usage": {},  # free kWh by YYYY-MM-DD
+            "daily_cost_usage": {},  # cost in NZD by YYYY-MM-DD
             "monthly_paid_usage": {},  # paid kWh by YYYY-MM
             "monthly_free_usage": {},  # free kWh by YYYY-MM
+            "monthly_cost_usage": {},  # cost in NZD by YYYY-MM
         }
 
         # No cache loaded yet
@@ -219,6 +221,7 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                     
                 _add_non_zero(attributes["daily_paid_usage"], date_key, record.get("paid"))
                 _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
+                _add_non_zero(attributes["daily_cost_usage"], date_key, record.get("cost"))
 
             # Monthly: most recent 18 months (full cache window)
             monthly_records = self._cache.data.get("monthly", {})
@@ -231,13 +234,14 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                     record = monthly_records[month_key]
                     _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
                     _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
+                    _add_non_zero(attributes["monthly_cost_usage"], month_key, record.get("cost"))
 
             _LOGGER.debug(
                 "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d",
                 self._contract_id,
                 len(attributes["hourly_paid_usage"]) + len(attributes["hourly_free_usage"]),
-                len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"]),
-                len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"]),
+                len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"]) + len(attributes["daily_cost_usage"]),
+                len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"]) + len(attributes["monthly_cost_usage"]),
             )
 
         except Exception as e:

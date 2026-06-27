@@ -234,6 +234,7 @@ sensor.123_main_st_0000012345abc_next_bill_date
   - `hourly_paid_usage` / `hourly_free_usage`: ISO timestamps → kWh (last 14 days)
   - `daily_paid_usage` / `daily_free_usage`: YYYY-MM-DD → kWh (last 90 days)
   - `monthly_paid_usage` / `monthly_free_usage`: YYYY-MM → kWh (last 18 months)
+  - `daily_cost_usage` / `monthly_cost_usage`: YYYY-MM-DD or YYYY-MM → NZD cost for charting
 - **Use cases**: ApexCharts card visualizations (see [Dashboards](Dashboards) and asset placeholders in `assets/apexcharts_card_-_*.yaml`).
 
 ## Energy Dashboard (2 sensors)

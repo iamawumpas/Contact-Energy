@@ -24,6 +24,16 @@ A comprehensive card displaying all your account information in a compact, organ
 - ✅ Responsive design
 - ✅ Scrollable for long lists
 
+## Monthly Usage Chart
+
+The monthly ApexCharts example combines stacked kWh bars with a monthly cost line on a secondary axis.
+
+### Available Series
+
+- `monthly_paid_usage` for paid kWh columns
+- `monthly_free_usage` for free kWh columns
+- `monthly_cost_usage` for NZD cost as a line
+
 ### Static Preview
 
 This is a visual representation of how the card appears in Lovelace:
