@@ -9,6 +9,7 @@ License: MIT
 """
 
 import logging
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from calendar import monthrange
@@ -25,6 +26,8 @@ from .coordinator import ContactEnergyCoordinator
 from .usage_cache import UsageCache
 
 _LOGGER = logging.getLogger(__name__)
+
+ATTRIBUTE_SIZE_BUDGET = 15000
 
 
 async def async_setup_entry(
@@ -200,18 +203,36 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
             target[key] = round(numeric, 2)
 
+        def _serialized_size(payload: Dict[str, Any]) -> int:
+            return len(json.dumps(payload, separators=(",", ":"), ensure_ascii=True))
+
+        def _trim_oldest_entries(target: Dict[str, float], keep_at_least: int = 0) -> bool:
+            if len(target) <= keep_at_least:
+                return False
+
+            oldest_key = sorted(target.keys())[0]
+            target.pop(oldest_key, None)
+            return True
+
         try:
-            # Hourly: retain full cached window (14 days) but drop zeroes
+            # Hourly: retain the recent chart window and drop zeroes.
             hourly_records = self._cache.data.get("hourly", {})
-            for timestamp, record in hourly_records.items():
+            hourly_cutoff = datetime.now(timezone.utc) - timedelta(days=10)
+            for timestamp, record in sorted(hourly_records.items()):
+                try:
+                    record_time = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    if record_time < hourly_cutoff:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+
                 _add_non_zero(attributes["hourly_paid_usage"], timestamp, record.get("paid"))
                 _add_non_zero(attributes["hourly_free_usage"], timestamp, record.get("free"))
 
-            # Daily: most recent 90 days only to stay under 16KB attribute limit
+            # Daily: align with the dashboard view window and drop zeroes.
             daily_records = self._cache.data.get("daily", {})
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=90)).date()
-            for date_key, record in daily_records.items():
-                # Filter to recent 90 days only
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=35)).date()
+            for date_key, record in sorted(daily_records.items()):
                 try:
                     record_date = datetime.strptime(date_key, "%Y-%m-%d").date()
                     if record_date < cutoff_date:
@@ -223,25 +244,47 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
                 _add_non_zero(attributes["daily_free_usage"], date_key, record.get("free"))
                 _add_non_zero(attributes["daily_cost_usage"], date_key, record.get("cost"))
 
-            # Monthly: most recent 18 months (full cache window)
+            # Monthly: most recent 18 months (full cache window).
             monthly_records = self._cache.data.get("monthly", {})
-            # Sort by date and take the most recent 18 months
             if monthly_records:
-                # Sort month keys by date (YYYY-MM format sorts correctly)
                 sorted_months = sorted(monthly_records.keys(), reverse=True)[:18]
-                
+
                 for month_key in sorted_months:
                     record = monthly_records[month_key]
                     _add_non_zero(attributes["monthly_paid_usage"], month_key, record.get("paid"))
                     _add_non_zero(attributes["monthly_free_usage"], month_key, record.get("free"))
                     _add_non_zero(attributes["monthly_cost_usage"], month_key, record.get("cost"))
 
+            # Enforce a real serialized-size budget so Recorder can persist attributes.
+            while _serialized_size(attributes) > ATTRIBUTE_SIZE_BUDGET:
+                trimmed = False
+
+                # Prefer trimming the oldest hourly points first, then daily points.
+                for key, floor in (
+                    ("hourly_paid_usage", 72),
+                    ("hourly_free_usage", 24),
+                    ("daily_cost_usage", 21),
+                    ("daily_paid_usage", 21),
+                    ("daily_free_usage", 21),
+                ):
+                    if _trim_oldest_entries(attributes[key], keep_at_least=floor):
+                        trimmed = True
+                        break
+
+                if not trimmed:
+                    _LOGGER.warning(
+                        "Unable to trim usage attributes further for contract %s without dropping below minimum chart windows",
+                        self._contract_id,
+                    )
+                    break
+
             _LOGGER.debug(
-                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d",
+                "Loaded usage data for contract %s: hourly=%d, daily=%d, monthly=%d, serialized_size=%d",
                 self._contract_id,
                 len(attributes["hourly_paid_usage"]) + len(attributes["hourly_free_usage"]),
                 len(attributes["daily_paid_usage"]) + len(attributes["daily_free_usage"]) + len(attributes["daily_cost_usage"]),
                 len(attributes["monthly_paid_usage"]) + len(attributes["monthly_free_usage"]) + len(attributes["monthly_cost_usage"]),
+                _serialized_size(attributes),
             )
 
         except Exception as e:

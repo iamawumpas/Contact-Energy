@@ -168,7 +168,11 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         else:
             _LOGGER.debug("Usage sync not scheduled for contract %s", self.contract_id)
         
-        # Only fetch account data if it's scheduled time
+        # Always perform one live account fetch when no account payload is loaded yet.
+        if self.data is None:
+            should_fetch_accounts = True
+
+        # Only fetch account data if it's scheduled time or we have no loaded data.
         if not should_fetch_accounts:
             _LOGGER.debug("Not scheduled time for account data, returning cached data")
             # Return minimal data to keep coordinator happy

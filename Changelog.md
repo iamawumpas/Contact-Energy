@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.18.14 ]
+
+### Fixed
+- Fixed coordinator startup so account and billing data perform an initial live fetch even outside the normal scheduled polling window
+- Fixed oversized usage sensor attributes by enforcing a Recorder-safe serialized payload budget before exposing chart data
+
+### Changed
+- Reduced the default hourly and daily usage attribute windows and trim oldest points first when attributes approach Home Assistant's size limit
+
 ## [ 1.18.13 ]
 
 ### Fixed
