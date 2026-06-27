@@ -5,6 +5,16 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 1.18.13 ]
+
+### Fixed
+- Fixed the monthly usage ApexCharts example so the monthly cost line renders correctly on a secondary axis
+- Fixed monthly Paid and Free bars so they stack together consistently in the monthly chart
+- Fixed the monthly chart legend layout so all three legend items display inline with consistent spacing
+
+### Changed
+- Simplified the monthly usage chart data generators to read the persisted monthly paid, free, and cost attributes directly
+
 ## [ 1.8.12 ]
 
 ### Added
