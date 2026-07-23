@@ -1,6 +1,15 @@
 # Sensors Reference
 
-This page documents all 26 sensors provided by the Contact Energy integration.
+This page documents all 27 sensors provided by the Contact Energy integration.
+
+## v2.0.0 Architecture
+
+Version 2.0.0 introduces a modular sensor architecture with clear separation:
+- **Account Sensors** (17 sensors) - Defined in `sensors/account_sensors.py`
+- **Usage Sensors** (4 sensors) - Defined in `sensors/usage_sensors.py`
+- **Energy Dashboard Sensors** (6 sensors) - Defined in `sensors/energy_sensors.py`
+
+All sensors inherit from `CoordinatorEntity` and update automatically based on their coordinator's schedule.
 
 ## Sensor Naming Convention
 
@@ -23,8 +32,10 @@ sensor.123_main_st_0000012345abc_next_bill_date
 - [Account Settings](#account-settings-3-sensors) - Preferences and configurations
 - [Contract Details](#contract-details-6-sensors) - Property and plan information
 - [Payment Plans](#payment-plans-3-sensors) - Direct debit, smooth pay, prepay status
-- [Usage & Charting](#usage--charting-1-sensor) - Cached hourly/daily/monthly usage attributes
-- [Energy Dashboard](#energy-dashboard-2-sensors) - Total increasing paid/free energy for HA Energy
+- [Usage Sensors](#usage-sensors-4-sensors) - Usage data with attributes for charting
+- [Energy Dashboard](#energy-dashboard-6-sensors) - Total increasing paid/free energy for HA Energy
+
+**Total: 27 sensors** (17 account + 4 usage + 6 energy)
 
 ---
 
@@ -223,52 +234,122 @@ sensor.123_main_st_0000012345abc_next_bill_date
 
 ---
 
-## Usage & Charting (1 sensor)
+## Usage Sensors (4 sensors)
 
-### Usage Summary
+### Usage Summary (Main Sensor)
 
 - **Sensor ID**: `sensor.{address}_{icp}_usage`
 - **Unit**: None (state is total cached record count)
-- **Description**: Exposes cached hourly/daily/monthly usage for paid/free energy in attributes sized for Home Assistant's 16KB attribute limit.
+- **Description**: Main usage sensor exposing cached hourly/daily/monthly usage for paid/free energy in attributes sized for Home Assistant's 16KB attribute limit.
 - **Attributes**:
   - `hourly_paid_usage` / `hourly_free_usage`: ISO timestamps → kWh (last 14 days)
   - `daily_paid_usage` / `daily_free_usage`: YYYY-MM-DD → kWh (last 90 days)
   - `monthly_paid_usage` / `monthly_free_usage`: YYYY-MM → kWh (last 18 months)
   - `daily_cost_usage` / `monthly_cost_usage`: YYYY-MM-DD or YYYY-MM → NZD cost for charting
-- **Use cases**: ApexCharts card visualizations (see [Dashboards](Dashboards) and asset placeholders in `assets/apexcharts_card_-_*.yaml`).
+- **Update Schedule**: Attributes update on their respective schedules (hourly/6h/24h)
+- **Use cases**: ApexCharts card visualizations (see [Dashboards](Dashboards))
 
-## Energy Dashboard (2 sensors)
+### Hourly Usage Sensor
 
-These sensors are ready to plug into the Home Assistant Energy Dashboard.
+- **Sensor ID**: `sensor.{address}_{icp}_hourly_usage`
+- **Unit**: None
+- **Description**: Dedicated sensor for hourly usage data only
+- **Attributes**: `hourly_paid_usage`, `hourly_free_usage`
+- **Update Schedule**: Updates every hour
 
-### Paid Energy
+### Daily Usage Sensor
+
+- **Sensor ID**: `sensor.{address}_{icp}_daily_usage`
+- **Unit**: None
+- **Description**: Dedicated sensor for daily usage data only
+- **Attributes**: `daily_paid_usage`, `daily_free_usage`, `daily_cost_usage`
+- **Update Schedule**: Updates every 6 hours
+
+### Monthly Usage Sensor
+
+- **Sensor ID**: `sensor.{address}_{icp}_monthly_usage`
+- **Unit**: None
+- **Description**: Dedicated sensor for monthly usage data only
+- **Attributes**: `monthly_paid_usage`, `monthly_free_usage`, `monthly_cost_usage`
+- **Update Schedule**: Updates every 24 hours
+
+---
+
+## Energy Dashboard (6 sensors)
+
+These sensors are ready to plug into the Home Assistant Energy Dashboard. All sensors use `total_increasing` state class.
+
+### Cumulative Energy Sensors
+
+#### Paid Energy
 
 - **Sensor ID**: `sensor.{address}_{icp}_paid_energy`
 - **Unit**: kWh
 - **Device Class**: energy
 - **State Class**: total_increasing
-- **Description**: Cumulative paid energy imported from daily statistics; maps to *Grid consumption* or *Electricity consumed* in the Energy dashboard.
+- **Description**: Cumulative paid energy imported from daily statistics; maps to *Grid consumption* in the Energy dashboard.
 - **Attributes**: `data_start_date`, `data_source`
 
-### Free Energy
+#### Free Energy
 
 - **Sensor ID**: `sensor.{address}_{icp}_free_energy`
 - **Unit**: kWh
 - **Device Class**: energy
 - **State Class**: total_increasing
-- **Description**: Cumulative free energy (e.g., off-peak/free hours); also eligible for Energy dashboard flows.
+- **Description**: Cumulative free energy (e.g., off-peak/free hours); eligible for Energy dashboard flows.
+- **Attributes**: `data_start_date`, `data_source`
+
+### Daily Energy Sensors
+
+#### Daily Paid Energy
+
+- **Sensor ID**: `sensor.{address}_{icp}_daily_paid_energy`
+- **Unit**: kWh
+- **Device Class**: energy
+- **State Class**: total_increasing
+- **Description**: Daily paid energy consumption with automatic reset at midnight
+- **Attributes**: `data_start_date`, `data_source`
+
+#### Daily Free Energy
+
+- **Sensor ID**: `sensor.{address}_{icp}_daily_free_energy`
+- **Unit**: kWh
+- **Device Class**: energy
+- **State Class**: total_increasing
+- **Description**: Daily free energy consumption with automatic reset at midnight
+- **Attributes**: `data_start_date`, `data_source`
+
+### Monthly Energy Sensors
+
+#### Monthly Paid Energy
+
+- **Sensor ID**: `sensor.{address}_{icp}_monthly_paid_energy`
+- **Unit**: kWh
+- **Device Class**: energy
+- **State Class**: total_increasing
+- **Description**: Monthly paid energy consumption with automatic reset at month start
+- **Attributes**: `data_start_date`, `data_source`
+
+#### Monthly Free Energy
+
+- **Sensor ID**: `sensor.{address}_{icp}_monthly_free_energy`
+- **Unit**: kWh
+- **Device Class**: energy
+- **State Class**: total_increasing
+- **Description**: Monthly free energy consumption with automatic reset at month start
 - **Attributes**: `data_start_date`, `data_source`
 
 ---
 
 ## Update Schedule
 
-All sensors use **optimized polling schedules** based on data type:
+All sensors use **optimized polling schedules** based on data type in v2.0.0:
 
-- **Account sensors** (balance, billing): Update twice daily at 01:00 and 13:00 UTC
-- **Hourly usage data**: Updates hourly at random time (8-42 minutes past each hour)  
-- **Daily/monthly usage data**: Updates daily at 03:00 UTC
-- **Statistics import**: Runs during usage data updates
+- **Account sensors** (balance, billing, contract details): Update every 6 hours
+- **Hourly usage data**: Updates every hour
+- **Daily usage data**: Updates every 6 hours
+- **Monthly usage data**: Updates every 24 hours
+- **Energy Dashboard sensors**: Update with their respective data types
 
 **Note:** Contact Energy provides usage with a delay. Historical usage data may be 24-72 hours behind real-time.
 

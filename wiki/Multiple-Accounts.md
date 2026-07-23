@@ -4,7 +4,7 @@ This guide explains how to monitor multiple Contact Energy properties or account
 
 ## Overview
 
-The Contact Energy integration supports monitoring multiple properties/accounts under the same or different email addresses. Each configured account creates its own set of 26 sensors.
+The Contact Energy integration supports monitoring multiple properties/accounts under the same or different email addresses. Each configured account creates its own set of **27 sensors** (in v2.0.0).
 
 ## Use Cases
 
@@ -21,8 +21,8 @@ If you have multiple properties under one Contact Energy account (one email logi
 
 1. Add the integration once with your credentials
 2. During setup, you'll see all properties listed
-3. Select the accounts you want to monitor
-4. Each selected account creates 26 sensors
+3. Select the account(s) you want to monitor
+4. Each selected account creates 27 sensors
 
 ### Multiple Email Accounts
 
@@ -34,7 +34,7 @@ If you have accounts under different email addresses:
 4. Configure accounts for that email
 5. Repeat for additional email addresses
 
-Each integration instance is independent.
+Each integration instance is independent with its own coordinators and caching.
 
 ## Configuration Steps
 

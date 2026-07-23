@@ -46,7 +46,7 @@ This guide will walk you through installing and configuring the Contact Energy i
    - Create a `custom_components` folder if it doesn't exist
    - Paste the `contact_energy` folder inside `custom_components`
    
-   Final structure:
+   Final structure (v2.0.0):
    ```
    config/
    └── custom_components/
@@ -54,8 +54,11 @@ This guide will walk you through installing and configuring the Contact Energy i
            ├── __init__.py
            ├── manifest.json
            ├── config_flow.py
-           ├── coordinator.py
            ├── sensor.py
+           ├── api/              # API layer
+           ├── data_managers/    # Caching layer
+           ├── coordinators/     # Update coordinators
+           ├── sensors/          # Sensor entities
            └── ...
    ```
 
@@ -92,8 +95,14 @@ This guide will walk you through installing and configuring the Contact Energy i
 
 ### First Data Update
 
-- Sensors will show "Unknown" or "Unavailable" initially
-- The first update occurs at the next scheduled time (01:00 AM)
+With v2.0.0, sensors update automatically on optimized schedules:
+- **Account data**: Updates every 6 hours
+- **Hourly usage**: Updates every hour
+- **Daily usage**: Updates every 6 hours
+- **Monthly usage**: Updates every 24 hours
+
+- Sensors may show "Unknown" or "Unavailable" initially
+- The first update occurs based on the coordinator's schedule
 - **To force an immediate update**, use the `contact_energy.refresh_data` service:
   1. Go to **Developer Tools** → **Actions**
   2. Select action: `contact_energy.refresh_data`
@@ -109,20 +118,27 @@ This guide will walk you through installing and configuring the Contact Energy i
 3. You should see:
    - Integration name
    - Number of devices (1 per account)
-   - Number of entities (26 per account)
+   - Number of entities (27 per account in v2.0.0)
 
 ### Check Sensors
 
 1. Go to **Developer Tools** → **States**
 2. Search for your account name or ICP number
-3. You should see 26 sensors with names like:
+3. You should see 27 sensors with names like:
    ```
    sensor.my_address_icp123_current_balance
    sensor.my_address_icp123_next_bill_date
    sensor.my_address_icp123_payment_method
    sensor.my_address_icp123_usage
+   sensor.my_address_icp123_hourly_usage
+   sensor.my_address_icp123_daily_usage
+   sensor.my_address_icp123_monthly_usage
    sensor.my_address_icp123_paid_energy
    sensor.my_address_icp123_free_energy
+   sensor.my_address_icp123_daily_paid_energy
+   sensor.my_address_icp123_daily_free_energy
+   sensor.my_address_icp123_monthly_paid_energy
+   sensor.my_address_icp123_monthly_free_energy
    ```
 
 ## Common Setup Issues
@@ -159,9 +175,9 @@ This guide will walk you through installing and configuring the Contact Energy i
 **Problem**: All sensors show "Unknown" or "Unavailable"
 
 **Solution**:
-- This is normal for the first few hours after setup
+- This is normal immediately after setup
 - **Force an immediate update** using the `contact_energy.refresh_data` service (see below)
-- Wait for the next scheduled update (01:00 AM)
+- Wait for the next scheduled coordinator update
 - Check **Settings** → **System** → **Logs** for any error messages
 - Restart Home Assistant or reload the integration
 
@@ -171,9 +187,19 @@ This guide will walk you through installing and configuring the Contact Energy i
 3. Click **Perform Action**
 4. Wait 5-10 seconds for data to download
 
+## v2.0.0 Architecture Notes
+
+Version 2.0.0 introduces:
+- **Modular Architecture** - Separated into logical layers (API, Data Managers, Coordinators, Sensors)
+- **Independent Caching** - Each data type has its own cache file with appropriate staleness rules
+- **Optimized Updates** - Different data types update on optimal schedules
+- **27 Sensors** - 17 account + 4 usage + 6 energy dashboard sensors
+
+For migration from earlier versions, no configuration changes are needed. The integration will automatically use the new architecture.
+
 ## Next Steps
 
-- [View All Sensors](Sensors) - Complete list of available sensors
+- [View All Sensors](Sensors) - Complete list of available sensors (now 27!)
 - [Create Dashboards](Dashboards) - Display your energy data
 - [Add Multiple Accounts](Multiple-Accounts) - Monitor multiple properties
 
