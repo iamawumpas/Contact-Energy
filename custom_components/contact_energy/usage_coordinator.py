@@ -1,49 +1,97 @@
 """Usage data synchronization coordinator for Contact Energy integration.
 
-This module provides the UsageCoordinator class which manages the download
-and synchronization of usage data from the Contact Energy API. It implements:
-- Incremental sync logic (only downloads new/missing data)
-- Metadata-driven sync decisions (checks if sync is needed)
-- Automatic pruning to maintain fixed time windows
-- Error handling and retry logic for transient failures
-- Custom scheduling for different data types:
-  * Hourly usage: Every hour at 25±17 minutes past the hour
-  * Daily/Monthly usage: Daily at 03:00 UTC
+=== WHAT THIS DOES ===
+This module contains the legacy ``UsageCoordinator`` class. Its job is to keep
+local usage-history caches up to date by downloading hourly, daily, and monthly
+usage information from Contact Energy only when those datasets actually need a
+refresh.
 
-The coordinator runs as a background task and is triggered by the main
-ContactEnergyCoordinator based on data-specific schedules.
+The coordinator handles several responsibilities at once:
+- deciding whether each usage interval needs syncing,
+- calculating the safest date range to request,
+- retrying after temporary API or network failures,
+- splitting large requests into smaller chunks when needed,
+- pruning old cache entries outside the supported history window, and
+- importing daily usage into Home Assistant statistics for the Energy Dashboard.
 
-Sync Windows (Hard-coded for Phase 1 / v1.4.0):
-- Hourly: Last 9 days
-- Daily: Last 35 days  
-- Monthly: Last 18 months
+=== FOR NON-CODERS ===
+Think of this as an archive manager for electricity-usage history.
+- One shelf stores hour-by-hour data.
+- Another shelf stores day-by-day data.
+- Another shelf stores month-by-month data.
+
+The coordinator checks whether each shelf is out of date, requests only the
+missing pages, files them neatly, throws away pages that are too old to keep,
+and then tells the rest of Home Assistant that fresh usage data is available.
+
+Helpful terms:
+- "Coordinator": a shared organiser that fetches once for many listeners.
+- "Polling": checking again later on a timer.
+- "Update interval": how long to wait between allowed syncs.
+- "Data refresh": replacing older cached history with newer history.
+
+Sync windows (hard-coded for this legacy flow):
+- Hourly: keep the last 14 days
+- Daily: keep roughly the last 18 months
+- Monthly: keep the last 18 months
 
 Version: 1.8.3
 Author: Contact Energy Integration
 """
+# This future import keeps modern type-hint syntax available throughout the file.
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# logging: records normal activity, retries, skips, and errors for diagnostics.
 import logging
+
+# asyncio: provides async sleep for retry backoff delays.
 import asyncio
+
+# time: used for measuring total sync duration.
 import time
-import random
+
+
+# date/datetime/timedelta/timezone: used for scheduling decisions and request windows.
 from datetime import date, datetime, timedelta, timezone
+
+# TYPE_CHECKING: allows type-only imports without causing runtime import cycles.
 from typing import TYPE_CHECKING
 
+# async_dispatcher_send: notifies Home Assistant listeners that usage data changed.
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+# Statistics helpers: used to import usage history into the Energy Dashboard database.
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     StatisticData,
     StatisticMetaData,
 )
 
+# UsageCache: reads, writes, and prunes the cached usage-history files.
 from .usage_cache import UsageCache
+
+# DOMAIN: the integration's identifier used in signals and statistic IDs.
 from .const import DOMAIN
+
+# ContactEnergyApi: legacy API client that downloads usage data.
+# ContactEnergyApiError: API-specific failure.
+# ContactEnergyAuthError: authentication-specific failure that should bubble up.
+# ContactEnergyConnectionError: network/connection-specific failure that may be retried.
 from .contact_api import ContactEnergyApi, ContactEnergyApiError, ContactEnergyAuthError, ContactEnergyConnectionError
 
 if TYPE_CHECKING:
+    # HomeAssistant is imported only for type hints so runtime imports stay light.
     from homeassistant.core import HomeAssistant
 
+# ============================================================================
+# LOGGER AND CONFIGURATION
+# ============================================================================
+
+# Create a logger dedicated to messages from this module.
 _LOGGER = logging.getLogger(__name__)
 
 # Usage sync configuration (hard-coded for v1.8.3)
@@ -70,26 +118,20 @@ USAGE_CONFIG = {
 class UsageCoordinator:
     """Manages usage data synchronization for a single contract.
 
-    This coordinator handles the lifecycle of usage data:
-    1. Load existing cache from disk (if available)
-    2. Determine what data is missing or stale
-    3. Download only the gaps/new data from API
-    4. Update cache with new data
-    5. Prune old data outside the window
-    6. Save cache back to disk
+    === WHAT THIS DOES ===
+    This class is the archive manager for one Contact Energy contract. It loads
+    cached usage history, decides whether hourly/daily/monthly data needs to be
+    refreshed, downloads missing history, saves the refreshed cache, and signals
+    other Home Assistant components when new usage data is ready.
 
-    The coordinator is designed to be called periodically (e.g., daily) and
-    will make intelligent decisions about whether to sync based on metadata.
+    === FOR NON-CODERS ===
+    Imagine one staff member looking after the usage-history records for a single
+    home or account. That staff member checks whether each record book is old,
+    requests missing pages, files them, and lets everyone know the archive is now
+    current enough to read from.
 
-    Attributes:
-        hass: Home Assistant instance
-        api: Contact Energy API client
-        contract_id: Contract identifier
-        cache: Usage cache manager
-
-    Example:
-        coordinator = UsageCoordinator(hass, api, "123456")
-        await coordinator.async_sync_usage()
+    This class exists so many sensors can share one carefully managed source of
+    usage history instead of each sensor downloading its own copy.
     """
 
     def __init__(
@@ -101,20 +143,34 @@ class UsageCoordinator:
     ):
         """Initialize the usage coordinator.
 
-        Args:
-            hass: Home Assistant instance
-            api: Authenticated Contact Energy API client
-            contract_id: Contract identifier (e.g., "123456")
-            icp: Installation Control Point number (e.g., "0000012345ABC")
+        === WHAT THIS DOES ===
+        This constructor stores the main objects the coordinator needs and prepares
+        the cache/state fields used by later sync operations.
+
+        === FOR NON-CODERS ===
+        This is the setup step for the usage archive manager. It gives the manager
+        the Home Assistant system, the API helper, the contract being tracked, and
+        the property identifier used when creating statistics IDs.
         """
+        # ====================================================================
+        # STEP 1: Store the shared objects and contract identifiers.
+        # ====================================================================
         self.hass = hass
         self.api = api
         self.contract_id = contract_id
-        self.icp = icp or contract_id  # Fallback to contract_id if ICP not provided
-        # Sanitize ICP for use in statistic_id (lowercase alphanumeric + underscore only)
+
+        # Use the ICP if available; otherwise fall back to the contract ID so we
+        # still have a stable identifier for statistics and cache naming.
+        self.icp = icp or contract_id
+
+        # Convert the ICP/contract identifier into a statistics-safe format.
         self.icp_sanitized = self._sanitize_statistic_id(self.icp)
+
+        # Create the cache manager that handles disk persistence and pruning.
         self.cache = UsageCache(contract_id)
-        self._force_sync_mode = False  # Flag to bypass time threshold checks
+
+        # This flag temporarily bypasses normal timing rules during force syncs.
+        self._force_sync_mode = False
 
         _LOGGER.debug(
             "UsageCoordinator initialized for contract %s (ICP: %s, sanitized: %s)",
@@ -124,22 +180,20 @@ class UsageCoordinator:
     async def async_sync_usage(self) -> None:
         """Synchronize usage data with intelligent incremental downloads.
 
-        This is the main entry point for usage sync. It:
-        1. Checks if it's time to sync each data type based on schedules
-        2. Downloads only missing/new data for intervals that need syncing
-        3. Updates cache and prunes old data
-        4. Saves cache back to disk
+        === WHAT THIS DOES ===
+        This is the coordinator's main sync entry point. It loads the cache, checks
+        which usage intervals are due for refresh, runs the required sync steps,
+        saves the updated cache, and broadcasts that fresh usage data is available.
 
-        Scheduling:
-        - Hourly data: Every hour at 25±17 minutes past the hour
-        - Daily/Monthly data: Daily at 03:00 UTC
+        === FOR NON-CODERS ===
+        This is the full archive-update routine. It answers:
+        - Do we need new hourly history?
+        - Do we need new daily history?
+        - Do we need new monthly history?
 
-        Raises:
-            ContactEnergyApiError: If API requests fail (logged but not raised)
-
-        Note: Errors are caught and logged to prevent breaking the main coordinator.
-              Partial failures (e.g., hourly fails but daily succeeds) are handled gracefully.
+        Then it updates only the books that need work and leaves the others alone.
         """
+        # Record the wall-clock start time so we can log total duration later.
         overall_start_time = time.time()
 
         _LOGGER.info(
@@ -148,7 +202,11 @@ class UsageCoordinator:
         )
 
         try:
-            # Load existing cache from disk
+            # =================================================================
+            # STEP 1: Load the existing usage cache from disk.
+            # =================================================================
+            # This means the coordinator starts with the most recent saved state
+            # before deciding whether any new API requests are necessary.
             await self.cache.load()
 
             _LOGGER.debug(
@@ -160,7 +218,10 @@ class UsageCoordinator:
                 self.cache.get_last_synced(),
             )
 
-            # Check which data types need syncing based on schedule
+            # =================================================================
+            # STEP 2: Decide which usage intervals are due for work.
+            # =================================================================
+            # Hourly data has its own schedule, and daily/monthly share another.
             should_sync_hourly = self.should_sync_hourly_now() or self._force_sync_mode
             should_sync_daily_monthly = self.should_sync_daily_monthly_now() or self._force_sync_mode
 
@@ -176,7 +237,9 @@ class UsageCoordinator:
                 self.contract_id, should_sync_hourly, should_sync_daily_monthly
             )
 
-            # Sync each interval that needs updating
+            # =================================================================
+            # STEP 3: Run only the sync jobs that were judged necessary.
+            # =================================================================
             if should_sync_hourly:
                 await self._sync_hourly()
 
@@ -184,10 +247,14 @@ class UsageCoordinator:
                 await self._sync_daily()
                 await self._sync_monthly()
 
-            # Save updated cache to disk
+            # =================================================================
+            # STEP 4: Save the refreshed cache back to disk.
+            # =================================================================
             await self.cache.save()
 
-            # Notify listeners (e.g., usage sensor) that fresh usage data is available
+            # =================================================================
+            # STEP 5: Tell any listening entities that new usage data is ready.
+            # =================================================================
             async_dispatcher_send(
                 self.hass,
                 f"{DOMAIN}_usage_updated_{self.contract_id}",
@@ -210,9 +277,13 @@ class UsageCoordinator:
     async def force_sync(self) -> None:
         """Force a usage data sync, bypassing time thresholds.
 
-        This method is called by the refresh_data service to force an immediate
-        sync regardless of when the last sync occurred. It sets a flag to bypass
-        time threshold checks in _should_sync().
+        === WHAT THIS DOES ===
+        This method temporarily enables a special mode that ignores the normal
+        "too soon to sync again" checks, then runs the main sync routine.
+
+        === FOR NON-CODERS ===
+        Normally the coordinator waits for the right time window. This method is
+        the manual override that says, "Refresh now even if the timer says wait."
         """
         _LOGGER.info("Force sync requested for contract %s", self.contract_id)
         
@@ -229,11 +300,15 @@ class UsageCoordinator:
     async def _sync_hourly(self) -> None:
         """Sync hourly usage data with incremental download logic.
 
-        Checks if hourly sync is needed based on metadata, calculates the
-        date range to download, fetches data from API, updates cache, and prunes.
+        === WHAT THIS DOES ===
+        This method refreshes the detailed hour-by-hour usage history. It checks
+        whether hourly syncing is due, calculates the missing date range, downloads
+        that range, updates the cache, marks the interval as synced, and prunes
+        history that is older than the supported retention window.
 
-        Hourly data is typically only available for the last 1-2 weeks from
-        Contact Energy due to their data processing pipeline.
+        === FOR NON-CODERS ===
+        This is the most detailed ledger update. It fills in missing hourly pages
+        rather than re-downloading the whole book every time.
         """
         interval = "hourly"
         config = USAGE_CONFIG[interval]
@@ -264,8 +339,12 @@ class UsageCoordinator:
                 self.contract_id, from_date, to_date, (to_date - from_date).days + 1
             )
 
-            # Download hourly data in 1-day chunks to avoid API 502s
-            # Split immediately rather than waiting for failures
+            # =================================================================
+            # STEP 3: Download the required hourly window.
+            # =================================================================
+            # Hourly requests are intentionally broken into 1-day chunks because
+            # the upstream API has historically been more reliable with smaller
+            # hourly windows than with one large multi-day request.
             span_days = (to_date - from_date).days + 1
             if span_days > 1:
                 _LOGGER.debug(
@@ -356,10 +435,15 @@ class UsageCoordinator:
     async def _sync_daily(self) -> None:
         """Sync daily usage data with incremental download logic.
 
-        Checks if daily sync is needed based on metadata, calculates the
-        date range to download, fetches data from API, updates cache, and prunes.
+        === WHAT THIS DOES ===
+        This method refreshes day-by-day usage history. It decides whether daily
+        syncing is due, calculates the needed range, downloads the data, updates
+        the cache, prunes old rows, and imports daily totals into Home Assistant
+        statistics so the Energy Dashboard can use them.
 
-        Daily data is typically available for the last 30+ days from Contact Energy.
+        === FOR NON-CODERS ===
+        This is the daily summary-book update. It also copies the final totals
+        into Home Assistant's long-term reporting system.
         """
         interval = "daily"
         config = USAGE_CONFIG[interval]
@@ -443,15 +527,20 @@ class UsageCoordinator:
     async def _async_import_statistics_for_daily_data(self) -> None:
         """Import daily usage data as statistics for the Energy Dashboard.
 
-        This converts cached daily usage data into Home Assistant statistics format
-        and imports it into the long-term statistics database. This enables the
-        Energy Dashboard to display historical data.
+        === WHAT THIS DOES ===
+        This method converts cached daily usage records into Home Assistant
+        ``StatisticData`` objects, builds the matching metadata, and sends those
+        records into Home Assistant's long-term statistics database.
 
-        Called after daily data is synced and saved, so we import fresh data directly
-        from the API without timing issues or async method call delays.
+        === FOR NON-CODERS ===
+        The daily cache is one kind of storage, but Home Assistant's Energy
+        Dashboard expects a different storage format. This method translates the
+        daily numbers into the format the dashboard understands.
         """
         try:
-            # Get daily records from cache first (we'll need them anyway)
+            # =================================================================
+            # STEP 1: Read the cached daily records we want to convert.
+            # =================================================================
             daily_records_dict = self.cache.data.get("daily", {})
             if not daily_records_dict:
                 _LOGGER.debug(
@@ -486,7 +575,9 @@ class UsageCoordinator:
                     len(daily_records_dict),
                 )
 
-            # Filter records to only include data from sensor start date onward
+            # =================================================================
+            # STEP 2: Keep only the records that belong to this sensor's timeline.
+            # =================================================================
             filtered_records = []
             for date_str, record in daily_records_dict.items():
                 record_date = date.fromisoformat(date_str)
@@ -506,7 +597,9 @@ class UsageCoordinator:
             # Sort by date to ensure proper cumulative calculation
             filtered_records.sort(key=lambda x: x["_date"])
 
-            # Import paid and free energy separately
+            # =================================================================
+            # STEP 3: Import paid and free energy as separate statistics streams.
+            # =================================================================
             for energy_kind in ["paid", "free"]:
                 # Build cumulative statistics from daily data
                 statistics = []
@@ -589,10 +682,15 @@ class UsageCoordinator:
     async def _sync_monthly(self) -> None:
         """Sync monthly usage data with incremental download logic.
 
-        Checks if monthly sync is needed based on metadata, calculates the
-        date range to download, fetches data from API, updates cache, and prunes.
+        === WHAT THIS DOES ===
+        This method refreshes the month-by-month usage history. It calculates the
+        correct complete-month range to request, downloads the needed data, updates
+        the monthly cache, and removes months that fall outside the retention rule.
 
-        Monthly data is typically available for the last 2+ years from Contact Energy.
+        === FOR NON-CODERS ===
+        Monthly data is the long-view summary. This method makes sure the archive
+        contains complete months only, because incomplete current-month data would
+        be misleading.
         """
         interval = "monthly"
         config = USAGE_CONFIG[interval]
@@ -680,14 +778,23 @@ class UsageCoordinator:
         allow_split: bool = True,
         max_attempts: int = 3,
     ) -> list[dict]:
-        """Fetch usage with retry and optional split for transient HTTP errors.
+        """Fetch usage with retries and optional chunking.
 
-        Human-friendly note: retries soak up brief API hiccups, and splitting the
-        hourly window into smaller slices avoids the backend occasionally 502-ing
-        on long ranges. Daily/monthly just get the retry layer.
+        === WHAT THIS DOES ===
+        This helper wraps usage downloads in resilience logic. It retries after
+        temporary API or connection failures, waits a little longer after each
+        failed attempt, and optionally breaks a large request into smaller chunks
+        when repeated attempts still fail.
+
+        === FOR NON-CODERS ===
+        If the first phone call to the utility fails, this method tries again a
+        few times. If a big request keeps failing, it asks the same question in
+        smaller pieces instead.
         """
 
-        # Quick retry loop with increasing backoff (1s, 2s, ...)
+        # ====================================================================
+        # STEP 1: Try the request a few times with small waiting periods between tries.
+        # ====================================================================
         for attempt in range(1, max_attempts + 1):
             try:
                 return await self.api.get_usage(
@@ -708,7 +815,10 @@ class UsageCoordinator:
                 )
                 await asyncio.sleep(backoff)
 
-        # If hourly/daily still fails and splitting is allowed, break into smaller chunks
+        # ====================================================================
+        # STEP 2: If full-range retries still failed, optionally split the job into
+        # smaller chunks that are often easier for the upstream API to handle.
+        # ====================================================================
         if allow_split:
             span_days = (to_date - from_date).days + 1
             
@@ -763,26 +873,22 @@ class UsageCoordinator:
                     cursor = chunk_end + timedelta(days=1)
                 return merged
 
-        # Out of options: surface the last error up to the caller
+        # ====================================================================
+        # STEP 3: If retries and chunking both failed, surface the last error so
+        # the caller can decide how to handle the failed sync.
+        # ====================================================================
         raise last_error
 
     def _should_sync(self, interval: str) -> bool:
-        """Determine if sync is needed for an interval based on metadata.
+        """Determine if a specific interval needs syncing.
 
-        Checks the last sync timestamp and compares with the configured
-        sync interval to decide if a new sync is required.
+        === WHAT THIS DOES ===
+        This helper compares the last successful sync time for one interval with
+        the configured minimum wait time for that interval.
 
-        Args:
-            interval: 'hourly', 'daily', or 'monthly'
-
-        Returns:
-            bool: True if sync is needed, False if cache is still fresh
-
-        Logic:
-            - If force_sync_mode is True: return True (forced sync)
-            - If never synced before: return True (first sync)
-            - If last_synced + sync_interval < now: return True (time for refresh)
-            - Otherwise: return False (cache is still fresh)
+        === FOR NON-CODERS ===
+        This is the "Is it too soon to refresh again?" check. It prevents the
+        coordinator from repeatedly downloading the same data too often.
         """
         # Check if force sync mode is enabled
         if self._force_sync_mode:
@@ -830,26 +936,16 @@ class UsageCoordinator:
         return False
 
     def _calculate_sync_range(self, interval: str) -> tuple[date, date]:
-        """Calculate the date range to download for an interval.
+        """Calculate the safest date range to request for one interval.
 
-        Determines what data to download based on:
-        1. Existing cache date range
-        2. Configured window size
-        3. Current date
+        === WHAT THIS DOES ===
+        This helper works out exactly which dates still need downloading. It looks
+        at what is already cached, respects the retention window, and avoids
+        requesting more history than the Contact Energy API is likely to provide.
 
-        For first sync (no cache), downloads full window.
-        For incremental sync, downloads only the gap between last cached date and today.
-
-        Args:
-            interval: 'hourly', 'daily', or 'monthly'
-
-        Returns:
-            tuple[date, date]: (from_date, to_date) inclusive range to download
-
-        Logic:
-            - First sync: Download (today - window) to today
-            - Incremental: Download (last_cached_date + 1 day) to today
-            - Never download more than max_lookback limit
+        === FOR NON-CODERS ===
+        Rather than ordering the entire history every time, this method figures out
+        which pages are missing from the book and requests only those pages.
         """
         config = USAGE_CONFIG[interval]
         today = date.today()
@@ -980,16 +1076,21 @@ class UsageCoordinator:
         return (from_date, to_date)
 
     def should_sync_hourly_now(self) -> bool:
-        """Check if it's time to sync hourly usage data.
-        
-        Hourly data syncs every hour at 25±17 minutes past the hour.
-        
-        Returns:
-            bool: True if it's time to sync hourly data
+        """Check whether the hourly sync window is currently open.
+
+        === WHAT THIS DOES ===
+        This method decides whether hourly usage should be refreshed right now. It
+        avoids back-to-back syncs and spreads contracts across slightly different
+        minutes within the hour.
+
+        === FOR NON-CODERS ===
+        Instead of every account asking the API at the exact same minute, this
+        method staggers requests a little so the system behaves more politely.
         """
+        # Capture the current UTC time once so all checks use one reference.
         now = datetime.now(timezone.utc)
         
-        # Get last sync time from cache metadata
+        # Read the last successful hourly-sync timestamp from cache metadata.
         if not hasattr(self.cache, 'data') or not self.cache.data:
             # Cache not loaded or empty, sync now
             return True
@@ -1004,31 +1105,44 @@ class UsageCoordinator:
         if (now - last_sync).total_seconds() < 50 * 60:
             return False
             
-        # Check if we're in the target window (8-42 minutes past the hour)
-        # Generate deterministic random offset based on contract ID and current hour
-        # This ensures the same offset is used for the entire hour
+        # Build a deterministic per-hour offset so not every contract hits
+        # the upstream API at the same minute. The offset stays stable for the
+        # whole hour because it is derived from the contract ID and current hour.
         import hashlib
+
+        # seed_str is the unique hourly fingerprint for this contract.
         seed_str = f"{self.contract_id}_{now.year}_{now.month}_{now.day}_{now.hour}"
+
+        # Convert the fingerprint into a repeatable integer we can map to minutes.
         hash_val = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
-        random_offset = (hash_val % 35) - 17  # Range: -17 to +17
-        target_min = 25 + random_offset  # Range: 8 to 42 minutes past the hour
-        
+
+        # random_offset spreads contracts from 17 minutes early to 17 minutes late.
+        random_offset = (hash_val % 35) - 17
+
+        # target_min is the minute within the hour when this contract should sync.
+        target_min = 25 + random_offset
+
+        # current_min is the actual current minute that we compare against target_min.
         current_min = now.minute
         
         # If we're at or past the target time this hour
         return current_min >= target_min
 
     def should_sync_daily_monthly_now(self) -> bool:
-        """Check if it's time to sync daily and monthly usage data.
-        
-        Daily/monthly data syncs once daily at 03:00 UTC.
-        
-        Returns:
-            bool: True if it's time to sync daily/monthly data  
+        """Check whether the shared daily/monthly sync window is open.
+
+        === WHAT THIS DOES ===
+        This method decides whether daily and monthly syncing should happen now by
+        checking the last successful sync times and the 03:00 UTC target window.
+
+        === FOR NON-CODERS ===
+        Daily and monthly summary books are only meant to refresh once per day.
+        This method checks whether today's scheduled summary update is due yet.
         """
+        # Capture the current UTC time once for consistent comparisons.
         now = datetime.now(timezone.utc)
         
-        # Get last sync times from cache metadata
+        # Read the most recent daily and monthly sync timestamps from the cache.
         if not hasattr(self.cache, 'data') or not self.cache.data:
             # Cache not loaded or empty, sync now
             return True
@@ -1054,22 +1168,28 @@ class UsageCoordinator:
         return False
 
     def _sanitize_statistic_id(self, value: str) -> str:
-        """Sanitize a value for use in Home Assistant statistic_id.
-        
-        Statistic IDs must contain only lowercase letters, numbers, and underscores.
-        This converts the ICP or contract_id to a valid format.
-        
-        Args:
-            value: The ICP or contract_id to sanitize
-            
-        Returns:
-            Sanitized string suitable for statistic_id
+        """Convert an identifier into a Home Assistant-safe statistics ID fragment.
+
+        === WHAT THIS DOES ===
+        This helper rewrites an ICP or contract ID so it contains only lowercase
+        letters, numbers, and underscores, which matches Home Assistant's rules
+        for statistic identifiers.
+
+        === FOR NON-CODERS ===
+        Some IDs contain spaces or special characters. This method tidies them up
+        into a safe label format that Home Assistant accepts.
         """
+        # Import regular-expression support locally because it is only needed here.
         import re
-        # Convert to lowercase and replace any non-alphanumeric characters with underscores
+
+        # First make the text lowercase, then replace unsupported characters with _.
         sanitized = re.sub(r'[^a-z0-9_]', '_', value.lower())
-        # Remove duplicate underscores
+
+        # Collapse repeated underscores so the result stays neat and readable.
         sanitized = re.sub(r'_+', '_', sanitized)
-        # Remove leading/trailing underscores
+
+        # Remove underscores from the beginning or end of the final string.
         sanitized = sanitized.strip('_')
+
+        # Return the cleaned identifier fragment to the caller.
         return sanitized
