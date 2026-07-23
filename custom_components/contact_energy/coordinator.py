@@ -59,6 +59,9 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         # When True, skip spawning the background usage sync on the next refresh
         self._skip_next_usage_sync = False
         self._has_loaded_account_snapshot = False
+        # Track if this is the first refresh after setup (v2.0.1)
+        # This ensures immediate data loading when adding a new account
+        self._is_first_refresh = True
         
         # Initialize usage coordinator (Phase 1 / v1.4.0)
         # This handles background syncing of hourly/daily/monthly usage data
@@ -142,16 +145,17 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 cache_available = False
         
         # Determine if we need to trigger usage sync.
-        # Force sync if: first run + no cache.
+        # Force sync if: first run + no cache, OR first refresh after setup (v2.0.1)
         # Normal sync otherwise (hourly coordinator tick), letting UsageCoordinator
         # decide which intervals should run.
-        force_usage_sync = (is_first_run and not cache_available) 
+        force_usage_sync = (is_first_run and not cache_available) or self._is_first_refresh
         normal_usage_sync = not force_usage_sync and not self._skip_next_usage_sync
         
         if force_usage_sync:
+            reason = "first refresh after setup" if self._is_first_refresh else "first run, no cache"
             _LOGGER.info(
-                "Forcing initial usage sync for contract %s (first run, cache=%s)", 
-                self.contract_id, "available" if cache_available else "missing/corrupted"
+                "Forcing initial usage sync for contract %s (%s)", 
+                self.contract_id, reason
             )
             self.hass.async_create_task(
                 self._async_sync_usage(),
@@ -168,9 +172,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         else:
             _LOGGER.debug("Usage sync not scheduled for contract %s", self.contract_id)
         
-        # Always perform one live account fetch when no account payload is loaded yet.
-        if self.data is None:
+        # Always perform one live account fetch when no account payload is loaded yet,
+        # OR when this is the first refresh after setup (v2.0.1 - immediate data loading)
+        if self.data is None or self._is_first_refresh:
             should_fetch_accounts = True
+            if self._is_first_refresh:
+                _LOGGER.info(
+                    "First refresh after setup for contract %s - forcing immediate data fetch",
+                    self.contract_id
+                )
+                self._is_first_refresh = False
 
         # Only fetch account data if it's scheduled time or we have no loaded data.
         if not should_fetch_accounts:
