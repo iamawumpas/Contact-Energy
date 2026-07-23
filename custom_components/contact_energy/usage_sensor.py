@@ -30,6 +30,9 @@ License: MIT
 # IMPORTS - Every dependency is annotated for teaching purposes
 # ============================================================================
 
+# asyncio lets this module schedule background reload tasks without blocking Home Assistant.
+import asyncio
+
 # logging records debug and error messages so maintainers can see what happened.
 import logging
 
@@ -516,8 +519,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
 
         # Schedule an async reload instead of blocking this quick callback.
         try:
-            import asyncio
-
             loop = asyncio.get_event_loop()
             loop.create_task(self._async_reload_cache_and_update())
         except Exception as e:
@@ -644,8 +645,6 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
         3. Schedule a Home Assistant state write after reload finishes.
         """
         try:
-            import asyncio
-
             # Use the running event loop to schedule asynchronous follow-up work.
             loop = asyncio.get_event_loop()
 
