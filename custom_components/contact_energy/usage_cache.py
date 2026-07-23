@@ -1,3 +1,6 @@
+# DEPRECATED: This file is part of the legacy v1.x architecture.
+# Replaced by v2.0.0 modular architecture. See DEPRECATED.md for details.
+
 """Usage data cache management for Contact Energy integration.
 
 This module provides the UsageCache class which handles persistent storage

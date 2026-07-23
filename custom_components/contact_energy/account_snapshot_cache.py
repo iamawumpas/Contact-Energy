@@ -1,3 +1,6 @@
+# DEPRECATED: This file is part of the legacy v1.x architecture.
+# Replaced by v2.0.0 modular architecture. See DEPRECATED.md for details.
+
 """Persistent account snapshot cache for Contact Energy integration.
 
 Stores the last successful account payload on disk so account and billing

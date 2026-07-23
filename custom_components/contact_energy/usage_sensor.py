@@ -1,3 +1,6 @@
+# DEPRECATED: This file is part of the legacy v1.x architecture.
+# Replaced by v2.0.0 modular architecture. See DEPRECATED.md for details.
+
 """Usage data sensor platform for Contact Energy integration.
 
 This module creates sensor entities that expose cached usage data (hourly, daily, monthly)
