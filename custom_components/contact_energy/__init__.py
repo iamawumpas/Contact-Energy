@@ -2,10 +2,13 @@
 
 This integration enables communication with the Contact Energy API to retrieve
 energy consumption data and account information.
+
+Version: 2.0.0 - Refactored modular architecture
 """
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,14 +19,34 @@ import voluptuous as vol
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
-from .contact_api import ContactEnergyApi
-from .coordinator import ContactEnergyCoordinator
+from .api import ContactEnergyApiClient, ContactEnergyAccountApi, ContactEnergyUsageApi
+from .coordinators import AccountCoordinator, UsageCoordinatorV2
 
 _LOGGER = logging.getLogger(__name__)
 
 # List of platforms (sensors, binary_sensors, etc.) that this integration supports.
 # Add sensor platform for account information sensors
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+
+def _sanitize_address(address: str) -> str:
+    """Sanitize address for use in cache file names.
+    
+    Removes special characters and spaces, keeping only alphanumeric characters,
+    hyphens, and underscores. Used for cache file naming.
+    
+    Args:
+        address: Raw address string from user
+        
+    Returns:
+        Sanitized address string safe for file names
+    """
+    # Remove special characters, keep alphanumeric, hyphens, underscores
+    sanitized = re.sub(r'[^\w\-]', '_', address)
+    # Remove consecutive underscores
+    sanitized = re.sub(r'_+', '_', sanitized)
+    # Remove leading/trailing underscores
+    return sanitized.strip('_').lower()
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -35,21 +58,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         # Refresh all configured entries
         for entry_id, entry_data in hass.data[DOMAIN].items():
-            coordinator = entry_data.get("coordinator")
+            account_coordinator = entry_data.get("account_coordinator")
+            usage_coordinator = entry_data.get("usage_coordinator")
             api_client = entry_data.get("api_client")
-            if coordinator:
+            
+            if account_coordinator:
                 now = datetime.now(timezone.utc)
                 lock_until = entry_data.get("sync_lock_until")
                 sync_in_progress = entry_data.get("sync_in_progress", False)
 
                 # Block manual refresh if a sync is active or within cool-down
                 if (lock_until and now < lock_until) or sync_in_progress:
-                    wait_seconds = 60
                     message = (
                         "Manual refresh cannot run right now because a sync is active "
                         "or just finished. Please try again in 60s."
                     )
-                    # Surface a gentle notice without raising to avoid UI errors
                     _LOGGER.info("%s (entry=%s)", message, entry_id)
                     return
 
@@ -59,12 +82,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 
                 _LOGGER.info(f"Forcing data refresh for entry {entry_id}")
 
-                # Ensure the coordinator does not start a background usage sync; we'll run one explicitly
-                coordinator._skip_next_usage_sync = True
-
                 try:
                     # Always re-authenticate with username/password before a manual refresh
-                    # to avoid relying on short-lived/expired tokens.
                     if api_client:
                         try:
                             _LOGGER.debug(
@@ -79,17 +98,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                                 entry_id,
                                 err,
                             )
-                            # Skip the refresh for this entry if we cannot log in
                             continue
 
                     # Force account data refresh
-                    await coordinator.async_request_refresh()
-                    # Force usage sync (bypass time thresholds) - single run
-                    if hasattr(coordinator, 'usage_coordinator'):
-                        await coordinator.usage_coordinator.force_sync()
+                    await account_coordinator.async_request_refresh()
+                    
+                    # Force usage data refresh
+                    if usage_coordinator:
+                        await usage_coordinator.force_sync()
                 finally:
-                    coordinator._skip_next_usage_sync = False
-                    # Release the in-progress flag but keep the cool-down until expiry
                     entry_data["sync_in_progress"] = False
     
     # Register the service only once
@@ -107,11 +124,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Contact Energy from a config entry.
 
     This function is called when a user adds a Contact Energy integration through
-    the Home Assistant UI. It initializes the integration, creates the API client,
-    sets up the data coordinator, and loads all required platforms.
-
-    The coordinator fetches account information once per day at approximately 01:00 AM
-    to minimize API requests while keeping data reasonably current.
+    the Home Assistant UI. It initializes the integration, creates the API clients,
+    sets up the data coordinators, and loads all required platforms.
+    
+    Version: 2.0.0 - Uses modular architecture with separate API, data managers,
+    and coordinators.
 
     Args:
         hass: The Home Assistant instance.
@@ -124,58 +141,95 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     
     # Check if password is present (needed for token refresh)
-    # Configs from v1.0.0 and earlier may not have password stored
     if "password" not in entry.data:
         _LOGGER.warning(
             f"Contact Energy config entry {entry.entry_id} is missing password. "
             "This is required for token refresh. Please reconfigure the integration."
         )
-        # Show a repair notification for the user
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "import", "title_placeholders": {"name": entry.title}},
-                data=entry.data,
-            )
-        )
         return False
     
-    # Create API client with stored credentials
-    # Home Assistant automatically encrypts sensitive data in config entries
-    api_client = ContactEnergyApi(
-        email=entry.data.get("email"),
-        password=entry.data.get("password"),
-    )
-    # Keep the account_id on the client so ba queries use the correct value (not BP)
-    api_client.account_id = entry.data.get("account_id")
-
-    # Always authenticate on startup to avoid reusing expired tokens from config entry
+    # Get configuration data
+    email = entry.data.get("email")
+    password = entry.data.get("password")
+    account_id = entry.data.get("account_id")
+    contract_id = entry.data.get("contract_id")
+    icp = entry.data.get("icp", "unknown")
+    account_nickname = entry.data.get("account_nickname", "Unknown")
+    
+    # Sanitize address for cache file naming
+    address = _sanitize_address(account_nickname)
+    
+    # Create base API client
+    api_client = ContactEnergyApiClient(email, password)
+    api_client.account_id = account_id
+    
+    # Always authenticate on startup to avoid reusing expired tokens
     try:
         await api_client.authenticate()
-    except Exception as err:  # pragma: no cover - defensive guard
+        _LOGGER.info("Successfully authenticated for %s", account_nickname)
+    except Exception as err:
         _LOGGER.error("Authentication failed during setup for %s: %s", entry.title, err)
         return False
 
-    # Get contract_id for usage data sync (Phase 1 / v1.4.0)
-    contract_id = entry.data.get("contract_id")
-    if not contract_id:
+    # Create specialized API clients
+    account_api = ContactEnergyAccountApi(email, password)
+    account_api.account_id = account_id
+    account_api.token = api_client.token
+    account_api.segment = api_client.segment
+    account_api.bp = api_client.bp
+    
+    usage_api = ContactEnergyUsageApi(email, password)
+    usage_api.account_id = account_id
+    usage_api.token = api_client.token
+    usage_api.segment = api_client.segment
+    usage_api.bp = api_client.bp
+    
+    # Create account coordinator
+    account_coordinator = AccountCoordinator(
+        hass,
+        account_api,
+        address,
+        icp,
+        account_id,
+    )
+    
+    # Perform initial account data fetch
+    await account_coordinator.async_config_entry_first_refresh()
+    _LOGGER.info("Account coordinator initialized for %s", account_nickname)
+    
+    # Create usage coordinator if contract_id is available
+    usage_coordinator = None
+    if contract_id and contract_id != "unknown":
+        usage_coordinator = UsageCoordinatorV2(
+            hass,
+            usage_api,
+            contract_id,
+            address,
+            icp,
+        )
+        
+        # Set up usage coordinator and load caches
+        await usage_coordinator.async_setup()
+        
+        # Perform initial usage data sync
+        await usage_coordinator.force_sync()
+        _LOGGER.info("Usage coordinator initialized for contract %s", contract_id)
+    else:
         _LOGGER.warning(
-            "No contract_id found in config entry for %s. Usage sync will be disabled.",
+            "No contract_id found in config entry for %s. Usage data will be unavailable.",
             entry.title
         )
-        contract_id = "unknown"  # Fallback to prevent crashes
 
-    # Create data coordinator for fetching account information
-    # Updates once per day - Home Assistant schedules at the closest possible time to 01:00
-    coordinator = ContactEnergyCoordinator(hass, api_client, contract_id, entry)
-    
-    # Perform initial data fetch
-    await coordinator.async_config_entry_first_refresh()
-
-    # Store coordinator and API client in the domain data
+    # Store coordinators and API clients in the domain data
     hass.data[DOMAIN][entry.entry_id] = {
-        "coordinator": coordinator,
+        "account_coordinator": account_coordinator,
+        "usage_coordinator": usage_coordinator,
         "api_client": api_client,
+        "account_api": account_api,
+        "usage_api": usage_api,
+        "address": address,
+        "icp": icp,
+        "contract_id": contract_id,
     }
 
     # Load all platforms defined in PLATFORMS for this config entry
@@ -184,6 +238,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services
     await async_setup_services(hass)
     
+    _LOGGER.info("Contact Energy integration v2.0.0 setup complete for %s", entry.title)
     return True
 
 
