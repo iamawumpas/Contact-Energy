@@ -1,6 +1,3 @@
-# DEPRECATED: This file is part of the legacy v1.x architecture.
-# Replaced by v2.0.0 modular architecture. See DEPRECATED.md for details.
-
 """Contact Energy API client for authentication and data retrieval.
 
 This module handles all communication with the Contact Energy API, including
