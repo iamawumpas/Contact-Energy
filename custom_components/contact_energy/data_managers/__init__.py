@@ -7,14 +7,14 @@ Version: 2.0.0
 """
 from .base_cache import BaseCache
 from .account_data import AccountDataManager
-from .usage_hourly import HourlyUsageManager
-from .usage_daily import DailyUsageManager
-from .usage_monthly import MonthlyUsageManager
+from .usage_hourly import UsageHourlyDataManager
+from .usage_daily import UsageDailyDataManager
+from .usage_monthly import UsageMonthlyDataManager
 
 __all__ = [
     "BaseCache",
     "AccountDataManager",
-    "HourlyUsageManager",
-    "DailyUsageManager",
-    "MonthlyUsageManager",
+    "UsageHourlyDataManager",
+    "UsageDailyDataManager",
+    "UsageMonthlyDataManager",
 ]
