@@ -4,7 +4,7 @@
 
   ![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
   [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-  ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2023.1+-blue.svg)
+  ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1+-blue.svg)
 </div>
 
 ---
@@ -29,12 +29,6 @@ Version 2.0.0 represents a complete rewrite with a modern, modular architecture:
 - **27 Sensors** - Comprehensive monitoring of account, billing, and usage data
 
 For full details, see the [v2.0.0 Changelog](Changelog.md) and [Architecture Documentation](V2_REFACTORING_COMPLETE.md).
-
-## Release Notes Policy
-
-Before the final release commit, delete any temporary files named in the pattern `release_notes_x.y.z.md`.
-
-Release notes must be maintained in `Changelog.md` only, and the changelog entry is the single source of truth for the GitHub release notes.
 
 ## About This Integration
 
@@ -81,7 +75,7 @@ contact_energy/
 - **Easy Maintenance** - Localized changes don't affect other components
 
 ## Why did I create this version?
-I have used [codyc1515's](https://github.com/codyc1515) original Home Assistant Contact Energy integration and [notf0und's](https://github.com/notf0und) recent fork for a couple of years, when suddenly I started having issues downloading my usage statistics. Wondering if the API had changed I thought I would "experiment" to see if I could get it to work again. I'm not much of a coder but I am a problem solver, so I took advantage of the AI revolution at the moment and explored what can be done with various AI Agent - I make no apologies for using AI as a tool to, and it has been an interesting journey, if frustrating time banging my head against AI "stupidity". Long-story-short: this is what has come about. 
+I have used [codyc1515's](https://github.com/codyc1515) original Home Assistant Contact Energy integration and [notf0und's](https://github.com/notf0und) recent fork for a couple of years, when suddenly I started having issues downloading my usage statistics. Wondering if the API had changed I thought I would "experiment" to see if I could get it to work again. I'm not much of a coder but I am a problem solver, so I took advantage of the AI revolution at the moment and explored what can be done with various AI Agents (I make no apologies for using AI as a tool to do the hard part of actually writing code) and it has been an interesting journey, if frustrating time banging my head against AI "stupidity". Long-story-short: this is what has come about. 
 
 ## What Does It Do?
 
