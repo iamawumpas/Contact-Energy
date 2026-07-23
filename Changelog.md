@@ -5,6 +5,101 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.0 ] - 2026-07-23
+
+### 🎉 Major Refactoring - Complete Architectural Overhaul
+
+Version 2.0.0 represents a complete rewrite of the Contact Energy integration with a modern, modular architecture. All code has been refactored into logical layers with clear separation of concerns.
+
+### Architecture Changes
+
+#### Phase 1: API Layer (`api/`)
+- **Added** `client.py` - Base API client with authentication, token management, and rate limiting
+- **Added** `account.py` - Account data endpoints
+- **Added** `usage.py` - Usage data endpoints (hourly, daily, monthly)
+- Centralized authentication and token management
+- Built-in rate limiting (0.5s minimum interval between requests)
+- Configurable timeouts per endpoint
+- Proper error handling and credential redaction in logs
+
+#### Phase 2: Data Managers (`data_managers/`)
+- **Added** `base_cache.py` - Base caching with JSON persistence
+- **Added** `account_data.py` - Account data caching with >6h staleness threshold
+- **Added** `usage_hourly.py` - Hourly usage caching with 1-6h staleness
+- **Added** `usage_daily.py` - Daily usage caching with 1-6h staleness
+- **Added** `usage_monthly.py` - Monthly usage caching with 1-6h staleness
+- Independent caching per data type
+- Automatic cache validation and staleness detection
+- Cache file naming: `{address}_{icp}.json`
+
+#### Phase 3: Coordinators (`coordinators/`)
+- **Added** `account_coordinator.py` - Account data coordination (updates every 6h)
+- **Added** `usage_coordinator_v2.py` - Usage data coordination with separate schedules:
+  - Hourly usage: Updates every 1h
+  - Daily usage: Updates every 6h
+  - Monthly usage: Updates every 24h
+- Home Assistant DataUpdateCoordinator integration
+- Automatic background updates with configurable intervals
+- Force refresh capability for manual updates
+
+#### Phase 4: Sensors (`sensors/`)
+- **Added** `account_sensors.py` - 17 account sensors across 4 sensor classes:
+  - AccountBalanceSensor (4 sensors)
+  - InvoiceSensor (5 sensors)
+  - NextBillSensor (2 sensors)
+  - AccountDetailSensor (6 sensors)
+- **Added** `usage_sensors.py` - 4 usage sensor classes:
+  - UsageDataSensor (main sensor with all attributes)
+  - HourlyUsageSensor (hourly data only)
+  - DailyUsageSensor (daily data only)
+  - MonthlyUsageSensor (monthly data only)
+- **Added** `energy_sensors.py` - 6 Energy Dashboard sensors across 3 classes:
+  - EnergySensor (cumulative paid & free)
+  - DailyEnergySensor (daily paid & free)
+  - MonthlyEnergySensor (monthly paid & free)
+- CoordinatorEntity integration for automatic updates
+- Proper device classes and state classes
+- Energy Dashboard compatibility
+- Attribute size budgeting (max 15KB per sensor)
+
+#### Phase 5: Integration Updates
+- **Changed** `__init__.py` - Refactored to use v2.0.0 architecture
+  - Creates v2.0.0 API clients
+  - Initializes v2.0.0 coordinators
+  - Sanitizes addresses for cache naming
+  - Updated service handlers
+- **Changed** `sensor.py` - Rewritten to use v2.0.0 sensor classes
+  - Imports from `sensors/` package
+  - Creates 27 total sensors (17 account + 10 usage/energy)
+  - Simplified setup logic
+
+### Deprecated
+- **Deprecated** `contact_api.py` → replaced by `api/` package
+- **Deprecated** `coordinator.py` → replaced by `coordinators/account_coordinator.py`
+- **Deprecated** `usage_coordinator.py` → replaced by `coordinators/usage_coordinator_v2.py`
+- **Deprecated** `usage_sensor.py` → replaced by `sensors/usage_sensors.py`
+- **Deprecated** `usage_cache.py` → replaced by `data_managers/`
+- **Deprecated** `account_snapshot_cache.py` → replaced by `data_managers/account_data.py`
+- Legacy files remain in place with deprecation headers for reference but are no longer used
+
+### Benefits
+- **Modular Design** - Clear separation of concerns (API, data, coordination, entities)
+- **Independent Caching** - Each data type has its own cache with appropriate staleness rules
+- **Testability** - Each component can be tested independently with clear boundaries
+- **Maintainability** - Easy to update individual components with localized changes
+- **Performance** - Optimized update schedules per data type with efficient caching
+- **Scalability** - Easy to add new data types, endpoints, or sensor types
+
+### Migration Notes
+- **For Users**: No configuration changes required. Existing setups will continue to work seamlessly. Cache files will be automatically recreated with new naming convention.
+- **For Developers**: Use components from new packages (`api/`, `data_managers/`, `coordinators/`, `sensors/`). Do not modify legacy files marked as DEPRECATED.
+
+### Documentation
+- **Added** `V2_REFACTORING_COMPLETE.md` - Complete v2.0.0 architecture documentation
+- **Added** `DEPRECATED.md` - List of deprecated files and their replacements
+
+---
+
 ## [ 1.18.14 ]
 
 ### Fixed
