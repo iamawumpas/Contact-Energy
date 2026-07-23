@@ -118,7 +118,7 @@ The address and ICP ensure sensors are unique for each property.
 In **Settings → Devices & Services → Contact Energy**, you'll see:
 - One integration per email address
 - One device per property/account
-- 24 entities per device
+- 27 entities per device
 
 ## Dashboard Tips
 
@@ -253,7 +253,13 @@ When adding the integration with the same email:
 
 ### Update Timing
 
-All accounts update at the same time (01:00 AM), regardless of how many you have configured.
+All accounts use optimized polling schedules based on data type (v2.0.0):
+- Account data: Updates every 6 hours
+- Hourly usage: Updates every hour
+- Daily usage: Updates every 6 hours
+- Monthly usage: Updates every 24 hours
+
+These schedules apply regardless of how many accounts you have configured.
 
 ## Troubleshooting
 
@@ -303,7 +309,7 @@ All accounts update at the same time (01:00 AM), regardless of how many you have
 - All properties under one Contact Energy account (one email)
 - Add integration once
 - Select all 3 properties during setup
-- Result: 72 sensors total (24 per property)
+- Result: 81 sensors total (27 per property)
 
 **Dashboard:**
 - Create 3 tabs, one per property
@@ -315,7 +321,7 @@ All accounts update at the same time (01:00 AM), regardless of how many you have
 - Personal property: personal@email.com
 - Rental property: rental@email.com
 - Add integration twice with different emails
-- Result: 2 integration instances, 48 sensors total
+- Result: 2 integration instances, 54 sensors total (27 per property)
 
 **Dashboard:**
 - Tab 1: Personal property
