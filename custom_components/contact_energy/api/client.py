@@ -571,82 +571,234 @@ class ContactEnergyApiClient:
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any] | list[Any]:
         """Make an authenticated API request.
-
-        This method handles rate limiting, authentication headers, and error handling
-        for all API requests.
+        
+        === WHAT THIS DOES ===
+        This is a general-purpose method for making any kind of authenticated
+        request to the Contact Energy API. It's used by other methods that need
+        to fetch specific data (like account info or usage data).
+        
+        === FOR NON-CODERS ===
+        Think of this as a universal mail service:
+        - You tell it what type of letter to send (method: GET, POST, etc.)
+        - Where to send it (endpoint: the specific API address)
+        - What to write in the letter (json: the data to send)
+        - The mail service adds your authentication token (proving it's from you)
+        - It handles any problems that occur during delivery
+        
+        This method centralizes all the common logic:
+        - Rate limiting (not sending too fast)
+        - Adding authentication headers
+        - Handling errors consistently
+        - Logging what happened
 
         Args:
-            method: HTTP method (GET, POST, etc.)
+            method: HTTP method - the type of request
+                   - "GET" = retrieve data (like asking for information)
+                   - "POST" = send data (like submitting a form)
+                   - "PUT" = update data (like editing something)
+                   - "DELETE" = remove data (like deleting something)
             endpoint: API endpoint path (e.g., "/accounts/v2")
-            timeout: Request timeout in seconds
-            params: Query parameters
-            json: JSON body for POST requests
+                     This is the specific "address" on the server
+            timeout: How long to wait before giving up (in seconds)
+                    Default is 10 seconds
+            params: Query parameters (added to the URL)
+                   Example: {"month": "2024-01"} becomes "?month=2024-01"
+            json: JSON body for requests that send data (like POST)
+                 The actual data payload being sent
 
         Returns:
-            JSON response from API
+            JSON response from API - either a dictionary {} or list []
+            The data requested from Contact Energy
 
         Raises:
             ContactEnergyAuthError: If authentication token is missing or invalid
-            ContactEnergyConnectionError: If request fails
+            ContactEnergyConnectionError: If request fails (network issue)
         """
+        # ====================================================================
+        # CHECK: Do we have an authentication token?
+        # ====================================================================
+        # We can't make authenticated requests without a token
+        # If token is missing, tell the caller they need to authenticate first
         if not self.token:
             raise ContactEnergyAuthError("Not authenticated - call authenticate() first")
 
+        # ====================================================================
+        # STEP 1: Apply rate limiting
+        # ====================================================================
+        # Wait if we're making requests too quickly
         await self._throttle()
 
+        # ====================================================================
+        # STEP 2: Build the full URL and headers
+        # ====================================================================
+        
+        # Combine base URL with the endpoint
+        # Example: "https://api.contact-digital-prod.net" + "/accounts/v2"
+        #       = "https://api.contact-digital-prod.net/accounts/v2"
         url = f"{BASE_URL}{endpoint}"
+        
+        # Prepare headers (metadata about the request)
         headers = {
+            # API key identifies our application
             "x-api-key": API_KEY,
+            
+            # Authentication token proves we're logged in
+            # Contact Energy accepts it in two headers (for compatibility)
             "session": self.token,
             "authorization": self.token,
+            
+            # We're sending/expecting JSON data
             "Content-Type": "application/json",
         }
 
+        # ====================================================================
+        # STEP 3: Log what we're about to do
+        # ====================================================================
+        # Record the request for debugging purposes
+        # %s placeholders get replaced by the values after the string
         _LOGGER.debug("Making %s request to %s", method, endpoint)
 
+        # ====================================================================
+        # STEP 4: Make the HTTP request with error handling
+        # ====================================================================
         try:
+            # ------------------------------------------------------------
+            # Create timeout configuration
+            # ------------------------------------------------------------
+            # Wrap the timeout value in a ClientTimeout object
             timeout_obj = aiohttp.ClientTimeout(total=timeout)
+            
+            # ------------------------------------------------------------
+            # Create HTTP session
+            # ------------------------------------------------------------
+            # "async with" automatically cleans up the session when done
             async with aiohttp.ClientSession(timeout=timeout_obj) as session:
+                # --------------------------------------------------------
+                # Make the actual HTTP request
+                # --------------------------------------------------------
+                # session.request is a flexible method that can do GET, POST, etc.
+                # The specific method is determined by the 'method' parameter
                 async with session.request(
-                    method, url, headers=headers, params=params, json=json
+                    method,        # Type of request (GET, POST, etc.)
+                    url,          # Full URL to call
+                    headers=headers,  # Authentication and metadata
+                    params=params,    # URL query parameters (optional)
+                    json=json         # JSON body data (optional)
                 ) as response:
+                    # ====================================================
+                    # CHECK 1: Is our token invalid or expired?
+                    # ====================================================
+                    # HTTP 401 = Unauthorized (token invalid)
+                    # HTTP 403 = Forbidden (token expired or no access)
                     if response.status == 401 or response.status == 403:
                         _LOGGER.warning(
                             "Authentication token expired or invalid (status %d)",
                             response.status
                         )
+                        # Raise an error so the caller knows to re-authenticate
                         raise ContactEnergyAuthError("Token expired or invalid")
 
+                    # ====================================================
+                    # CHECK 2: Did we get any other error?
+                    # ====================================================
+                    # HTTP 200 = OK (success)
+                    # Anything else is an error
                     if response.status != 200:
+                        # Get the error details from the response
                         error_text = await response.text()
+                        
+                        # Log the error with details
                         _LOGGER.error(
                             "API request failed with status %d: %s",
                             response.status,
                             error_text
                         )
+                        
+                        # Raise a generic API error
                         raise ContactEnergyApiError(
                             f"API request failed with status {response.status}"
                         )
 
+                    # ====================================================
+                    # SUCCESS: Return the response data
+                    # ====================================================
+                    # Parse the JSON response and return it
+                    # await means "wait for the JSON parsing to complete"
                     return await response.json()
 
+        # ====================================================================
+        # ERROR HANDLING: Catch and re-raise with better error messages
+        # ====================================================================
+        
+        # Catch network/connection errors
         except aiohttp.ClientError as err:
+            # Log the error for debugging
             _LOGGER.error("Connection error during API request: %s", err)
+            
+            # Re-raise as our custom exception with context
             raise ContactEnergyConnectionError(
                 f"Failed to connect to Contact Energy API: {err}"
             ) from err
+            
+        # Catch timeout errors (request took too long)
         except asyncio.TimeoutError as err:
+            # Log which endpoint timed out
             _LOGGER.error("Timeout during API request to %s", endpoint)
+            
+            # Re-raise as our custom exception with context
             raise ContactEnergyConnectionError(
                 f"Timeout during API request to {endpoint}"
             ) from err
 
     def is_token_expired(self) -> bool:
         """Check if the authentication token is expired or about to expire.
+        
+        === WHAT THIS DOES ===
+        This method checks whether our authentication token is still valid or
+        if we need to re-authenticate. It checks not only if the token has
+        already expired, but also if it's about to expire soon (within 5 minutes).
+        
+        === FOR NON-CODERS ===
+        Think of this like checking if your parking meter has expired:
+        - If you don't know when it expires → consider it expired
+        - If it expires in less than 5 minutes → treat it as expired (better safe than sorry)
+        - If it still has more than 5 minutes → it's still good
+        
+        The 5-minute buffer prevents us from starting a long operation with a
+        token that expires midway through.
 
         Returns:
             True if token is expired or will expire in next 5 minutes
+            False if token is still valid for more than 5 minutes
         """
+        # ====================================================================
+        # CHECK 1: Do we even have an expiry time?
+        # ====================================================================
+        # If _token_expires_at is None, it means:
+        # - We haven't authenticated yet, OR
+        # - Something went wrong and we don't know when the token expires
+        # Either way, we should consider it expired (safest approach)
         if not self._token_expires_at:
-            return True
+            return True  # No expiry time = treat as expired
+        
+        # ====================================================================
+        # CHECK 2: Is the token expired or about to expire?
+        # ====================================================================
+        # Compare current time to expiry time (minus 5-minute buffer)
+        # 
+        # Example:
+        # - Token expires at: 14:00
+        # - Current time is: 13:50
+        # - Buffer time is: 14:00 - 5 minutes = 13:55
+        # - 13:50 < 13:55? No, so token is still good
+        # 
+        # Another example:
+        # - Token expires at: 14:00
+        # - Current time is: 13:57
+        # - Buffer time is: 14:00 - 5 minutes = 13:55
+        # - 13:57 >= 13:55? Yes, so token is considered expired
+        #
+        # The >= operator means "greater than or equal to"
+        # If current time >= (expiry - 5 min), token is expired/expiring
         return datetime.now() >= (self._token_expires_at - timedelta(minutes=5))
+
