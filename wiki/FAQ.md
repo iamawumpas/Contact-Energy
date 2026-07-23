@@ -124,11 +124,12 @@ Currently available (27 sensors in v2.0.0):
 - ✅ Payment plan indicators (included in account sensors)
 - ✅ Usage sensors with hourly/daily/monthly attributes (4 sensors)
 - ✅ Energy Dashboard sensors - Paid/Free cumulative energy (6 sensors: cumulative, daily, monthly)
+- ✅ Total cost per period (available in usage sensor attributes: `daily_cost_usage`, `monthly_cost_usage`)
 
 Not yet implemented:
-- ❌ Cost breakdown and tariff-based pricing
-- ❌ Rate information (peak/off-peak prices)
-- ❌ Real-time usage monitoring
+- ❌ Detailed tariff breakdown and rate information ($/kWh by rate type)
+- ❌ Peak/off-peak pricing structure details
+- ❌ Real-time usage monitoring (data has 24-72 hour delay from Contact Energy)
 
 ### Will usage sensors be added?
 
@@ -154,6 +155,14 @@ Yes. Free/off-peak energy is exposed in:
 - `sensor.{address}_{icp}_free_energy` (cumulative)
 - `sensor.{address}_{icp}_daily_free_energy` (daily total)
 - `sensor.{address}_{icp}_monthly_free_energy` (monthly total)
+
+### Can I see cost data?
+
+Yes, partially. Total cost per period is available in:
+- `daily_cost_usage` attribute - Total NZD cost per day
+- `monthly_cost_usage` attribute - Total NZD cost per month
+
+However, detailed tariff breakdowns (e.g., $/kWh by rate type, peak vs off-peak pricing) are not available through Contact Energy's API.
 
 ### Does it work with solar panels?
 
