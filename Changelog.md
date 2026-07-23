@@ -5,6 +5,25 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.1 ] - 2026-07-23
+
+### 🚀 Enhancements
+
+#### Immediate Data Loading on Setup
+- **Fixed** New account setup now fetches all data immediately instead of waiting for scheduled updates
+- When adding a new account, the integration now:
+  - Immediately fetches account data from Contact Energy API
+  - Immediately syncs hourly, daily, and monthly usage data
+  - Populates all sensors with fresh data within 2-3 seconds
+  - No longer requires waiting until the next 01:00 AM update window
+- Added `_is_first_refresh` flag to track initial setup in coordinator
+- Improves user experience by showing data immediately after configuration
+
+### Technical Details
+- Modified `coordinator.py` to force API fetch on first refresh regardless of cached data
+- Modified usage sync logic to trigger immediately on initial setup
+- Data fetch completes in ~2-3 seconds (4-5 API calls with 0.5s rate limiting)
+
 ## [ 2.0.0 ] - 2026-07-23
 
 ### 🎉 Major Refactoring - Complete Architectural Overhaul

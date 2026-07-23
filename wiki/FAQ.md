@@ -124,11 +124,12 @@ Currently available (27 sensors in v2.0.0):
 - ✅ Payment plan indicators (included in account sensors)
 - ✅ Usage sensors with hourly/daily/monthly attributes (4 sensors)
 - ✅ Energy Dashboard sensors - Paid/Free cumulative energy (6 sensors: cumulative, daily, monthly)
+- ✅ Total cost per period (available in usage sensor attributes: `daily_cost_usage`, `monthly_cost_usage`)
 
 Not yet implemented:
-- ❌ Cost breakdown and tariff-based pricing
-- ❌ Rate information (peak/off-peak prices)
-- ❌ Real-time usage monitoring
+- ❌ Detailed tariff breakdown and rate information ($/kWh by rate type)
+- ❌ Peak/off-peak pricing structure details
+- ❌ Real-time usage monitoring (data has 24-72 hour delay from Contact Energy)
 
 ### Will usage sensors be added?
 
@@ -155,6 +156,14 @@ Yes. Free/off-peak energy is exposed in:
 - `sensor.{address}_{icp}_daily_free_energy` (daily total)
 - `sensor.{address}_{icp}_monthly_free_energy` (monthly total)
 
+### Can I see cost data?
+
+Yes, partially. Total cost per period is available in:
+- `daily_cost_usage` attribute - Total NZD cost per day
+- `monthly_cost_usage` attribute - Total NZD cost per month
+
+However, detailed tariff breakdowns (e.g., $/kWh by rate type, peak vs off-peak pricing) are not available through Contact Energy's API.
+
 ### Does it work with solar panels?
 
 The integration retrieves account information regardless of whether you have solar panels. However:
@@ -179,7 +188,7 @@ All account management must be done through Contact Energy's website or app.
 
 **Common causes:**
 
-1. **Just installed** - Wait for first scheduled update (01:00 AM) or restart Home Assistant
+1. **Just installed** - Wait for first scheduled update (varies by data type: hourly for usage, 6h for account data) or restart Home Assistant
 2. **No data available** - Some sensors may not have data depending on your account type
 3. **API error** - Check Home Assistant logs: Settings → System → Logs
 4. **Authentication failed** - Token may have expired, try reloading the integration
@@ -299,9 +308,15 @@ It only retrieves information, similar to viewing your account on Contact Energy
 
 ### How many API requests does it make?
 
-Approximately **1 request per 24 hours** per configured account.
+With v2.0.0's optimized polling schedules:
+- **Account data**: ~4 requests per day (every 6 hours)
+- **Hourly usage**: ~24 requests per day (every hour)
+- **Daily usage**: ~4 requests per day (every 6 hours)
+- **Monthly usage**: ~1 request per day (every 24 hours)
 
-This is very light usage and should not impact Contact Energy's systems or your account in any way.
+**Total**: Approximately **33 API requests per day per configured account**.
+
+This is still very light usage and should not impact Contact Energy's systems or your account in any way. The integration uses intelligent caching to minimize redundant requests.
 
 ### Can Contact Energy detect this?
 

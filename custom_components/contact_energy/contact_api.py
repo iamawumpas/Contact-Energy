@@ -1,190 +1,403 @@
 """Contact Energy API client for authentication and data retrieval.
 
-This module handles all communication with the Contact Energy API, including
-authentication, account data retrieval, usage data downloads, and token management.
+=== WHAT THIS DOES ===
+This legacy module talks directly to Contact Energy's online API. It handles:
+1. Logging in with an email address and password.
+2. Remembering the temporary access token returned by Contact Energy.
+3. Fetching account information for the signed-in customer.
+4. Downloading usage data in hourly, daily, or monthly form.
+5. Converting raw API responses into a cleaner structure used elsewhere in the integration.
+
+=== FOR NON-CODERS ===
+Think of this file as an older office clerk who still knows how to call Contact
+Energy's systems and ask for information. Newer code in the integration is more
+modern and better organised, but this older clerk is still kept around because
+other parts of the project - or old installations - may still depend on it.
+
+A few terms explained simply:
+- API: A computer-friendly service that lets one system ask another for data.
+- Token: A temporary digital pass that proves the user has logged in.
+- JSON: A text format for structured data, similar to labelled boxes of information.
+- Interval: How detailed the data should be (hour-by-hour, day-by-day, or month-by-month).
+
+=== LEGACY / COMPATIBILITY NOTE ===
+This is a legacy/deprecated file. It is intentionally kept for backward
+compatibility and as a teaching resource so readers can understand how the older
+integration flow worked before the newer API package structure was introduced.
 
 Version: 1.4.0
 Changes: Added get_usage() method for hourly/daily/monthly usage data retrieval
 """
+
+# This import lets the file use newer style type hints safely across Python versions.
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS - Every outside tool this legacy module depends on
+# ============================================================================
+
+# aiohttp is the asynchronous web-request library used to call Contact Energy's API.
+# "Asynchronous" means the program can keep doing other work while it waits.
 import aiohttp
+
+# logging records a running commentary for debugging, troubleshooting, and support.
 import logging
+
+# time is used for measuring elapsed time and spacing out requests politely.
 import time
+
+# date and datetime help represent calendar dates and exact timestamps.
 from datetime import date, datetime
+
+# asyncio is Python's built-in library for asynchronous tasks and sleeping.
 import asyncio
+
+# Any tells readers that some values may contain many different data shapes.
 from typing import Any
+
+# urlencode turns a dictionary of query parameters into URL text like a=1&b=2.
 from urllib.parse import urlencode
 
+# ============================================================================
+# LOGGER SETUP
+# ============================================================================
+# A logger acts like an automatic diary for this module.
 _LOGGER = logging.getLogger(__name__)
 
-# Contact Energy API configuration
+# ============================================================================
+# CONTACT ENERGY API CONFIGURATION
+# ============================================================================
+
+# BASE_URL is the root internet address for Contact Energy's backend service.
 BASE_URL = "https://api.contact-digital-prod.net"
+
+# API_KEY identifies this integration to the backend service.
+# This is treated like an application identifier rather than a user password.
 API_KEY = "kbIthASA7e1M3NmpMdGrn2Yqe0yHcCjL4QNPSUij"
 
 
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
 def _redact_sensitive(value: str, prefix_length: int = 3) -> str:
-    """Redact sensitive data in logs while keeping prefix for debugging.
-    
-    Args:
-        value: The sensitive value to redact
-        prefix_length: How many characters to keep at the start
-        
-    Returns:
-        Redacted string like "abc***redacted***" for "abcdefgh"
+    """Redact sensitive data in logs while keeping a small visible prefix.
+
+    === WHAT THIS DOES ===
+    This helper hides most of a secret value before it is written to logs.
+
+    === WHY IT EXISTS ===
+    Legacy code often logs useful debugging information. This helper lets the
+    old code remain support-friendly without printing full emails, tokens, or
+    passwords into logs where they should not appear.
+
+    === STEP-BY-STEP ===
+    1. Check whether the input is empty or too short to safely show part of it.
+    2. If so, replace the whole value with a generic placeholder.
+    3. Otherwise, keep a tiny prefix and hide the rest.
     """
+    # If the value is missing or too short, we hide everything for safety.
     if not value or len(value) <= prefix_length:
         return "***redacted***"
+
+    # Keep only the first few characters so support logs remain useful.
     return value[:prefix_length] + "***redacted***"
 
 
+# ============================================================================
+# CUSTOM EXCEPTIONS - Named error types make failures easier to understand
+# ============================================================================
+
 class ContactEnergyApiError(Exception):
-    """Base exception for Contact Energy API errors."""
+    """Base exception for Contact Energy API problems.
+
+    === FOR NON-CODERS ===
+    An exception is Python's way of saying "something went wrong".
+    This parent exception groups all Contact Energy specific failures together.
+    """
 
     pass
 
 
 class ContactEnergyAuthError(ContactEnergyApiError):
-    """Raised when authentication fails."""
+    """Raised when authentication fails.
+
+    === FOR NON-CODERS ===
+    This means the login step failed, usually because credentials were rejected
+    or the session expired.
+    """
 
     pass
 
 
 class ContactEnergyConnectionError(ContactEnergyApiError):
-    """Raised when connection to API fails."""
+    """Raised when the integration cannot talk to the API service.
+
+    === FOR NON-CODERS ===
+    This points to network or server trouble rather than a bad password.
+    """
 
     pass
 
 
+# ============================================================================
+# MAIN LEGACY API CLIENT
+# ============================================================================
+
 class ContactEnergyApi:
     """Client for interacting with the Contact Energy API.
 
-    This class manages authentication with Contact Energy and provides methods
-    to retrieve account and usage data. It handles token refresh automatically.
+    === WHAT THIS DOES ===
+    This class stores login details, signs in, fetches account information, and
+    downloads usage data.
+
+    === WHY IT STILL EXISTS ===
+    This is legacy/deprecated code, but it remains in the repository because old
+    call paths may still import it. Keeping it documented helps maintainers learn
+    the historical design while preserving compatibility.
+
+    === FOR NON-CODERS ===
+    You can imagine this class as an older but reliable receptionist:
+    - It knows your login details.
+    - It signs in to Contact Energy.
+    - It asks for your account or power-usage information.
+    - It translates the replies into a simpler format for the rest of the app.
     """
 
     def __init__(self, email: str, password: str):
         """Initialize the API client with credentials.
 
-        Args:
-            email: Contact Energy account email address
-            password: Contact Energy account password
+        === WHAT THIS DOES ===
+        This constructor stores the user's login details and prepares blank fields
+        that will be filled after authentication succeeds.
+
+        === WHY IT EXISTS ===
+        Even deprecated code needs a predictable setup step so older callers can
+        build the client in the same way they always have.
+
+        === STEP-BY-STEP ===
+        1. Save the provided email and password.
+        2. Create empty placeholders for authentication and account details.
+        3. Configure simple request throttling.
+        4. Define timeouts for different API calls.
         """
+        # ====================================================================
+        # STORE THE USER'S LOGIN DETAILS
+        # ====================================================================
+        # These values are reused later when authenticate() performs the login.
         self.email = email
         self.password = password
+
+        # ====================================================================
+        # PREPARE EMPTY PLACEHOLDERS FOR DATA WE DO NOT HAVE YET
+        # ====================================================================
+        # token becomes the temporary access pass returned by Contact Energy.
         self.token: str | None = None
+
+        # segment stores customer segmentation data returned by the login API.
         self.segment: str | None = None
+
+        # bp is Contact Energy's business-partner identifier for the account.
         self.bp: str | None = None
-        # Human-friendly note: account_id is the BA value required by usage/accounts calls.
+
+        # account_id is the BA value needed for some account and usage endpoints.
         self.account_id: str | None = None
-        # Simple client-side rate limiting to avoid rapid consecutive requests
+
+        # ====================================================================
+        # SET UP LIGHT RATE LIMITING
+        # ====================================================================
+        # This minimum interval reduces the chance of sending bursts of requests.
         self._min_interval_seconds: float = 0.5
+
+        # This remembers when the previous request was sent.
         self._last_request_monotonic: float = 0.0
-        # Timeout configurations for different endpoints
-        self._auth_timeout: float = 10.0  # Quick timeout for auth (expected to be fast)
-        self._accounts_timeout: float = 10.0  # Quick timeout for accounts (expected to be fast)
-        self._usage_timeout: float = 30.0  # Longer timeout for usage (may download large date ranges)
+
+        # ====================================================================
+        # TIMEOUT SETTINGS
+        # ====================================================================
+        # Authentication and account endpoints are expected to be quick.
+        self._auth_timeout: float = 10.0
+        self._accounts_timeout: float = 10.0
+
+        # Usage calls can take longer because they may cover larger date ranges.
+        self._usage_timeout: float = 30.0
 
     async def _throttle(self) -> None:
-        """Enforce a minimal interval between outbound API calls.
+        """Pause briefly if requests are happening too close together.
 
-        Keeps traffic polite and reduces transient 4xx/5xx due to bursts
-        without altering integration behavior.
+        === WHAT THIS DOES ===
+        This helper enforces a tiny delay between outbound API calls.
+
+        === WHY IT EXISTS ===
+        Legacy direct-API integrations can accidentally make back-to-back calls.
+        This keeps behaviour polite and reduces transient failures.
+
+        === STEP-BY-STEP ===
+        1. Measure the current monotonic clock time.
+        2. Work out how long it has been since the last request.
+        3. Sleep only if the last request happened too recently.
+        4. Record the new send time.
         """
+        # Read the current monotonic clock. Monotonic clocks only move forward.
         now = time.monotonic()
+
+        # Calculate how long it has been since the previous request.
         elapsed = now - self._last_request_monotonic
+
+        # If the pause has been too short, wait for the remaining time.
         if elapsed < self._min_interval_seconds:
             await asyncio.sleep(self._min_interval_seconds - elapsed)
+
+        # Record the moment the request is now allowed to proceed.
         self._last_request_monotonic = time.monotonic()
 
     async def authenticate(self) -> dict[str, Any]:
-        """Authenticate with Contact Energy API.
+        """Authenticate with Contact Energy and capture login metadata.
 
-        Exchanges email and password for an authentication token.
+        === WHAT THIS DOES ===
+        This method sends the stored email and password to Contact Energy's login
+        endpoint and saves the returned token, segment, and business-partner ID.
 
-        Returns:
-            Dictionary containing token, segment, and bp (business partner ID).
+        === WHY IT EXISTS ===
+        All later account and usage calls rely on a valid session token. This is
+        the entry point that older code paths still use to obtain that token.
 
-        Raises:
-            ContactEnergyAuthError: If authentication fails (invalid credentials)
-            ContactEnergyConnectionError: If unable to connect to API
+        === STEP-BY-STEP ===
+        1. Build HTTP headers and the login payload.
+        2. Verify that email and password were provided.
+        3. Open an HTTP session and wait for throttle rules.
+        4. Send a POST request to the login endpoint.
+        5. Inspect the response status and raise clear errors when needed.
+        6. Parse the returned JSON and store the important fields.
+        7. Return a summary dictionary for the caller.
         """
-        # Set up headers with API key for authentication request
-        headers = {"x-api-key": API_KEY, "Content-Type": "application/json"}
+        # Build the request headers Contact Energy expects for login.
+        headers = {
+            "x-api-key": API_KEY,
+            "Content-Type": "application/json",
+        }
 
-        # Prepare authentication request payload
-        payload = {"username": self.email, "password": self.password}
+        # Build the body of the login request using the stored credentials.
+        payload = {
+            "username": self.email,
+            "password": self.password,
+        }
 
         try:
-            # Validate we have credentials before attempting authentication
+            # Refuse to proceed if credentials are missing.
             if not self.email or not self.password:
                 raise ContactEnergyAuthError("Email and password are required for authentication.")
-            
-            # Attempt to connect to the authentication endpoint
+
+            # Open a short-lived HTTP session for the login request.
             async with aiohttp.ClientSession() as session:
-                # Throttle slightly to avoid request bursts
+                # Respect the client-side throttle before sending anything.
                 await self._throttle()
+
+                # Send the login request to Contact Energy.
                 async with session.post(
-                    f"{BASE_URL}/login/v2", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=self._auth_timeout)
+                    f"{BASE_URL}/login/v2",
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=self._auth_timeout),
                 ) as resp:
-                    # Handle authentication response
+                    # 401 means the username/password combination was rejected.
                     if resp.status == 401:
-                        _LOGGER.warning(f"Authentication failed for {_redact_sensitive(self.email)}: Invalid credentials (401)")
-                        raise ContactEnergyAuthError("Invalid email or password. Please check your credentials and try again.")
+                        _LOGGER.warning(
+                            "Authentication failed for %s: Invalid credentials (401)",
+                            _redact_sensitive(self.email),
+                        )
+                        raise ContactEnergyAuthError(
+                            "Invalid email or password. Please check your credentials and try again."
+                        )
+
+                    # 403 means the server understood us but will not allow access.
                     if resp.status == 403:
-                        _LOGGER.warning(f"Authentication forbidden for {_redact_sensitive(self.email)} (403)")
-                        raise ContactEnergyAuthError("Access denied. Please contact Contact Energy support.")
+                        _LOGGER.warning(
+                            "Authentication forbidden for %s (403)",
+                            _redact_sensitive(self.email),
+                        )
+                        raise ContactEnergyAuthError(
+                            "Access denied. Please contact Contact Energy support."
+                        )
+
+                    # 400 means the request itself was malformed.
                     if resp.status == 400:
-                        _LOGGER.warning(f"Authentication request malformed for {_redact_sensitive(self.email)} (400)")
-                        raise ContactEnergyAuthError("Invalid authentication request. Please reconfigure the integration.")
+                        _LOGGER.warning(
+                            "Authentication request malformed for %s (400)",
+                            _redact_sensitive(self.email),
+                        )
+                        raise ContactEnergyAuthError(
+                            "Invalid authentication request. Please reconfigure the integration."
+                        )
+
+                    # Any other non-200 status is treated as a service or connection problem.
                     if resp.status != 200:
-                        _LOGGER.error(f"Authentication failed with status {resp.status} for {_redact_sensitive(self.email)}")
+                        _LOGGER.error(
+                            "Authentication failed with status %s for %s",
+                            resp.status,
+                            _redact_sensitive(self.email),
+                        )
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please check your internet connection and try again."
                         )
 
-                    # Extract authentication data from successful response
+                    # Read the successful JSON payload from the response body.
                     data = await resp.json()
+
+                    # Save the token and related metadata onto this client instance.
                     self.token = data.get("token")
                     self.segment = data.get("segment")
                     self.bp = data.get("bp")
 
+                    # If the server omitted the token, login is unusable.
                     if not self.token:
                         raise ContactEnergyAuthError("No authentication token received. Please try again.")
 
-                    _LOGGER.debug(f"Successfully authenticated as {_redact_sensitive(self.email)}")
-                    return {"token": self.token, "segment": self.segment, "bp": self.bp}
+                    # Record a success message without exposing the full email address.
+                    _LOGGER.debug("Successfully authenticated as %s", _redact_sensitive(self.email))
+
+                    # Return the captured values so older callers can use them immediately.
+                    return {
+                        "token": self.token,
+                        "segment": self.segment,
+                        "bp": self.bp,
+                    }
 
         except aiohttp.ClientError as e:
+            # Convert lower-level network issues into the integration's named error type.
             raise ContactEnergyConnectionError(
                 f"Unable to connect to Contact Energy API: {str(e)}. Please check your internet connection and try again."
             )
         except ContactEnergyApiError:
-            # Re-raise our custom exceptions
+            # Re-raise our own known exceptions unchanged so callers can handle them.
             raise
         except Exception as e:
-            _LOGGER.error(f"Unexpected error during authentication: {e}")
+            # Wrap anything unexpected in a connection-style error after logging it.
+            _LOGGER.error("Unexpected error during authentication: %s", e)
             raise ContactEnergyConnectionError(f"An unexpected error occurred: {str(e)}")
 
     async def get_accounts(self) -> dict[str, Any]:
         """Retrieve account information from the API.
 
-        Fetches the authenticated user's account details including account summary,
-        balance information, and available contracts/ICPs.
+        === WHAT THIS DOES ===
+        This method downloads the signed-in customer's account payload.
 
-        Returns:
-            Dictionary containing full account data from the API.
+        === WHY IT EXISTS ===
+        Older parts of the integration still expect this legacy helper for one-shot
+        account retrieval after authentication.
 
-        Raises:
-            ContactEnergyConnectionError: If unable to retrieve account data
-            ContactEnergyAuthError: If token is invalid or missing
+        === STEP-BY-STEP ===
+        1. Confirm that a session token is available.
+        2. Build authenticated request headers.
+        3. Call the accounts endpoint.
+        4. Translate important HTTP failures into helpful exceptions.
+        5. Return the decoded JSON body.
         """
-        # Ensure we have a valid authentication token
+        # Make sure authenticate() has already stored a session token.
         if not self.token:
             raise ContactEnergyAuthError("Not authenticated. Please authenticate first.")
 
-        # Set up headers with authentication token for API request
-        # Note: GET requests typically don't include Content-Type header
+        # Build headers required for authenticated account requests.
         headers = {
             "x-api-key": API_KEY,
             "session": self.token,
@@ -192,52 +405,69 @@ class ContactEnergyApi:
         }
 
         try:
-            # Build URL without query parameters (ba parameter may be causing 502 errors)
+            # Build the endpoint URL. This legacy path intentionally omits query parameters.
             full_url = f"{BASE_URL}/accounts/v2"
-            
-            _LOGGER.debug(f"Making accounts API request: GET {full_url}")
-            
-            # Request account information from the API
+
+            # Log the request target so support can trace failures.
+            _LOGGER.debug("Making accounts API request: GET %s", full_url)
+
+            # Open a short-lived HTTP session for the account call.
             async with aiohttp.ClientSession() as session:
-                # Throttle slightly to avoid request bursts
+                # Respect the throttle before sending the request.
                 await self._throttle()
+
+                # Send the GET request to download the account payload.
                 async with session.get(
-                    full_url, headers=headers, timeout=aiohttp.ClientTimeout(total=self._accounts_timeout)
+                    full_url,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=self._accounts_timeout),
                 ) as resp:
-                    _LOGGER.debug(f"Accounts API response: status={resp.status}, content_type={resp.content_type}")
-                    
-                    # Handle account retrieval response
+                    # Log high-level response metadata for debugging.
+                    _LOGGER.debug(
+                        "Accounts API response: status=%s, content_type=%s",
+                        resp.status,
+                        resp.content_type,
+                    )
+
+                    # 401 means the stored token is missing, invalid, or expired.
                     if resp.status == 401:
                         raise ContactEnergyAuthError("Your session has expired. Please re-authenticate.")
+
+                    # 403 means access is forbidden even though the request was understood.
                     if resp.status == 403:
                         raise ContactEnergyAuthError("Access denied. Please contact Contact Energy support.")
+
+                    # Anything other than 200 is logged with as much context as possible.
                     if resp.status != 200:
-                        # Try to get error details from response body
                         try:
+                            # Prefer structured JSON error details when available.
                             error_data = await resp.json()
-                            _LOGGER.debug(f"API error response body: {error_data}")
+                            _LOGGER.debug("API error response body: %s", error_data)
                         except Exception:
+                            # Fall back to plain text if the response was not JSON.
                             error_text = await resp.text()
-                            _LOGGER.debug(f"API error response text: {error_text}")
+                            _LOGGER.debug("API error response text: %s", error_text)
+
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please check your internet connection and try again."
                         )
 
-                    # Extract account data from successful response
+                    # Decode and return the successful account payload.
                     data = await resp.json()
-                    _LOGGER.debug(f"Successfully retrieved account data")
+                    _LOGGER.debug("Successfully retrieved account data")
                     return data
 
         except aiohttp.ClientError as e:
+            # Convert network-layer failures into a clearer integration error.
             raise ContactEnergyConnectionError(
                 f"Unable to connect to Contact Energy API: {str(e)}. Please check your internet connection and try again."
             )
         except ContactEnergyApiError:
-            # Re-raise our custom exceptions
+            # Preserve the meaning of our custom exceptions.
             raise
         except Exception as e:
-            # Log full exception details for debugging
-            _LOGGER.error(f"Unexpected error while retrieving accounts: {e}", exc_info=True)
+            # Log the full traceback for unexpected issues, then raise a stable error type.
+            _LOGGER.error("Unexpected error while retrieving accounts: %s", e, exc_info=True)
             raise ContactEnergyConnectionError(f"An unexpected error occurred: {str(e)}")
 
     async def get_usage(
@@ -247,108 +477,76 @@ class ContactEnergyApi:
         from_date: date,
         to_date: date,
     ) -> list[dict[str, Any]]:
-        """Fetch usage data from Contact Energy API for specified date range.
+        """Fetch usage data from Contact Energy API for a chosen date range.
 
-        Makes a POST request to /usage/v2/{contract_id} endpoint with the
-        specified interval and date range. Automatically handles authentication,
-        retries on transient failures, and parses response into structured format.
+        === WHAT THIS DOES ===
+        This method downloads usage records for one contract and one interval
+        (hourly, daily, or monthly), then hands the raw payload to the parser.
 
-        This method supports three intervals:
-        - 'hourly': Returns 24 records per day (hour-by-hour breakdown)
-        - 'daily': Returns 1 record per day (daily totals)
-        - 'monthly': Returns 1 record per month (monthly totals)
+        === WHY IT EXISTS ===
+        Legacy dashboards and caches still rely on this older combined method for
+        usage retrieval and normalisation.
 
-        Each record contains:
-        - Total energy consumed (kWh)
-        - Paid energy (charged kWh)
-        - Free energy (off-peak + promotional kWh)
-        - Total cost (NZD)
-
-        Args:
-            contract_id: Contract identifier from account data (e.g., "123456")
-            interval: Data granularity - must be 'hourly', 'daily', or 'monthly'
-            from_date: Start of date range (inclusive), format YYYY-MM-DD
-            to_date: End of date range (inclusive), format YYYY-MM-DD
-
-        Returns:
-            List of usage records, each containing:
-                - timestamp: ISO 8601 datetime string with timezone
-                - total: Total energy consumed (kWh)
-                - paid: Charged energy (kWh)
-                - free: Off-peak/uncharged energy (kWh)
-                - cost: Total cost (NZD)
-
-        Raises:
-            ContactEnergyAuthError: If token expired (triggers re-auth externally)
-            ContactEnergyApiError: If API returns error status
-            ContactEnergyConnectionError: If network request fails
-            ValueError: If interval is invalid or date range is malformed
-
-        Example:
-            usage = await api.get_usage(
-                "123456", "daily",
-                date(2025, 12, 1), date(2025, 12, 31)
-            )
-
-        API Endpoint:
-            POST /usage/v2/{contract_id}?ba={account_id}&interval={interval}
-                 &from={from_date}&to={to_date}
-
-        Note: Contact Energy has a 24-72 hour delay on usage data availability.
+        === STEP-BY-STEP ===
+        1. Log the request and start a timer.
+        2. Validate the interval and date range.
+        3. Confirm authentication and required account identifiers exist.
+        4. Build query parameters and the final request URL.
+        5. Send the POST request.
+        6. Interpret HTTP status codes carefully.
+        7. Decode JSON and parse it into standard records.
+        8. Return the cleaned list.
         """
-        # Log entry with parameters for debugging
+        # Record the request parameters in a privacy-safe way.
         _LOGGER.debug(
             "get_usage() called: contract_id=%s, interval=%s, from=%s, to=%s",
-            _redact_sensitive(contract_id, 2), interval, from_date, to_date
+            _redact_sensitive(contract_id, 2),
+            interval,
+            from_date,
+            to_date,
         )
 
-        # Start performance timer
+        # Start a timer so logs can report how long the request took.
         start_time = time.time()
 
-        # Validate interval parameter (must be one of three supported values)
-        valid_intervals = ['hourly', 'daily', 'monthly']
+        # Only these three interval values are supported by the legacy implementation.
+        valid_intervals = ["hourly", "daily", "monthly"]
         if interval not in valid_intervals:
             error_msg = f"Invalid interval '{interval}'. Must be one of: {valid_intervals}"
             _LOGGER.error(error_msg)
             raise ValueError(error_msg)
 
-        # Validate date range (from_date must be before or equal to to_date)
+        # The start date cannot be later than the end date.
         if from_date > to_date:
             error_msg = f"Invalid date range: from_date ({from_date}) > to_date ({to_date})"
             _LOGGER.error(error_msg)
             raise ValueError(error_msg)
 
-        # Ensure we have a valid authentication token before making request
+        # Usage requests require an authenticated session token.
         if not self.token:
             error_msg = "Not authenticated. Please authenticate first."
             _LOGGER.error(error_msg)
             raise ContactEnergyAuthError(error_msg)
 
-        # Validate that we have account_id for the ba parameter
-        # Without this, the API returns 404 errors
+        # The usage endpoint also requires the BA/account identifier.
         if not self.account_id:
             error_msg = "account_id is required for usage API calls but is not set. Please reconfigure the integration."
             _LOGGER.error(error_msg)
             raise ContactEnergyApiError(error_msg)
-        
-        # Build query parameters for API request
-        # Format dates as YYYY-MM-DD strings required by API
+
+        # Build the query parameters exactly as the Contact API expects them.
         params = {
-            # Use the Contact account_id for the required ba parameter (not the BP id)
             "ba": self.account_id,
-            "interval": interval,  # hourly, daily, or monthly
-            "from": from_date.strftime("%Y-%m-%d"),  # Start date
-            "to": to_date.strftime("%Y-%m-%d"),  # End date
+            "interval": interval,
+            "from": from_date.strftime("%Y-%m-%d"),
+            "to": to_date.strftime("%Y-%m-%d"),
         }
 
-        # Home Assistant sometimes mutates aiohttp params when proxying through its
-        # internal session, which the Contact Energy API can reject (502). To avoid
-        # any HA-side rewriting, build the full query string manually exactly as the
-        # API expects (matches test_api.py behaviour).
+        # Legacy note: we build the full query string manually to avoid unwanted mutation.
         query_string = urlencode(params)
         full_url = f"{BASE_URL}/usage/v2/{contract_id}?{query_string}"
 
-        # Set up headers with authentication token and API key
+        # Build the authenticated headers for the usage request.
         headers = {
             "x-api-key": API_KEY,
             "session": self.token,
@@ -356,50 +554,49 @@ class ContactEnergyApi:
             "Content-Type": "application/json",
         }
 
-        # Log the API request details for debugging (without sensitive token)
-        _LOGGER.debug(
-            "Making usage API request: POST %s", full_url
-        )
+        # Log the target URL without exposing the token.
+        _LOGGER.debug("Making usage API request: POST %s", full_url)
 
         try:
-            # Make POST request to usage endpoint
-            # Throttle slightly to avoid request bursts
+            # Wait if needed so we do not burst requests too quickly.
             await self._throttle()
+
+            # Open an HTTP session dedicated to this usage request.
             async with aiohttp.ClientSession() as session:
+                # Send the POST request and wait for the API's reply.
                 async with session.post(
                     full_url,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self._usage_timeout)  # Longer timeout for potentially large data
+                    timeout=aiohttp.ClientTimeout(total=self._usage_timeout),
                 ) as resp:
-                    # Log response status for debugging
+                    # Log the response status and content type for debugging.
                     _LOGGER.debug(
                         "Usage API response: status=%d, content_type=%s",
-                        resp.status, resp.content_type
+                        resp.status,
+                        resp.content_type,
                     )
 
-                    # Handle authentication errors (token expired)
+                    # 401 means the session token has likely expired.
                     if resp.status == 401:
                         _LOGGER.warning(
                             "Usage API returned 401 (Unauthorized) for contract %s. Token may have expired.",
-                            contract_id
+                            contract_id,
                         )
-                        raise ContactEnergyAuthError(
-                            "Your session has expired. Please re-authenticate."
-                        )
+                        raise ContactEnergyAuthError("Your session has expired. Please re-authenticate.")
 
-                    # Handle authorization errors (no access to this contract)
+                    # 403 means this user is not allowed to access that contract.
                     if resp.status == 403:
                         _LOGGER.warning(
                             "Usage API returned 403 (Forbidden) for contract %s. No access permission.",
-                            contract_id
+                            contract_id,
                         )
                         raise ContactEnergyAuthError(
                             "Access denied for this contract. Please contact Contact Energy support."
                         )
 
-                    # Handle not found errors (invalid contract ID)
+                    # 404 often means the contract or interval has no matching resource.
                     if resp.status == 404:
-                        # For monthly, treat 404 as “no data currently available” to avoid noisy retries
+                        # Legacy special case: monthly 404 is treated as "no monthly data yet".
                         if interval == "monthly":
                             _LOGGER.warning(
                                 "Usage API returned 404 (Not Found) for contract %s on monthly interval. Treating as no monthly data and continuing.",
@@ -409,80 +606,88 @@ class ContactEnergyApi:
 
                         _LOGGER.warning(
                             "Usage API returned 404 (Not Found) for contract %s. Contract may not exist.",
-                            contract_id
+                            contract_id,
                         )
                         raise ContactEnergyApiError(
                             f"Contract {contract_id} not found. Please check contract ID."
                         )
 
-                    # Handle bad request errors (invalid parameters)
+                    # 400 means the request parameters were rejected by the server.
                     if resp.status == 400:
                         error_text = await resp.text()
                         _LOGGER.warning(
                             "Usage API returned 400 (Bad Request) for contract %s. Response: %s",
-                            contract_id, error_text[:200]  # First 200 chars to avoid log spam
+                            contract_id,
+                            error_text[:200],
                         )
                         raise ContactEnergyApiError(
                             f"Invalid request parameters for usage API: {error_text[:100]}"
                         )
 
-                    # Handle other non-success status codes
+                    # Any other non-success status is treated as retry-worthy connection trouble.
                     if resp.status != 200:
                         error_text = await resp.text()
-                        # Log as debug since retries/chunking handle transient errors automatically
                         _LOGGER.debug(
                             "Usage API returned status %d for contract %s (will retry). Response: %s",
-                            resp.status, contract_id, error_text[:200]
+                            resp.status,
+                            contract_id,
+                            error_text[:200],
                         )
                         raise ContactEnergyConnectionError(
                             f"API returned status {resp.status}. Please try again later."
                         )
 
-                    # Parse JSON response
+                    # Decode the JSON body returned by the API.
                     data = await resp.json()
 
-                    # Log raw response structure for debugging (without full data)
+                    # Log only the overall structure, not the full potentially large payload.
                     _LOGGER.debug(
                         "Usage API response structure: keys=%s",
-                        list(data.keys()) if isinstance(data, dict) else type(data)
+                        list(data.keys()) if isinstance(data, dict) else type(data),
                     )
 
-                    # Parse and transform the usage data
+                    # Convert the raw API payload into a standard internal record list.
                     usage_records = self._parse_usage_response(data, interval, contract_id)
 
-                    # Calculate elapsed time for performance tracking
+                    # Work out how long the entire fetch-and-parse step took.
                     elapsed = time.time() - start_time
 
-                    # Log success with metrics
+                    # Log a concise success summary.
                     _LOGGER.info(
                         "Retrieved %d usage records (%s interval) in %.2f seconds",
-                        len(usage_records), interval, elapsed
+                        len(usage_records),
+                        interval,
+                        elapsed,
                     )
 
+                    # Return the cleaned records to the caller.
                     return usage_records
 
         except aiohttp.ClientError as e:
-            # Log network-related errors with full context
+            # Translate network exceptions into a clearer Contact Energy error type.
             elapsed = time.time() - start_time
             _LOGGER.error(
                 "Network error while fetching usage after %.2f seconds: %s",
-                elapsed, str(e)
+                elapsed,
+                str(e),
             )
             raise ContactEnergyConnectionError(
                 f"Unable to connect to Contact Energy API: {str(e)}. Please check your internet connection."
             )
         except ContactEnergyApiError:
-            # Re-raise our custom API exceptions without wrapping
+            # Preserve known domain-specific exceptions.
             raise
         except ValueError:
-            # Re-raise validation errors without wrapping
+            # Preserve validation errors without wrapping them.
             raise
         except Exception as e:
-            # Log unexpected errors with full context for debugging
+            # Catch anything unexpected, log details, and present a stable error type.
             elapsed = time.time() - start_time
             _LOGGER.error(
                 "Unexpected error while fetching usage after %.2f seconds: %s",
-                elapsed, str(e), exc_info=True
+                elapsed,
+                str(e),
+                exc_info=True,
             )
             raise ContactEnergyConnectionError(
                 f"An unexpected error occurred while fetching usage data: {str(e)}"
@@ -492,66 +697,55 @@ class ContactEnergyApi:
         self,
         data: dict[str, Any],
         interval: str,
-        contract_id: str
+        contract_id: str,
     ) -> list[dict[str, Any]]:
-        """Parse raw API response into standardized usage records.
+        """Parse raw API usage data into a standard record structure.
 
-        Transforms Contact Energy API response format into a clean, consistent
-        structure for caching and sensor exposure. Handles missing fields,
-        calculates paid/free breakdown, and validates data integrity.
+        === WHAT THIS DOES ===
+        This helper converts Contact Energy's raw response format into a cleaner,
+        predictable list of records containing timestamp, paid usage, free usage,
+        peak usage, off-peak usage, and cost.
 
-        Args:
-            data: Raw JSON response from /usage/v2 endpoint
-            interval: Interval type ('hourly', 'daily', 'monthly') for logging
-            contract_id: Contract ID for error logging context
+        === WHY IT EXISTS ===
+        The raw API format is not ideal for sensors and caches. Legacy callers use
+        this parser so the rest of the integration can work with a stable shape.
 
-        Returns:
-            List of parsed usage records with standardized field names:
-                - timestamp: ISO 8601 datetime string with timezone (Pacific/Auckland)
-                - total: Total energy consumed (kWh) - from API 'value' field
-                - paid: Charged/paid energy (kWh) - calculated as total - free
-                - free: Free energy (kWh) - sum of offpeak + uncharged
-                - cost: Total cost in NZD - from API 'dollarValue' field
-
-        Raises:
-            ContactEnergyApiError: If response structure is invalid or missing required fields
-
-        Note: Paid usage = total - (off-peak free hours) - (promotional/uncharged).
-              We ensure paid never goes negative due to data inconsistencies.
+        === STEP-BY-STEP ===
+        1. Work out whether the API returned a list directly or a dictionary.
+        2. Validate that a list of records is available.
+        3. Loop through each record one by one.
+        4. Extract timestamps and numeric values safely.
+        5. Calculate paid/free usage depending on the interval type.
+        6. Round values into a consistent format.
+        7. Skip bad records but keep processing the rest.
+        8. Return the cleaned list.
         """
+        # Announce the parsing phase in debug logs.
         _LOGGER.debug("Parsing usage response for %s interval", interval)
 
-        # Extract usage array from response
-        # API can return either:
-        # - {"usage": [...records...]} (dict format)
-        # - [...records...] (list format - direct array)
+        # The API sometimes returns a bare list and sometimes wraps it in a dictionary.
         if isinstance(data, list):
-            # Direct list response
             usage_array = data
         elif isinstance(data, dict):
-            # Dict with 'usage' key
             usage_array = data.get("usage", [])
         else:
             error_msg = f"Invalid API response type: expected dict or list, got {type(data)}"
             _LOGGER.error("%s Response: %s", error_msg, str(data)[:200])
             raise ContactEnergyApiError(error_msg)
 
-        # Validate response structure
+        # Confirm that the extracted usage section is really a list.
         if not isinstance(usage_array, list):
             error_msg = f"Invalid API response: usage data is not a list. Got type: {type(usage_array)}"
             _LOGGER.error("%s Response: %s", error_msg, str(data)[:200])
             raise ContactEnergyApiError(error_msg)
 
-        # Log record count before parsing
+        # Log the total number of raw records before we start converting them.
         _LOGGER.debug("Parsing %d raw usage records from API", len(usage_array))
 
-        # Log first record structure for debugging (especially for hourly data)
+        # For hourly payloads, log the first record's structure because it is often the trickiest.
         if len(usage_array) > 0 and interval == "hourly":
             first_record = usage_array[0]
-            _LOGGER.debug(
-                "First hourly record structure - keys: %s",
-                list(first_record.keys())
-            )
+            _LOGGER.debug("First hourly record structure - keys: %s", list(first_record.keys()))
             _LOGGER.debug(
                 "First hourly record values - date=%s, value=%s, paid=%s, free=%s, offpeakValue=%s, unchargedValue=%s, dollarValue=%s",
                 first_record.get("date"),
@@ -560,148 +754,155 @@ class ContactEnergyApi:
                 first_record.get("free"),
                 first_record.get("offpeakValue"),
                 first_record.get("unchargedValue"),
-                first_record.get("dollarValue")
+                first_record.get("dollarValue"),
             )
 
+        # Prepare the output list that will hold the cleaned records.
         parsed_records = []
 
-        # Process each usage record from API
+        # Process each raw usage item one at a time so one bad row does not spoil the rest.
         for idx, record in enumerate(usage_array):
             try:
-                # Extract timestamp (ISO 8601 with timezone, e.g., "2025-12-31T23:00:00+13:00")
+                # Extract the record's timestamp field.
                 timestamp = record.get("date")
                 if not timestamp:
                     _LOGGER.warning(
                         "Record %d missing 'date' field for contract %s, skipping",
-                        idx, contract_id
+                        idx,
+                        contract_id,
                     )
                     continue
 
-                # Extract total energy consumed (kWh)
-                # API field: 'value'
-                # Use 'or 0.0' to handle None values (API returns None for some fields)
+                # Read the total energy used in kilowatt-hours.
                 total_kwh = float(record.get("value") or 0.0)
 
-                # Extract energy components
+                # Read the off-peak and uncharged/free portions separately.
                 offpeak_kwh = float(record.get("offpeakValue") or 0.0)
                 unpaid_kwh = float(record.get("unchargedValue") or 0.0)
 
-                # Validate free usage should only occur on weekends
-                # Contact Energy's free hours are typically Saturday/Sunday only
+                # Legacy sanity check: free usage usually appears only on weekends.
                 if unpaid_kwh > 0 and interval in ["hourly", "daily"]:
                     try:
-                        # Parse timestamp to check day of week
-                        # For daily data: "2026-03-20" -> add midnight time
-                        # For hourly data: "2026-03-20T16:37:51.000+13:00" -> use as-is
+                        # Daily values need a made-up midnight time so datetime can parse them cleanly.
                         if interval == "daily":
                             check_date = datetime.fromisoformat(f"{timestamp[:10]}T00:00:00+13:00")
                         else:
                             check_date = datetime.fromisoformat(timestamp)
-                        
-                        day_of_week = check_date.weekday()  # Monday=0, Sunday=6
-                        is_weekend = day_of_week >= 5  # Saturday=5, Sunday=6
-                        
+
+                        # weekday() returns 0 for Monday through 6 for Sunday.
+                        day_of_week = check_date.weekday()
+                        is_weekend = day_of_week >= 5
+
+                        # Warn - but do not discard data - if free usage appears on a weekday.
                         if not is_weekend:
                             _LOGGER.warning(
-                                "Unexpected free usage on %s (weekday) for contract %s: %.3f kWh. "
-                                "Free hours usually only occur on weekends. Keeping data as-is.",
-                                check_date.strftime("%Y-%m-%d %A"), contract_id, unpaid_kwh
+                                "Unexpected free usage on %s (weekday) for contract %s: %.3f kWh. Free hours usually only occur on weekends. Keeping data as-is.",
+                                check_date.strftime("%Y-%m-%d %A"),
+                                contract_id,
+                                unpaid_kwh,
                             )
-                            # Note: We log the warning but don't filter the data
-                            # This preserves API data integrity while alerting to anomalies
                     except (ValueError, TypeError) as e:
+                        # If the timestamp could not be parsed, we log and keep going.
                         _LOGGER.debug("Could not validate weekend for timestamp %s: %s", timestamp, e)
 
-                # For hourly data: paid and free are mutually exclusive within a single hour
-                # When unpaid > 0, it's a free power hour - all usage is free, nothing is paid
-                # When unpaid = 0, it's normal billing - usage is either peak or off-peak (both paid)
-                #
-                # For daily/monthly data: paid and free can coexist
-                # A single day can have both paid hours (peak + offpeak) and free hours (uncharged)
+                # Hourly data uses one business rule; daily/monthly uses another.
                 if interval == "hourly":
-                    # Hourly: mutual exclusivity applies
+                    # In hourly mode, a free hour means the whole hour is treated as free.
                     if unpaid_kwh > 0:
-                        # Free power hours: all usage is free/unpaid
                         free_kwh = unpaid_kwh
                         paid_total_kwh = 0.0
                         peak_kwh = 0.0
                         offpeak_kwh = 0.0
                     else:
-                        # Normal billing: usage is either peak or off-peak (both paid)
+                        # In normal billed hours, the total is split into peak and off-peak paid usage.
                         free_kwh = 0.0
-                        # Peak (paid at normal rate) excludes off-peak component
                         peak_kwh = total_kwh - offpeak_kwh
                         if peak_kwh < 0:
                             _LOGGER.debug(
                                 "Capping peak usage at 0 for contract %s at %s: peak calculated negative (total=%.3f, offpeak=%.3f)",
-                                contract_id, timestamp, total_kwh, offpeak_kwh
+                                contract_id,
+                                timestamp,
+                                total_kwh,
+                                offpeak_kwh,
                             )
                             peak_kwh = 0.0
-                        # Paid usage includes both peak and off-peak (off-peak is still billed at a reduced rate)
                         paid_total_kwh = peak_kwh + offpeak_kwh
                 else:
-                    # Daily/Monthly: both paid and free can exist on same day
-                    # Free is the uncharged component
+                    # In daily/monthly mode, one period can contain both billed and free usage.
                     free_kwh = unpaid_kwh
-                    # Off-peak is the off-peak billed component
-                    # Peak is calculated as total minus off-peak, but only if unpaid is not part of total
-                    # If total includes uncharged, we need paid = total - free
                     paid_total_kwh = total_kwh - unpaid_kwh
-                    # For peak/offpeak breakdown of the paid portion
                     peak_kwh = paid_total_kwh - offpeak_kwh
                     if peak_kwh < 0:
                         _LOGGER.debug(
                             "Capping peak usage at 0 for contract %s at %s: peak calculated negative (paid_total=%.3f, offpeak=%.3f)",
-                            contract_id, timestamp, paid_total_kwh, offpeak_kwh
+                            contract_id,
+                            timestamp,
+                            paid_total_kwh,
+                            offpeak_kwh,
                         )
                         peak_kwh = 0.0
 
-
+                # Log the calculated values so support can compare parsing decisions.
                 _LOGGER.debug(
                     "%s record: timestamp=%s, total=%.3f, paid_total=%.3f, peak=%.3f, offpeak=%.3f, free=%.3f",
-                    interval.capitalize(), timestamp, total_kwh, paid_total_kwh, peak_kwh, offpeak_kwh, free_kwh
+                    interval.capitalize(),
+                    timestamp,
+                    total_kwh,
+                    paid_total_kwh,
+                    peak_kwh,
+                    offpeak_kwh,
+                    free_kwh,
                 )
 
-                # Extract cost in NZD
-                # API field: 'dollarValue'
-                # Note: API returns None for historical data where cost is not available
+                # Read the cost value in New Zealand dollars.
                 cost_nzd = float(record.get("dollarValue") or 0.0)
 
-                # Build standardized record structure
+                # Build one standard output record with rounded values.
                 parsed_record = {
-                    "timestamp": timestamp,  # ISO 8601 with timezone
-                    "total": round(total_kwh, 3),  # Round to 3 decimal places (Wh precision)
-                    "paid": round(paid_total_kwh, 3),  # Total billed kWh (peak + off-peak)
-                    "peak": round(peak_kwh, 3),  # Billed at peak rate
-                    "offpeak": round(offpeak_kwh, 3),  # Billed at off-peak rate
-                    "free": round(free_kwh, 3),  # Unpaid/uncharged kWh (promotions)
-                    "cost": round(cost_nzd, 2),  # Round to 2 decimal places (cents precision)
+                    "timestamp": timestamp,
+                    "total": round(total_kwh, 3),
+                    "paid": round(paid_total_kwh, 3),
+                    "peak": round(peak_kwh, 3),
+                    "offpeak": round(offpeak_kwh, 3),
+                    "free": round(free_kwh, 3),
+                    "cost": round(cost_nzd, 2),
                 }
 
+                # Store the cleaned record in the output list.
                 parsed_records.append(parsed_record)
 
             except (ValueError, TypeError) as e:
-                # Log parse errors but continue processing other records
+                # If one record contains bad data, log it and move on to the next one.
                 _LOGGER.warning(
                     "Failed to parse usage record %d for contract %s: %s. Record: %s",
-                    idx, contract_id, str(e), str(record)[:200]
+                    idx,
+                    contract_id,
+                    str(e),
+                    str(record)[:200],
                 )
                 continue
 
-        # Log parsing results
+        # Report how many rows were successfully converted.
         _LOGGER.debug(
             "Successfully parsed %d/%d usage records for contract %s (%s interval)",
-            len(parsed_records), len(usage_array), contract_id, interval
+            len(parsed_records),
+            len(usage_array),
+            contract_id,
+            interval,
         )
 
-        # Warn if many records failed to parse (>10% failure rate)
+        # Warn if an unusually high share of rows failed to parse.
         if len(usage_array) > 0:
             failure_rate = (len(usage_array) - len(parsed_records)) / len(usage_array)
             if failure_rate > 0.1:
                 _LOGGER.warning(
                     "High parse failure rate for contract %s (%s interval): %.1f%% (%d/%d records failed)",
-                    contract_id, interval, failure_rate * 100,
-                    len(usage_array) - len(parsed_records), len(usage_array)
+                    contract_id,
+                    interval,
+                    failure_rate * 100,
+                    len(usage_array) - len(parsed_records),
+                    len(usage_array),
                 )
 
+        # Hand the cleaned list back to the caller.
         return parsed_records
