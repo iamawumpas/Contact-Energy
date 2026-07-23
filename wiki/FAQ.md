@@ -2,6 +2,22 @@
 
 Frequently asked questions and known limitations of the Contact Energy integration.
 
+## v2.0.0 Architecture
+
+### What's new in v2.0.0?
+
+Version 2.0.0 is a complete architectural overhaul featuring:
+- **Modular Design** - Separated into logical layers (API, Data Managers, Coordinators, Sensors)
+- **Independent Caching** - Each data type has its own cache with appropriate staleness rules
+- **Optimized Updates** - Different data types update on optimal schedules
+- **27 Sensors** - Expanded from 26 to 27 sensors with better organization
+- **Better Performance** - Reduced API calls through intelligent caching
+- **Improved Maintainability** - Clear separation of concerns
+
+### Do I need to reconfigure for v2.0.0?
+
+No! The migration is completely transparent. Your existing configuration will continue to work without any changes. Cache files will be automatically recreated with the new naming convention.
+
 ## General Questions
 
 ### Is this an official integration?
@@ -37,11 +53,12 @@ The integration is completely free and open-source. There are no subscription fe
 
 ### How often does data update?
 
-The integration uses optimized polling schedules for different data types:
+v2.0.0 uses optimized polling schedules for different data types:
 
-- **Account data** (balance, billing): **Twice daily** at 01:00 and 13:00 UTC  
-- **Hourly usage data**: **Hourly** at a random time between 8-42 minutes past each hour
-- **Daily/monthly usage data**: **Once daily** at 03:00 UTC  
+- **Account data** (balance, billing): **Every 6 hours**
+- **Hourly usage data**: **Every hour**
+- **Daily usage data**: **Every 6 hours**
+- **Monthly usage data**: **Every 24 hours**
 
 This scheduling minimizes API load while providing fresh data based on how frequently each data type actually changes.
 
@@ -97,16 +114,16 @@ All dates and times are in **New Zealand Standard Time (NZST) / New Zealand Dayl
 
 ### What data is available?
 
-Currently available (26 sensors):
-- ✅ Account balance and refund information
-- ✅ Billing and invoice details
-- ✅ Payment due dates and countdowns
-- ✅ Next bill predictions
-- ✅ Contract and product information
-- ✅ Account settings and preferences
-- ✅ Payment plan indicators
-- ✅ Usage sensor attributes (hourly/daily/monthly paid & free kWh) for charts
-- ✅ Paid/Free cumulative energy sensors for the Home Assistant Energy dashboard
+Currently available (27 sensors in v2.0.0):
+- ✅ Account balance and refund information (4 sensors)
+- ✅ Billing and invoice details (5 sensors)
+- ✅ Payment due dates and countdowns (included in billing sensors)
+- ✅ Next bill predictions (2 sensors)
+- ✅ Contract and product information (6 sensors)
+- ✅ Account settings and preferences (included in account sensors)
+- ✅ Payment plan indicators (included in account sensors)
+- ✅ Usage sensors with hourly/daily/monthly attributes (4 sensors)
+- ✅ Energy Dashboard sensors - Paid/Free cumulative energy (6 sensors: cumulative, daily, monthly)
 
 Not yet implemented:
 - ❌ Cost breakdown and tariff-based pricing
@@ -115,15 +132,28 @@ Not yet implemented:
 
 ### Will usage sensors be added?
 
-Usage attributes and Energy Dashboard sensors are already available. Remaining roadmap items are cost/rate calculations and real-time usage, which require additional API and pricing logic.
+Usage sensors are already fully implemented in v2.0.0! We now have:
+- **Main usage sensor** - All usage data attributes
+- **Hourly usage sensor** - Hourly data only
+- **Daily usage sensor** - Daily data only
+- **Monthly usage sensor** - Monthly data only
+- **6 Energy Dashboard sensors** - Cumulative, daily, and monthly paid/free energy
 
 ### Can I see hourly usage?
 
-Yes. Hourly paid/free usage is exposed as attributes on `sensor.{address}_{icp}_usage` (last 14 days). Use ApexCharts examples in the Dashboards page.
+Yes. Hourly paid/free usage is available in:
+- `sensor.{address}_{icp}_usage` attributes
+- `sensor.{address}_{icp}_hourly_usage` dedicated sensor
+
+Use ApexCharts examples in the Dashboards page.
 
 ### Can I track free hours?
 
-Yes. Both the usage sensor attributes (`*_free_usage`) and the `sensor.{address}_{icp}_free_energy` cumulative sensor expose free/off-peak energy.
+Yes. Free/off-peak energy is exposed in:
+- Usage sensor attributes (`*_free_usage`)
+- `sensor.{address}_{icp}_free_energy` (cumulative)
+- `sensor.{address}_{icp}_daily_free_energy` (daily total)
+- `sensor.{address}_{icp}_monthly_free_energy` (monthly total)
 
 ### Does it work with solar panels?
 
