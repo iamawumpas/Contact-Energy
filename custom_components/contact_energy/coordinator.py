@@ -344,12 +344,12 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug("Successfully fetched account data")
                 return account_data
 
-            except Exception as auth_error:
+            except ContactEnergyAuthError as auth_error:
                 # =============================================================
-                # STEP 7A: Recover from authentication-related failures.
+                # STEP 7A: Recover from expired or invalid auth tokens only.
                 # =============================================================
                 error_str = str(auth_error)
-                _LOGGER.warning(f"Initial fetch failed, re-authenticating: {error_str}")
+                _LOGGER.warning("Initial fetch failed due to auth expiry, re-authenticating: %s", error_str)
 
                 # Without a stored password, re-authentication is impossible.
                 if not self.api_client.password:
@@ -360,13 +360,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
 
                 try:
                     # Ask the API client to log in again and obtain a fresh token.
-                    _LOGGER.debug(f"Attempting to re-authenticate as {self.api_client.email}")
+                    _LOGGER.debug("Attempting to re-authenticate as %s", self.api_client.email)
                     await self.api_client.authenticate()
                     _LOGGER.debug("Successfully re-authenticated")
                 except Exception as auth_err:
                     # If sign-in fails, surface that as a coordinator failure.
-                    _LOGGER.error(f"Re-authentication failed: {str(auth_err)}")
-                    raise UpdateFailed(f"Re-authentication failed: {str(auth_err)}") from auth_err
+                    _LOGGER.error("Re-authentication failed: %s", auth_err)
+                    raise UpdateFailed(f"Re-authentication failed: {auth_err}") from auth_err
 
                 try:
                     # Retry the account fetch using the new token.
@@ -398,8 +398,9 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                     # alive by falling back to usage sync and saved account data.
                     # =========================================================
                     _LOGGER.warning(
-                        f"Account fetch failed after re-authentication: {str(retry_error)}. "
-                        f"Proceeding with usage sync only using contract ID {self.contract_id}",
+                        "Account fetch failed after re-authentication: %s. Proceeding with usage sync only using contract ID %s",
+                        retry_error,
+                        self.contract_id,
                         exc_info=True,
                     )
 
@@ -432,6 +433,32 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                             }
                         ]
                     }
+
+            except ContactEnergyConnectionError as connection_error:
+                # Temporary network or timeout issues should not trigger a forced
+                # re-authentication loop during Home Assistant startup.
+                _LOGGER.warning(
+                    "Temporary connection failure fetching accounts for contract %s: %s",
+                    self.contract_id,
+                    connection_error,
+                )
+
+                if self.data:
+                    _LOGGER.warning(
+                        "Returning persisted account snapshot for contract %s after connection failure",
+                        self.contract_id,
+                    )
+                    return self.data
+
+                return {
+                    "accountsSummary": [
+                        {
+                            "id": "",
+                            "nickname": "Unknown Account",
+                            "contracts": [{"contractId": self.contract_id}],
+                        }
+                    ]
+                }
 
         except ContactEnergyApiError as e:
             # Convert integration-specific API errors into Home Assistant's

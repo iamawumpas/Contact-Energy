@@ -5,6 +5,17 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.2 ] - 2026-08-30
+
+### Fixed
+- Fixed the reboot-timeout issue where Home Assistant startup could trigger a false re-authentication loop after a slow or unavailable Contact Energy API response.
+- Startup account fetch timeouts are now treated as temporary connectivity failures instead of invalid-session errors.
+- The coordinator now falls back to the last known account snapshot when the API is temporarily unavailable during startup.
+
+### Changed
+- Improved the startup error handling path so the integration stays online during brief network or API recovery periods.
+- Kept the re-authentication flow limited to genuine authentication failures only.
+
 ## [ 2.0.1 ] - 2026-07-23
 
 ### Fixed

@@ -363,6 +363,12 @@ class ContactEnergyApi:
                         "bp": self.bp,
                     }
 
+        except (asyncio.TimeoutError, TimeoutError) as e:
+            # Timeouts on startup or while reconnecting are transient connectivity issues,
+            # not authentication problems, so surface them as a connection failure.
+            raise ContactEnergyConnectionError(
+                f"Timed out while authenticating with Contact Energy API: {str(e)}. Please check your internet connection and try again."
+            )
         except aiohttp.ClientError as e:
             # Convert lower-level network issues into the integration's named error type.
             raise ContactEnergyConnectionError(
@@ -457,6 +463,12 @@ class ContactEnergyApi:
                     _LOGGER.debug("Successfully retrieved account data")
                     return data
 
+        except (asyncio.TimeoutError, TimeoutError) as e:
+            # A timeout is a temporary network/server issue, not proof that credentials
+            # are invalid, so keep the signal specific for the coordinator to handle.
+            raise ContactEnergyConnectionError(
+                f"Timed out while retrieving accounts from Contact Energy API: {str(e)}. Please check your internet connection and try again."
+            )
         except aiohttp.ClientError as e:
             # Convert network-layer failures into a clearer integration error.
             raise ContactEnergyConnectionError(
