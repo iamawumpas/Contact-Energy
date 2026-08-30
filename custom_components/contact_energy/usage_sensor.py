@@ -394,7 +394,8 @@ class ContactEnergyUsageSensor(CoordinatorEntity, SensorEntity):
             # HOURLY DATA - KEEP A RECENT WINDOW OF GRANULAR POINTS
             # ================================================================
             hourly_records = self._cache.data.get("hourly", {})
-            hourly_cutoff = datetime.now(timezone.utc) - timedelta(days=10)
+            # Keep the same 14-day window as the hourly sync/cache retention.
+            hourly_cutoff = datetime.now(timezone.utc) - timedelta(days=14)
             for timestamp, record in sorted(hourly_records.items()):
                 try:
                     # Convert the ISO timestamp into a datetime so we can compare ages.

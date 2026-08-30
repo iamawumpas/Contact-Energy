@@ -7,22 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [ 2.0.1 ] - 2026-07-23
 
-### 🚀 Enhancements
+### Fixed
+- Hourly usage data is now retained for the full 14-day window instead of being trimmed after 10 days.
+- The hourly chart payload and cache pruning logic were aligned so recent usage data remains available for the intended 2-week view.
+- New account setup now fetches data immediately instead of waiting for the next scheduled refresh.
 
-#### Immediate Data Loading on Setup
-- **Fixed** New account setup now fetches all data immediately instead of waiting for scheduled updates
-- When adding a new account, the integration now:
-  - Immediately fetches account data from Contact Energy API
-  - Immediately syncs hourly, daily, and monthly usage data
-  - Populates all sensors with fresh data within 2-3 seconds
-  - No longer requires waiting until the next 01:00 AM update window
-- Added `_is_first_refresh` flag to track initial setup in coordinator
-- Improves user experience by showing data immediately after configuration
-
-### Technical Details
-- Modified `coordinator.py` to force API fetch on first refresh regardless of cached data
-- Modified usage sync logic to trigger immediately on initial setup
-- Data fetch completes in ~2-3 seconds (4-5 API calls with 0.5s rate limiting)
+### Changed
+- Updated the initial sync flow so account, hourly, daily, and monthly usage data populate as soon as a new instance is created.
+- Improved the consistency between the cache retention policy and the sensor chart window for hourly usage.
 
 ## [ 2.0.0 ] - 2026-07-23
 

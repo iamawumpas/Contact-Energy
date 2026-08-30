@@ -737,7 +737,7 @@ class UsageCache:
         # Return how many records were stored.
         return count
 
-    def prune_hourly(self, window_days: int = 9) -> tuple[int, int]:
+    def prune_hourly(self, window_days: int = 14) -> tuple[int, int]:
         """Discard hourly records older than the retention window.
 
         === WHAT THIS DOES ===
