@@ -5,6 +5,11 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.5 ]
+
+### Fixed
+- Added the explicit Home Assistant recorder `mean_type` metadata required for sum-only paid and free energy statistics, preventing the 2026.11 compatibility warning.
+
 ## [ 2.0.4 ]
 
 ### Fixed

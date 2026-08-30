@@ -65,6 +65,7 @@ from typing import TYPE_CHECKING
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 # Statistics helpers: used to import usage history into the Energy Dashboard database.
+from homeassistant.components.recorder.models import StatisticMeanType
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     StatisticData,
@@ -599,6 +600,7 @@ class UsageCoordinator:
                     else f"Contact Energy Free Usage {self.icp}"
                 )
                 metadata = StatisticMetaData(
+                    mean_type=StatisticMeanType.NONE,
                     has_mean=False,
                     has_sum=True,
                     name=stat_name,
