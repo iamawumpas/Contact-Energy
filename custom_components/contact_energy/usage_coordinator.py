@@ -68,6 +68,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     StatisticData,
+    StatisticMeanType,
     StatisticMetaData,
 )
 
@@ -640,25 +641,21 @@ class UsageCoordinator:
                     stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Free Usage {self.icp}"
 
-                # Create metadata with has_mean=False and omit mean_type entirely
-                # Build as dict first to ensure we control exactly which fields are present
+                # Current Home Assistant requires an explicit mean type when the
+                # statistic is cumulative and has_mean=False. For usage meters like
+                # paid/free energy we are exporting a total value, not a mean.
                 metadata_dict = {
                     "has_mean": False,
                     "has_sum": True,
+                    "mean_type": StatisticMeanType.NONE,
                     "name": stat_name,
                     "source": DOMAIN,
                     "statistic_id": stat_id,
                     "unit_of_measurement": "kWh",
+                    "unit_class": "energy",
                 }
-                
-                # Only add unit_class if it exists (for compatibility with older HA versions)
-                try:
-                    metadata_dict["unit_class"] = "energy"
-                    metadata = StatisticMetaData(**metadata_dict)
-                except TypeError:
-                    # Fallback for older Home Assistant versions without unit_class
-                    del metadata_dict["unit_class"]
-                    metadata = StatisticMetaData(**metadata_dict)
+
+                metadata = StatisticMetaData(**metadata_dict)
 
                 # Import statistics into Home Assistant database
                 _LOGGER.debug(
