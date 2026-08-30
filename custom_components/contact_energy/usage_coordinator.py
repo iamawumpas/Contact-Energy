@@ -68,7 +68,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     StatisticData,
-    StatisticMeanType,
     StatisticMetaData,
 )
 
@@ -641,13 +640,13 @@ class UsageCoordinator:
                     stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                     stat_name = f"Contact Energy Free Usage {self.icp}"
 
-                # Current Home Assistant requires an explicit mean type when the
-                # statistic is cumulative and has_mean=False. For usage meters like
-                # paid/free energy we are exporting a total value, not a mean.
+                # For energy totals, Home Assistant expects the metadata to declare
+                # that there is no mean while omitting any explicit mean_type field.
+                # Including a mean_type for a non-mean statistic can trigger the
+                # validation/deprecation warning in newer HA core versions.
                 metadata_dict = {
                     "has_mean": False,
                     "has_sum": True,
-                    "mean_type": StatisticMeanType.NONE,
                     "name": stat_name,
                     "source": DOMAIN,
                     "statistic_id": stat_id,

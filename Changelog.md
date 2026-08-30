@@ -5,6 +5,15 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.3 ]
+
+### Fixed
+- Fixed the Home Assistant long-term statistics metadata for cumulative energy totals so newer Core versions do not raise the deprecated/invalid `mean_type` warning when importing external statistics.
+- Removed the explicit mean metadata for sum-only energy statistics and kept the metadata aligned with the current HA statistics contract.
+
+### Changed
+- Kept the external energy statistics metadata focused on the valid `has_sum` / `has_mean` semantics required by the current Home Assistant recorder API.
+
 ## [ 2.0.2 ]
 
 ### Fixed
