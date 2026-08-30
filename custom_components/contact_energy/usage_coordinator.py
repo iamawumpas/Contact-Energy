@@ -410,6 +410,9 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
+            # Import daily history and current hourly usage for the Energy Dashboard.
+            await self._async_import_statistics_for_usage_data()
+
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
             _LOGGER.error(
@@ -499,8 +502,6 @@ class UsageCoordinator:
                     self.contract_id, before, after
                 )
 
-            # Import statistics to Home Assistant database for Energy Dashboard
-            await self._async_import_statistics_for_daily_data()
 
         except ContactEnergyAuthError as e:
             # Authentication errors should propagate to trigger re-auth in main coordinator
@@ -524,100 +525,58 @@ class UsageCoordinator:
                 self.contract_id, str(e), exc_info=True
             )
 
-    async def _async_import_statistics_for_daily_data(self) -> None:
-        """Import daily usage data as statistics for the Energy Dashboard.
-
-        === WHAT THIS DOES ===
-        This method converts cached daily usage records into Home Assistant
-        ``StatisticData`` objects, builds the matching metadata, and sends those
-        records into Home Assistant's long-term statistics database.
-
-        === FOR NON-CODERS ===
-        The daily cache is one kind of storage, but Home Assistant's Energy
-        Dashboard expects a different storage format. This method translates the
-        daily numbers into the format the dashboard understands.
-        """
+    async def _async_import_statistics_for_usage_data(self) -> None:
+        """Import daily history and recent hourly usage for the Energy Dashboard."""
         try:
-            # =================================================================
-            # STEP 1: Read the cached daily records we want to convert.
-            # =================================================================
-            daily_records_dict = self.cache.data.get("daily", {})
-            if not daily_records_dict:
-                _LOGGER.debug(
-                    "No daily records available for contract %s, skipping statistics import",
-                    self.contract_id,
-                )
+            daily_records = self.cache.data.get("daily", {})
+            hourly_records = self.cache.data.get("hourly", {})
+            if not daily_records and not hourly_records:
                 return
 
-            # Get sensor start date (when the sensor first started recording)
-            sensor_start_date = self.cache.get_energy_sensor_start_date()
-            
-            # Initialize sensor start date if not set (use earliest date in data)
-            if not sensor_start_date:
-                # Find the earliest date from the daily records dictionary keys
-                # Keys are ISO date strings like "2025-12-05"
+            parsed_hourly = []
+            for timestamp_text, record in hourly_records.items():
                 try:
-                    earliest_date_str = min(daily_records_dict.keys())
-                    sensor_start_date = date.fromisoformat(earliest_date_str)
-                except (ValueError, TypeError) as e:
+                    timestamp = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
+                    if timestamp.tzinfo is None:
+                        timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    else:
+                        timestamp = timestamp.astimezone(timezone.utc)
+                    parsed_hourly.append((timestamp, record))
+                except (TypeError, ValueError):
                     _LOGGER.warning(
-                        "Failed to determine earliest date from daily records for contract %s: %s",
+                        "Skipping hourly statistic with invalid timestamp %s for contract %s",
+                        timestamp_text,
                         self.contract_id,
-                        str(e),
                     )
-                    sensor_start_date = date.today()
-                
-                self.cache.set_energy_sensor_start_date(sensor_start_date)
-                _LOGGER.info(
-                    "Initialized sensor start date for contract %s from earliest daily record: %s (%d records available)",
-                    self.contract_id,
-                    sensor_start_date.isoformat(),
-                    len(daily_records_dict),
-                )
 
-            # =================================================================
-            # STEP 2: Keep only the records that belong to this sensor's timeline.
-            # =================================================================
-            filtered_records = []
-            for date_str, record in daily_records_dict.items():
-                record_date = date.fromisoformat(date_str)
-                if record_date >= sensor_start_date:
-                    record_with_date = record.copy()
-                    record_with_date["_date"] = record_date
-                    filtered_records.append(record_with_date)
+            parsed_hourly.sort(key=lambda item: item[0])
+            first_hourly_date = parsed_hourly[0][0].date() if parsed_hourly else None
+            parsed_daily = []
+            for date_text, record in daily_records.items():
+                try:
+                    record_date = date.fromisoformat(date_text)
+                except (TypeError, ValueError):
+                    continue
+                if first_hourly_date is None or record_date < first_hourly_date:
+                    parsed_daily.append((record_date, record))
+            parsed_daily.sort(key=lambda item: item[0])
 
-            if not filtered_records:
-                _LOGGER.debug(
-                    "No daily records after start date %s for contract %s",
-                    sensor_start_date.isoformat(),
-                    self.contract_id,
-                )
-                return
-
-            # Sort by date to ensure proper cumulative calculation
-            filtered_records.sort(key=lambda x: x["_date"])
-
-            # =================================================================
-            # STEP 3: Import paid and free energy as separate statistics streams.
-            # =================================================================
-            for energy_kind in ["paid", "free"]:
-                # Build cumulative statistics from daily data
-                statistics = []
+            for energy_kind in ("paid", "free"):
                 cumulative_sum = 0.0
+                statistics = []
 
-                for record in filtered_records:
-                    daily_value = float(record.get(energy_kind, 0.0))
-                    cumulative_sum += daily_value
-
-                    # Create timestamp at start of day (00:00:00) in UTC
-                    # Home Assistant external statistics requires timestamps at top of hour
-                    record_date = record["_date"]
-                    timestamp = datetime.combine(
-                        record_date,
-                        datetime.min.time(),
-                        tzinfo=timezone.utc
+                for record_date, record in parsed_daily:
+                    cumulative_sum += float(record.get(energy_kind, 0.0))
+                    statistics.append(
+                        StatisticData(
+                            start=datetime.combine(record_date, datetime.min.time(), tzinfo=timezone.utc),
+                            state=cumulative_sum,
+                            sum=cumulative_sum,
+                        )
                     )
 
+                for timestamp, record in parsed_hourly:
+                    cumulative_sum += float(record.get(energy_kind, 0.0))
                     statistics.append(
                         StatisticData(
                             start=timestamp,
@@ -629,49 +588,31 @@ class UsageCoordinator:
                 if not statistics:
                     continue
 
-                # Build metadata for this energy kind using external statistics format
-                # Home Assistant expects statistic_id in format: domain:identifier
-                # (e.g., contact_energy:paid_usage_0000012345abc). Statistic IDs must be
-                # lowercase alphanumeric + underscore only for validation.
-                if energy_kind == "paid":
-                    stat_id = f"{DOMAIN}:paid_usage_{self.icp_sanitized}"
-                    stat_name = f"Contact Energy Paid Usage {self.icp}"
-                else:
-                    stat_id = f"{DOMAIN}:free_usage_{self.icp_sanitized}"
-                    stat_name = f"Contact Energy Free Usage {self.icp}"
-
-                # For energy totals, Home Assistant expects the metadata to declare
-                # that there is no mean while omitting any explicit mean_type field.
-                # Including a mean_type for a non-mean statistic can trigger the
-                # validation/deprecation warning in newer HA core versions.
-                metadata_dict = {
-                    "has_mean": False,
-                    "has_sum": True,
-                    "name": stat_name,
-                    "source": DOMAIN,
-                    "statistic_id": stat_id,
-                    "unit_of_measurement": "kWh",
-                    "unit_class": "energy",
-                }
-
-                metadata = StatisticMetaData(**metadata_dict)
-
-                # Import statistics into Home Assistant database
-                _LOGGER.debug(
-                    "Importing %d historical statistics for %s energy (contract %s, cumulative=%.3f kWh)",
-                    len(statistics),
-                    energy_kind,
-                    self.contract_id,
-                    cumulative_sum,
+                stat_id = (
+                    f"{DOMAIN}:paid_usage_{self.icp_sanitized}"
+                    if energy_kind == "paid"
+                    else f"{DOMAIN}:free_usage_{self.icp_sanitized}"
                 )
-
+                stat_name = (
+                    f"Contact Energy Paid Usage {self.icp}"
+                    if energy_kind == "paid"
+                    else f"Contact Energy Free Usage {self.icp}"
+                )
+                metadata = StatisticMetaData(
+                    has_mean=False,
+                    has_sum=True,
+                    name=stat_name,
+                    source=DOMAIN,
+                    statistic_id=stat_id,
+                    unit_of_measurement="kWh",
+                    unit_class="energy",
+                )
                 async_add_external_statistics(self.hass, metadata, statistics)
-
-        except Exception as e:
+        except Exception as err:
             _LOGGER.error(
-                "Failed to import statistics for contract %s: %s",
+                "Failed to import energy statistics for contract %s: %s",
                 self.contract_id,
-                str(e),
+                err,
                 exc_info=True,
             )
 
