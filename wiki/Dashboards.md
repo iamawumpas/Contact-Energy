@@ -131,7 +131,7 @@ content: >+
 
   {# Iterate over groups and their entities #}
   {% for group_name, entities in groups %}
-    
+
     {# Add an empty row for separation, but skip it for the very first group #}
     {% if not loop.first %}
       {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="padding: 0px 8px;"><br></td></tr>' %}
@@ -140,11 +140,11 @@ content: >+
     {# Insert a full-width header row for the group name #}
     {% set header_style = 'text-align: left; padding: 6px 8px; font-weight: bold; background-color: rgba(120, 120, 120, 0.1);' %}
     {% set content_html.rows = content_html.rows + '<tr><td colspan="2" style="' + header_style + '"><strong>' + group_name + '</strong></td></tr>' %}
-    
+
     {# Iterate over the entities within the current group #}
     {% for name, entity_id in entities %}
       {% set value = states(entity_id) %}
-      
+
       {% set formatted_value = value %}
 
       {# Special Formatting Logic #}
@@ -152,15 +152,15 @@ content: >+
         {# Handle Currency Formatting ($X.XX) #}
         {% if name in currency_names %}
           {% set formatted_value = ('$%.2f' | format(value | float(0))) %}
-        
+
         {# Handle Date Formatting #}
         {% elif name in date_names %}
           {% set formatted_value = value %}
-        
+
         {# Handle Boolean values for Refund Eligible #}
         {% elif name == 'Refund Eligible' %}
           {% set formatted_value = 'Yes' if value | lower == 'true' or value == True else 'No' %}
-        
+
         {# Handle Days Until values #}
         {% elif 'Days Until' in name %}
           {% set num = value | int(0) %}
@@ -173,7 +173,7 @@ content: >+
       {% else %}
         {% set formatted_value = '—' %}
       {% endif %}
-      
+
       {# Build table rows #}
       {% set content_html.rows = content_html.rows + '<tr><td style="text-align: left; padding: 4px 8px;"><small>&nbsp;&nbsp;&nbsp;' + name + '</small></td><td align="right" style="padding: 4px 8px;"><small>' + formatted_value + '</small></td></tr>' %}
     {% endfor %}
@@ -315,7 +315,7 @@ card:
   content: |
     ## ⚠️ Payment Overdue!
     Your payment is **{{ states('sensor.my_address_icp123_days_until_overdue') | int | abs }} days** overdue.
-    
+
     Amount due: **${{ states('sensor.my_address_icp123_amount_due') }}**
 ```
 
@@ -406,7 +406,7 @@ series:
     name: Paid
     type: column
     data_generator: |
-      return entity.attributes.daily_paid_usage ? 
+      return entity.attributes.daily_paid_usage ?
         Object.entries(entity.attributes.daily_paid_usage).map(([date, value]) => {
           // Parse date manually to avoid timezone issues
           const [year, month, day] = date.split('-').map(Number);
@@ -423,7 +423,7 @@ series:
     name: Free
     type: column
     data_generator: |
-      return entity.attributes.daily_free_usage ? 
+      return entity.attributes.daily_free_usage ?
         Object.entries(entity.attributes.daily_free_usage)
           .filter(([date, value]) => {
             // Only show free usage on weekends (Saturday=6, Sunday=0)
@@ -433,7 +433,7 @@ series:
             return dayOfWeek === 0 || dayOfWeek === 6; // Sunday=0, Saturday=6
           })
           .map(([date, value]) => {
-            // Parse date manually to avoid timezone issues  
+            // Parse date manually to avoid timezone issues
             const [year, month, day] = date.split('-').map(Number);
             const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
             return [utcDate.getTime(), value];
@@ -451,40 +451,758 @@ series:
 - **Stacked bars**: Shows both paid and free usage in a single chart
 - **Centered bars**: Uses noon time (12:00:00) to properly center daily bars on the chart
 
-### Hourly Usage (last 14 days)
+### Hourly Usage (last 10 days)
 
 ```yaml
 type: custom:apexcharts-card
+span:
+  offset: "-0d"
+all_series_config:
+  stroke_width: 2
+  show:
+    legend_value: false
 header:
   show: true
-  title: Hourly Usage (Paid)
-graph_span: 14d
+  title: Hourly Usage (Last 10 Days)
+section_mode: true
+apex_config:
+  chart:
+    height: 200px
+    type: area
+    padding:
+      left: 0
+      right: 0
+      top: 10
+      bottom: 0
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.01
+      opacityFrom: 0.1
+      opacityTo: 1
+      inverseColors: false
+      stops:
+        - 40
+        - 90
+        - 100
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+    markers:
+      shape: square
+  xaxis:
+    type: datetime
+    labels:
+      format: dd MMM
+      datetimeUTC: false
+      show: true
+      rotate: 0
+      rotateAlways: true
+      hideOverlappingLabels: true
+      showDuplicates: false
+  yaxis:
+    min: 0
+    max: 5
+    title:
+      text: kWh
+graph_span: 10d
 series:
-  - name: Paid kWh
-    type: column
+  - entity: sensor.my_address_icp123_usage
+    attribute: hourly_usage
+    name: Paid
+    color: "#FEB019"
+    type: area
+    extend_to: false
     data_generator: |
-      const attr = states['sensor.my_address_icp123_usage']?.attributes?.hourly_paid_usage || {};
-      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
-yaxis:
-  - decimals: 2
+      if (!entity.attributes.hourly_paid_usage) return [];
+
+      const entries = Object.entries(entity.attributes.hourly_paid_usage);
+      if (entries.length === 0) return [];
+
+      // Get all timestamps and sort them
+      const data = entries.map(([time, value]) => ({
+        time: new Date(time).getTime(),
+        value: parseFloat(value)
+      })).sort((a, b) => a.time - b.time);
+
+      // Fill in missing hours with 0.0
+      const result = [];
+      const hourMs = 60 * 60 * 1000;
+
+      for (let i = 0; i < data.length; i++) {
+        result.push([data[i].time, data[i].value]);
+
+        // Check if there's a gap to the next point
+        if (i < data.length - 1) {
+          const gap = data[i + 1].time - data[i].time;
+          if (gap > hourMs * 1.5) {
+            // Fill gap with zeros
+            let currentTime = data[i].time + hourMs;
+            while (currentTime < data[i + 1].time) {
+              result.push([currentTime, 0.0]);
+              currentTime += hourMs;
+            }
+          }
+        }
+      }
+
+      return result;
+  - entity: sensor.my_address_icp123_usage
+    attribute: hourly_free_usage
+    name: Free
+    color: "#008FFB"
+    type: area
+    extend_to: false
+    data_generator: |
+      if (!entity.attributes.hourly_free_usage) return [];
+
+      const entries = Object.entries(entity.attributes.hourly_free_usage);
+      if (entries.length === 0) return [];
+
+      // Get all timestamps and sort them
+      const data = entries.map(([time, value]) => ({
+        time: new Date(time).getTime(),
+        value: parseFloat(value)
+      })).sort((a, b) => a.time - b.time);
+
+      // Fill in missing hours with 0.0
+      const result = [];
+      const hourMs = 60 * 60 * 1000;
+
+      for (let i = 0; i < data.length; i++) {
+        result.push([data[i].time, data[i].value]);
+
+        // Check if there's a gap to the next point
+        if (i < data.length - 1) {
+          const gap = data[i + 1].time - data[i].time;
+          if (gap > hourMs * 1.5) {
+            // Fill gap with zeros
+            let currentTime = data[i].time + hourMs;
+            while (currentTime < data[i + 1].time) {
+              result.push([currentTime, 0.0]);
+              currentTime += hourMs;
+            }
+          }
+        }
+      }
+
+      return result;
+card_mod:
+  style: >
+    /* FIX 1: Center the Title */
+
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+
+    /* FIX 2: Reduce space between legend and chart (Targeting the internal
+    components) */
+
+    .apexcharts-legend {
+      margin-top: -10px !important;
+      padding-top: 0px !important;
+    }
+
+    .apexcharts-canvas {
+      margin-top: -15px !important;
+    }
+
+    /* FIX 3: Center X-Axis Day Labels */  .apexcharts-xaxis-texts-g text {
+      text-anchor: middle!important;
+      transform: translateX(5%)!important;
+
+      /* NEW FIX: Override the default bolding for month boundaries */
+      font-weight: normal!important;
+    }
+
+    ha-card {
+      /*
+        Creates a linear gradient background from top (#383e4a) to bottom (#1e212b).
+        !important is used to ensure it overrides the default background variable.
+      */
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+
+      /* Optional: remove the default shadow */
+      box-shadow: none;
+    }
 ```
 
-### Monthly Usage (18 months)
+### Monthly Usage
 
 ```yaml
 type: custom:apexcharts-card
 header:
   show: true
-  title: Monthly Usage (Paid)
-graph_span: 18mon
-series:
-  - name: Paid kWh
-    type: column
-    data_generator: |
-      const attr = states['sensor.my_address_icp123_usage']?.attributes?.monthly_paid_usage || {};
-      return Object.keys(attr).sort().map(key => ({ x: key, y: Number(attr[key]) }));
+  title: Monthly Usage
+graph_span: 548d
+stacked: true
 yaxis:
-  - decimals: 2
+  - id: kwh
+    min: 0
+    max: 1700
+    apex_config:
+      title:
+        text: kWh
+      labels:
+        formatter: |
+          EVAL:function(value) { return value.toFixed(0); }
+  - id: cost
+    opposite: true
+    min: 0
+    apex_config:
+      labels:
+        formatter: |
+          EVAL:function(value) { return '$' + value.toFixed(0); }
+all_series_config:
+  stroke_width: 2
+  type: column
+  show:
+    legend_value: false
+series:
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_paid_usage
+    name: Paid
+    color: '#FEB019'
+    yaxis_id: kwh
+    stack_group: monthly_usage
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_paid_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily paid usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_paid_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_free_usage
+    name: Free
+    color: '#008FFB'
+    yaxis_id: kwh
+    stack_group: monthly_usage
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_free_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily free usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_free_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_cost_usage
+    name: Cost
+    type: line
+    color: '#00E396'
+    yaxis_id: cost
+    data_generator: |
+      return entity.attributes.monthly_cost_usage ?
+        Object.entries(entity.attributes.monthly_cost_usage)
+        .map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
+        .sort((a, b) => a[0] - b[0]) : [];
+apex_config:
+  chart:
+    height: 220px
+    type: bar
+    stacked: true
+  plotOptions:
+    bar:
+      columnWidth: 100%
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+    markers:
+      shape: square
+  stroke:
+    width:
+      - 0
+      - 0
+      - 3
+  markers:
+    size: 0
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 90
+        - 100
+  xaxis:
+    type: datetime
+    labels:
+      format: MMM
+      rotate: -90
+      rotateAlways: true
+    tickAmount: 18
+card_mod:
+  style: |
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+
+    .apexcharts-canvas {
+      margin-top: -15px !important;
+    }
+
+    ha-card .apexcharts-legend {
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      top: 18px !important;
+      width: 100% !important;
+      max-width: none !important;
+      display: grid !important;
+      grid-auto-flow: column !important;
+      grid-auto-columns: max-content !important;
+      justify-content: center !important;
+      align-items: center !important;
+      column-gap: 22px !important;
+      overflow: visible !important;
+      white-space: nowrap !important;
+      z-index: 5 !important;
+      font-size: 13px !important;
+    }
+
+    ha-card .apexcharts-legend-series {
+      display: inline-flex !important;
+      align-items: center !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      gap: 6px !important;
+      white-space: nowrap !important;
+    }
+
+    ha-card .apexcharts-legend-marker {
+      width: 12px !important;
+      min-width: 12px !important;
+      height: 12px !important;
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+      flex: 0 0 12px !important;
+    }
+
+    ha-card .apexcharts-legend-text {
+      white-space: nowrap !important;
+    }
+
+    ha-card .apexcharts-legend-group-vertical {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 18px !important;
+    }
+
+    ha-card {
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      box-shadow: none;
+    }
+```
+
+> Tip: Copy these into your own `apexcharts_card_-_*.yaml` files (see `assets/`) and replace `sensor.my_address_icp123_usage` with your entity.
+
+---
+
+## Automations Using Sensors
+
+### Payment Reminder
+
+Get notified 3 days before payment is due:
+
+```yaml
+automation:
+  - alias: "Contact Energy - Payment Reminder"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.my_address_icp123_days_until_overdue
+        below: 4
+        above: 2
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Payment Due Soon"
+          message: >
+            Your Contact Energy payment of ${{ states('sensor.my_address_icp123_amount_due') }}
+            is due in {{ states('sensor.my_address_icp123_days_until_overdue') }} days.
+```
+
+### Overdue Payment Alert
+
+Get an urgent notification when payment is overdue:
+
+```yaml
+automation:
+  - alias: "Contact Energy - Overdue Alert"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.my_address_icp123_days_until_overdue
+        below: 0
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "⚠️ Payment Overdue!"
+          message: >
+            Your Contact Energy payment is {{ states('sensor.my_address_icp123_days_until_overdue') | int | abs }} days overdue!
+            Amount: ${{ states('sensor.my_address_icp123_amount_due') }}
+          data:
+            priority: high
+```
+
+### Credit Balance Notification
+
+Get notified when you have a credit balance above a threshold:
+
+```yaml
+automation:
+  - alias: "Contact Energy - Credit Available"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.my_address_icp123_current_balance
+        above: 50
+    condition:
+      - condition: state
+        entity_id: sensor.my_address_icp123_refund_eligible
+        state: "True"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Refund Available"
+          message: >
+            You have ${{ states('sensor.my_address_icp123_maximum_refund') }} available for refund!
+```
+
+### Next Bill Reminder
+
+Get notified 5 days before next bill:
+
+```yaml
+automation:
+  - alias: "Contact Energy - Next Bill Soon"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.my_address_icp123_days_until_next_bill
+        below: 6
+        above: 4
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Next Bill Coming"
+          message: >
+            Your next Contact Energy bill will be issued in
+            {{ states('sensor.my_address_icp123_days_until_next_bill') }} days
+            on {{ states('sensor.my_address_icp123_next_bill_date') }}.
+```
+
+---
+
+## Tips & Best Practices
+
+### Naming Conventions
+
+When creating template sensors or referencing entities:
+- Use consistent, descriptive names
+- Include the property identifier if you have multiple accounts
+- Follow Home Assistant naming guidelines
+
+### Dashboard Organization
+
+- Group related sensors together (balance, billing, contract)
+- Use conditional cards to show warnings only when needed
+- Consider using tabs for multiple properties
+- Place frequently-viewed cards at the top
+
+### Performance
+
+- Markdown cards with many sensors may take a moment to render
+- Consider splitting very large dashboards into multiple views
+- Use conditional cards to reduce entity updates
+
+### Mobile Optimization
+
+- Test dashboard on mobile devices
+- Use `view_layout: position: sidebar` for compact displays
+- Consider separate mobile-optimized views
+
+---
+
+**Next:** [Configure Multiple Accounts →](Multiple-Accounts)
+ + value.toFixed(0); }
+all_series_config:
+  stroke_width: 2
+  type: column
+  show:
+    legend_value: false
+series:
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_paid_usage
+    name: Paid
+    color: '#FEB019'
+    yaxis_id: kwh
+    stack_group: monthly_usage
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_paid_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily paid usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_paid_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_free_usage
+    name: Free
+    color: '#008FFB'
+    yaxis_id: kwh
+    stack_group: monthly_usage
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_free_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily free usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_free_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
+  - entity: sensor.my_address_icp123_usage
+    attribute: monthly_cost_usage
+    name: Cost
+    type: line
+    color: '#00E396'
+    yaxis_id: cost
+    data_generator: |
+      return entity.attributes.monthly_cost_usage ?
+        Object.entries(entity.attributes.monthly_cost_usage)
+        .map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
+        .sort((a, b) => a[0] - b[0]) : [];
+apex_config:
+  chart:
+    height: 220px
+    type: bar
+    stacked: true
+  plotOptions:
+    bar:
+      columnWidth: 100%
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
+    offsetY: 20
+    markers:
+      shape: square
+  stroke:
+    width:
+      - 0
+      - 0
+      - 3
+  markers:
+    size: 0
+  fill:
+    type: gradient
+    gradient:
+      type: vertical
+      shadeIntensity: 0.6
+      opacityFrom: 0.25
+      opacityTo: 1
+      inverseColors: true
+      stops:
+        - 0
+        - 90
+        - 100
+  xaxis:
+    type: datetime
+    labels:
+      format: MMM
+      rotate: -90
+      rotateAlways: true
+    tickAmount: 18
+card_mod:
+  style: |
+    div#header__title {
+      text-align: center !important;
+      width: 100%;
+    }
+
+    .apexcharts-canvas {
+      margin-top: -15px !important;
+    }
+
+    ha-card .apexcharts-legend {
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      top: 18px !important;
+      width: 100% !important;
+      max-width: none !important;
+      display: grid !important;
+      grid-auto-flow: column !important;
+      grid-auto-columns: max-content !important;
+      justify-content: center !important;
+      align-items: center !important;
+      column-gap: 22px !important;
+      overflow: visible !important;
+      white-space: nowrap !important;
+      z-index: 5 !important;
+      font-size: 13px !important;
+    }
+
+    ha-card .apexcharts-legend-series {
+      display: inline-flex !important;
+      align-items: center !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      gap: 6px !important;
+      white-space: nowrap !important;
+    }
+
+    ha-card .apexcharts-legend-marker {
+      width: 12px !important;
+      min-width: 12px !important;
+      height: 12px !important;
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+      flex: 0 0 12px !important;
+    }
+
+    ha-card .apexcharts-legend-text {
+      white-space: nowrap !important;
+    }
+
+    ha-card .apexcharts-legend-group-vertical {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 18px !important;
+    }
+
+    ha-card {
+      background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
+      box-shadow: none;
+    }
 ```
 
 > Tip: Copy these into your own `apexcharts_card_-_*.yaml` files (see `assets/`) and replace `sensor.my_address_icp123_usage` with your entity.
