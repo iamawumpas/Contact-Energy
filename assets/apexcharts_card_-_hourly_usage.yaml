@@ -1,7 +1,7 @@
 
 type: custom:apexcharts-card
 span:
-  offset: "-2d"
+  offset: "-0d"
 all_series_config:
   stroke_width: 2
   show:

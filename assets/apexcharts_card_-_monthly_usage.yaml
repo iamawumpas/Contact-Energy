@@ -30,30 +30,96 @@ series:
   - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     attribute: monthly_paid_usage
     name: Paid
-    color: "#FEB019"
+    color: '#FEB019'
     yaxis_id: kwh
     stack_group: monthly_usage
-    data_generator: |
-      return entity.attributes.monthly_paid_usage ?
-        Object.entries(entity.attributes.monthly_paid_usage)
-        .map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
-        .sort((a, b) => a[0] - b[0]) : [];
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_paid_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily paid usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_paid_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
   - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     attribute: monthly_free_usage
     name: Free
-    color: "#008FFB"
+    color: '#008FFB'
     yaxis_id: kwh
     stack_group: monthly_usage
-    data_generator: |
-      return entity.attributes.monthly_free_usage ?
-        Object.entries(entity.attributes.monthly_free_usage)
-        .map(([date, value]) => [Date.parse(`${date}-01T00:00:00Z`), Number(value)])
-        .sort((a, b) => a[0] - b[0]) : [];
+    data_generator: >
+      // Build the current local calendar month key, for example "2026-08".
+
+      const now = new Date();
+
+      const year = now.getFullYear();
+
+      const monthIndex = now.getMonth();
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+
+      // Retain the monthly API totals for every completed month.
+
+      const completedMonths =
+      Object.entries(entity.attributes.monthly_free_usage || {})
+        .filter(([month]) => month !== monthKey)
+        .map(([month, value]) => [
+          Date.parse(`${month}-01T00:00:00Z`),
+          Number(value)
+        ]);
+
+      // Replace this month's API total with the sum of its daily free usage.
+
+      const currentMonthTotal =
+      Object.entries(entity.attributes.daily_free_usage || {})
+        .filter(([date]) => date.startsWith(`${monthKey}-`))
+        .reduce((total, [, value]) => total + Number(value || 0), 0);
+
+      // Plot the month-to-date total at the first day of the current month.
+
+      completedMonths.push([
+        Date.UTC(year, monthIndex, 1),
+        currentMonthTotal
+      ]);
+
+
+      return completedMonths.sort((a, b) => a[0] - b[0]);
   - entity: sensor.71_oroua_st_0000000966tr348_usage_2
     attribute: monthly_cost_usage
     name: Cost
     type: line
-    color: "#00E396"
+    color: '#00E396'
     yaxis_id: cost
     data_generator: |
       return entity.attributes.monthly_cost_usage ?
@@ -107,6 +173,7 @@ card_mod:
       text-align: center !important;
       width: 100%;
     }
+
     .apexcharts-canvas {
       margin-top: -15px !important;
     }
@@ -158,15 +225,7 @@ card_mod:
       gap: 18px !important;
     }
 
-
     ha-card {
-      /*
-        Creates a linear gradient background from top (#383e4a) to bottom (#1e212b).
-        !important is used to ensure it overrides the default background variable.
-      */
       background: linear-gradient(180deg, #000000 15%, #d3d3d3 300%) !important;
-
-      /* Optional: remove the default shadow */
       box-shadow: none;
     }
-
