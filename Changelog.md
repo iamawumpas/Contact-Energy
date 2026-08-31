@@ -5,6 +5,14 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.6 ]
+
+### Fixed
+- Fixed repeated `Failed to fetch hourly chunk` / status 502 warnings caused by requesting usage data for dates Contact Energy has not published yet.
+
+### Changed
+- Hourly and daily usage sync now stay 3 days behind "today" when calculating the sync range, matching Contact Energy's documented 24-72 hour data publishing delay.
+
 ## [ 2.0.5 ]
 
 ### Fixed

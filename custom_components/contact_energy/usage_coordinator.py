@@ -115,6 +115,12 @@ USAGE_CONFIG = {
     },
 }
 
+# By design, Contact Energy's API can take 24-72 hours to publish smart-meter
+# data, so requesting recent dates for hourly/daily reliably returns a 502.
+# Stay this many days behind "today" to avoid hammering the API for data
+# that doesn't exist yet.
+DATA_AVAILABILITY_LAG_DAYS = 3
+
 
 class UsageCoordinator:
     """Manages usage data synchronization for a single contract.
@@ -993,8 +999,9 @@ class UsageCoordinator:
                 interval, self.contract_id, from_date, cached_to
             )
 
-        # Determine to_date (always today, but respect API lookback limits)
-        to_date = today
+        # Determine to_date. Stay a day behind "today" since the API doesn't
+        # publish hourly/daily data for the current day until it has passed.
+        to_date = today - timedelta(days=DATA_AVAILABILITY_LAG_DAYS)
 
         # Ensure we don't exceed API's max lookback limit
         earliest_allowed = today - timedelta(days=max_lookback)
