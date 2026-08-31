@@ -59,6 +59,10 @@ from homeassistant.const import Platform
 # to any data passed into that service.
 from homeassistant.core import HomeAssistant, ServiceCall
 
+# ConfigEntryNotReady tells Home Assistant a setup failure is temporary, so it
+# retries setup later instead of marking the integration as permanently failed.
+from homeassistant.exceptions import ConfigEntryNotReady
+
 # voluptuous validates the shape of service input data.
 # Here we use an empty schema because the refresh service takes no arguments.
 import voluptuous as vol
@@ -70,7 +74,9 @@ from .const import DOMAIN
 # ContactEnergyApi is the integration's API client.
 # It knows how to log in to Contact Energy and retrieve data from the remote
 # service using the user's saved credentials.
-from .contact_api import ContactEnergyApi
+# ContactEnergyConnectionError distinguishes temporary network/timeout issues
+# from genuine invalid-credential failures.
+from .contact_api import ContactEnergyApi, ContactEnergyConnectionError
 
 # ContactEnergyCoordinator is the shared data manager for this integration.
 # It handles fetching and refreshing data once, then distributing that data to
@@ -351,8 +357,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # login no longer works.
     try:
         await api_client.authenticate()
+    except ContactEnergyConnectionError as err:
+        # Timeouts and network hiccups are temporary, so ask Home Assistant to
+        # retry setup later instead of marking the entry as permanently failed.
+        _LOGGER.warning(
+            "Temporary connection error during setup for %s: %s. Will retry.",
+            entry.title, err,
+        )
+        raise ConfigEntryNotReady(str(err)) from err
     except Exception as err:  # pragma: no cover - defensive guard
-        # Log the authentication problem and abort setup.
+        # Any other failure (e.g. invalid credentials) is treated as permanent.
         _LOGGER.error("Authentication failed during setup for %s: %s", entry.title, err)
         return False
 
