@@ -5,6 +5,11 @@ All notable changes to the Contact Energy integration will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [ 2.0.8 ]
+
+### Fixed
+- Fixed a `NameError` crash in the account coordinator caused by referencing `ContactEnergyAuthError` and `ContactEnergyConnectionError` without importing them, which broke the intended fallback to cached account data during API failures.
+
 ## [ 2.0.7 ]
 
 ### Fixed

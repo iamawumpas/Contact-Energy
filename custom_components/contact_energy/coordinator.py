@@ -52,7 +52,14 @@ from .const import DOMAIN
 
 # ContactEnergyApi: legacy API client used to fetch account information.
 # ContactEnergyApiError: custom API exception that gets converted for Home Assistant.
-from .contact_api import ContactEnergyApi, ContactEnergyApiError
+# ContactEnergyAuthError: raised specifically for expired/invalid auth tokens.
+# ContactEnergyConnectionError: raised for temporary network/timeout/5xx failures.
+from .contact_api import (
+    ContactEnergyApi,
+    ContactEnergyApiError,
+    ContactEnergyAuthError,
+    ContactEnergyConnectionError,
+)
 
 # UsageCoordinator: background helper that syncs usage caches independently.
 from .usage_coordinator import UsageCoordinator
